@@ -16,6 +16,7 @@
 
   <link rel="icon" href="icons/icon-192x192.png">
 
+  <!-- Service Worker Registration -->
   <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js')
@@ -24,54 +25,56 @@
   }
   </script>
 
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- IMPORTANT: Use viewport-fit=cover for iPhone safe-area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <style>
-/* Ensure body leaves space at the bottom and includes safe-area padding */
-body {
-  margin: 0; /* reset default margin */
-  padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* 80px + iPhone inset */
-  background-color: #f9f9f9;
-}
+    /* 
+      1) Remove default margin on body and add padding for iPhone safe-area so content
+         doesn't get cut off behind the home indicator on iPhones.
+    */
+    body {
+      margin: 0;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      background-color: #f9f9f9;
+    }
 
-/* The fixed bottom nav */
-.nav-bottom {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  /* Add bottom padding for iPhone safe-area inset */
-  padding-bottom: env(safe-area-inset-bottom);
-  background-color: #fff;
-  border-top: 1px solid #ddd;
-  z-index: 999;
-  display: flex; /* ensure horizontal layout */
-}
-
-.nav-bottom .nav-link {
-  flex: 1;
-  text-align: center;
-  padding: 10px 0;
-  color: #000; /* default text color */
-}
-
-/* Highlight the active tab */
-.nav-bottom .nav-link.active {
-  background-color: #0d6efd; /* Bootstrap primary color, adjust as desired */
-  color: #fff;              /* White text for contrast */
-  font-weight: 500;         /* Slightly bolder text */
-}
+    /* 
+      2) Fixed bottom nav with safe-area padding. 
+         Also highlight the active link with a background color.
+    */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0d6efd; /* Bootstrap primary color */
+      color: #fff;              /* White text for contrast */
+      font-weight: 500;
+    }
 
     .tab-content {
       padding: 1rem;
     }
 
-    /* The main content for verified users is hidden until we set it visible */
+    /* Hide main tab content until user is verified */
     #tab-content-section {
       display: none;
     }
 
-    /* Verification UI for first-time devices */
+    /* Email verification UI */
     #verification-section {
       display: none; 
       max-width: 500px;
@@ -84,11 +87,10 @@ body {
       color: red;
     }
 
-    /* Profile container to position the spinner overlay */
+    /* Profile container with a spinner overlay */
     #profile-container {
-      position: relative; /* so spinner can absolutely position within */
+      position: relative; 
     }
-    /* The spinner overlay (centered) for the Profile tab */
     #profile-spinner {
       position: absolute;
       top: 50%;
@@ -98,18 +100,18 @@ body {
       background: #fff;
       padding: 20px;
       border-radius: 8px;
-      display: none; /* hidden by default */
+      display: none; 
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
-    /* We'll hide the actual profile fields until the spinner is done */
     #profile-content {
-      display: none; /* hidden until we finish loading data */
+      display: none; 
     }
 
-    /* REGISTER TAB SPINNER + CONFIRMATION */
+    /* Register tab container with a spinner overlay */
     #register-container {
-      position: relative; /* for overlay spinner */
+      position: relative; 
     }
+    /* Spinner overlay for Payment Processing */
     #payment-spinner {
       position: absolute;
       top: 50%;
@@ -122,8 +124,22 @@ body {
       display: none;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
+    /* NEW: Spinner overlay for Session Loading */
+    #session-spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
     #payment-success {
-      display: none; /* shown after successful payment + registration */
+      display: none; 
       margin-top: 10px;
     }
   </style>
@@ -194,6 +210,14 @@ body {
       <div class="tab-pane fade" id="tab-register" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
           
+          <!-- NEW: Session Loading Spinner -->
+          <div id="session-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Loading...</p>
+            </div>
+          </div>
+
           <!-- Payment Spinner overlay while processing payment -->
           <div id="payment-spinner">
             <div class="text-center">
@@ -382,15 +406,21 @@ body {
     function showPaymentSpinner(shouldShow) {
       const spinner = document.getElementById('payment-spinner');
       const successBox = document.getElementById('payment-success');
-      const regContainer = document.getElementById('register-container');
-      if (!spinner || !successBox || !regContainer) return;
+      if (!spinner || !successBox) return;
 
       if (shouldShow) {
         spinner.style.display = 'block';
-        successBox.style.display = 'none'; // hide success
+        successBox.style.display = 'none';
       } else {
         spinner.style.display = 'none';
       }
+    }
+
+    /* NEW: Show/Hide the Session Loading Spinner */
+    function showSessionSpinner(shouldShow) {
+      const spinner = document.getElementById('session-spinner');
+      if (!spinner) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
     }
 
     function showPaymentSuccess(shouldShow) {
@@ -453,17 +483,11 @@ body {
         const playerData = await playerResp.json();
         showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
 
-        if (!playerData.success) {
-          showMessage(`Error retrieving player info: ${playerData.error}`, 'error');
+        if (!playerData.success || !playerData.player) {
+          showMessage(`Error retrieving or not a valid player: ${playerData.error}`, 'error');
           showProfileSpinner(false);
           return;
         }
-        if (!playerData.player) {
-          showMessage('Not a registered user.', 'error');
-          showProfileSpinner(false);
-          return;
-        }
-
         currentPlayer = playerData.player;
         setProfileData(currentPlayer);
 
@@ -488,21 +512,22 @@ body {
           showMessage('Stripe customer found', 'debug');
           if (stripeData.cardLast4) {
             currentPlayer.cardLast4 = stripeData.cardLast4;
-            showMessage(`Setting currentPlayer.cardLast4 = ${stripeData.cardLast4}`, 'debug');
           } else {
             currentPlayer.cardLast4 = null;
           }
-
           setProfileData(currentPlayer);
 
-          // 3) Load sessions
+          // 3) Load sessions with a session spinner (optional)
+          showSessionSpinner(true);
           await loadSessions();
+          showSessionSpinner(false);
 
           showProfileSpinner(false);
         }
       } catch (err) {
         showMessage('initiateValidationFlow error: ' + err.message, 'error');
         showProfileSpinner(false);
+        showSessionSpinner(false);
       }
     }
 
@@ -527,7 +552,6 @@ body {
       showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
 
       const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
-      showMessage(`Sending to createStripe: ${JSON.stringify(payload)}`, 'debug');
       try {
         const resp = await fetch(CREATE_STRIPE_URL, {
           method: 'POST',
@@ -547,7 +571,10 @@ body {
         const modalEl = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
         modalEl.hide();
 
+        // Load sessions after creating the Stripe customer
+        showSessionSpinner(true);
         await loadSessions();
+        showSessionSpinner(false);
       } catch (err) {
         showMessage('Payment profile error: ' + err.message, 'error');
       }
@@ -580,25 +607,36 @@ body {
       sessions.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.spreadsheetId; 
-        // the actual ID used for opening the spreadsheet
         opt.textContent = `${s.location} - ${s.season} (${s.date})`;
         dropdown.appendChild(opt);
       });
     }
 
-    document.getElementById('session-dropdown').addEventListener('change', async () => {
-      const sessionId = document.getElementById('session-dropdown').value.trim();
-      if (!sessionId) {
-        resetProductFilters();
-        allProducts = [];
-        return;
-      }
-      await loadProductsForSession(sessionId);
-    });
-
     /************************************************************
      * 8) LOAD PRODUCTS (CHAIN FILTERING)
      ************************************************************/
+    document.getElementById('session-dropdown').addEventListener('change', async () => {
+      const sessionId = document.getElementById('session-dropdown').value.trim();
+
+      // Reset filters and product list whenever session changes
+      resetProductFilters();
+      allProducts = [];
+
+      if (!sessionId) {
+        return; // no spinner needed if user clears selection
+      }
+
+      // Show the session spinner while fetching products
+      showSessionSpinner(true);
+      try {
+        await loadProductsForSession(sessionId);
+      } catch (err) {
+        showMessage('Error loading products: ' + err.message, 'error');
+      } finally {
+        showSessionSpinner(false);
+      }
+    });
+
     async function loadProductsForSession(sessionId) {
       showMessage(`Loading products for sessionId: ${sessionId}`, 'debug');
       try {
@@ -613,9 +651,9 @@ body {
         }
         allProducts = data.products || [];
 
+        // Populate category filter with the new product data
         populateCategoryFilter(allProducts);
-        document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
-        document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+        // Clear the product table for now
         renderProductTable([]);
       } catch (err) {
         showMessage('loadProductsForSession error: ' + err.message, 'error');
@@ -626,7 +664,7 @@ body {
       document.getElementById('category-filter').innerHTML = '<option value="">--All Categories--</option>';
       document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
       document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
-      renderProductTable([]);
+      renderProductTable([]); // Clear the table
     }
 
     function populateCategoryFilter(products) {
@@ -646,6 +684,7 @@ body {
       const cat = document.getElementById('category-filter').value.trim();
       let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
 
+      // Populate Level dropdown based on filtered category
       const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
       const levelSelect = document.getElementById('level-filter');
       levelSelect.innerHTML = '<option value="">--All Levels--</option>';
@@ -656,6 +695,7 @@ body {
         levelSelect.appendChild(opt);
       });
 
+      // Reset day/time filter
       document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
       renderProductTable([]);
     });
@@ -735,7 +775,7 @@ body {
     function addProductToCart(product) {
       const sessionDropdown = document.getElementById('session-dropdown');
       const sessionLabel = sessionDropdown.options[sessionDropdown.selectedIndex].text;
-      const sessionId = sessionDropdown.value; // capture the actual spreadsheet ID
+      const sessionId = sessionDropdown.value; 
 
       cartItems.push({
         sessionId: sessionId,
@@ -813,9 +853,7 @@ body {
         showMessage('Cart is empty.', 'error');
         return;
       }
-      // Hide success if previously shown
       showPaymentSuccess(false);
-      // Show spinner
       showPaymentSpinner(true);
 
       const totalCents = calculateCartTotalCents();
@@ -825,7 +863,6 @@ body {
       const success = await chargeCart(email, totalCents);
       if (!success) {
         showMessage('Payment failed, not registering.', 'error');
-        // Hide spinner
         showPaymentSpinner(false);
         return;
       }
@@ -839,7 +876,6 @@ body {
       cartItems = [];
       updateCartTable();
 
-      // Hide spinner, show success alert
       showPaymentSpinner(false);
       showPaymentSuccess(true);
     });
@@ -852,7 +888,7 @@ body {
         email: currentPlayer.email,
         phoneNumber: currentPlayer.phoneNumber,
         cartItems: cartItems.map(ci => ({
-          sessionId: ci.sessionId, // include the ID so the server can open Form Responses
+          sessionId: ci.sessionId,
           program: ci.program
         }))
       };
@@ -952,7 +988,6 @@ body {
       if (cardSpan) {
         if (player.cardLast4) {
           cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
-          showMessage(`Profile card last4: ${player.cardLast4}`, 'debug');
         } else {
           cardSpan.textContent = 'No card on file';
         }
