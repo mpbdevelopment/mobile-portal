@@ -14,6 +14,15 @@
   <!-- Stripe.js -->
   <script src="https://js.stripe.com/v3/"></script>
 
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(registration => console.log('Service Worker registered:', registration))
+      .catch(error => console.error('Service Worker registration failed:', error));
+  }
+  </script>
+
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
