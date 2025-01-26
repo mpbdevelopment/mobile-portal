@@ -29,20 +29,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <style>
-    /* 
-      1) Remove default margin on body and add padding for iPhone safe-area so content
-         doesn't get cut off behind the home indicator on iPhones.
-    */
+    /* 1) Remove default margin on body and add padding for iPhone safe-area */
     body {
       margin: 0;
       padding-bottom: calc(80px + env(safe-area-inset-bottom));
       background-color: #f9f9f9;
     }
 
-    /* 
-      2) Fixed bottom nav with safe-area padding. 
-         Also highlight the active link with a background color.
-    */
+    /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
     .nav-bottom {
       position: fixed;
       bottom: 0;
@@ -124,7 +118,7 @@
       display: none;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
-    /* NEW: Spinner overlay for Session Loading */
+    /* Spinner overlay for Session Loading */
     #session-spinner {
       display: none;
       position: absolute;
@@ -141,6 +135,23 @@
     #payment-success {
       display: none; 
       margin-top: 10px;
+    }
+
+    /* My Registrations container with a spinner overlay */
+    #registrations-container {
+      position: relative;
+    }
+    #registrations-spinner {
+      display: none;
+      position: absolute; 
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
   </style>
 </head>
@@ -210,7 +221,7 @@
       <div class="tab-pane fade" id="tab-register" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
           
-          <!-- NEW: Session Loading Spinner -->
+          <!-- Session Loading Spinner -->
           <div id="session-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -297,11 +308,18 @@
 
       <!-- MY REGISTRATIONS TAB -->
       <div class="tab-pane fade" id="tab-registrations" role="tabpanel">
-        <div class="bg-white p-3 rounded shadow-sm">
+        <!-- Container for the registrations content + spinner overlay -->
+        <div class="bg-white p-3 rounded shadow-sm position-relative" id="registrations-container">
+          
+          <!-- Registrations Loading Spinner -->
+          <div id="registrations-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Loading Registrations...</p>
+            </div>
+          </div>
+
           <h5>My Registrations</h5>
-          <button id="refresh-registrations" class="btn btn-sm btn-secondary mb-3">
-            Refresh
-          </button>
 
           <h6>Current/Upcoming Seasons</h6>
           <div class="accordion" id="accordion-upcoming"></div>
@@ -416,9 +434,16 @@
       }
     }
 
-    /* NEW: Show/Hide the Session Loading Spinner */
+    /* Spinner for Session Loading */
     function showSessionSpinner(shouldShow) {
       const spinner = document.getElementById('session-spinner');
+      if (!spinner) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
+    }
+
+    /* Spinner for Registrations */
+    function showRegistrationsSpinner(shouldShow) {
+      const spinner = document.getElementById('registrations-spinner');
       if (!spinner) return;
       spinner.style.display = shouldShow ? 'block' : 'none';
     }
@@ -510,11 +535,7 @@
           modalEl.show();
         } else {
           showMessage('Stripe customer found', 'debug');
-          if (stripeData.cardLast4) {
-            currentPlayer.cardLast4 = stripeData.cardLast4;
-          } else {
-            currentPlayer.cardLast4 = null;
-          }
+          currentPlayer.cardLast4 = stripeData.cardLast4 || null;
           setProfileData(currentPlayer);
 
           // 3) Load sessions with a session spinner (optional)
@@ -653,7 +674,7 @@
 
         // Populate category filter with the new product data
         populateCategoryFilter(allProducts);
-        // Clear the product table for now
+        // Clear the product table initially
         renderProductTable([]);
       } catch (err) {
         showMessage('loadProductsForSession error: ' + err.message, 'error');
@@ -684,7 +705,7 @@
       const cat = document.getElementById('category-filter').value.trim();
       let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
 
-      // Populate Level dropdown based on filtered category
+      // Populate Level dropdown
       const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
       const levelSelect = document.getElementById('level-filter');
       levelSelect.innerHTML = '<option value="">--All Levels--</option>';
@@ -912,9 +933,7 @@
     /************************************************************
      * 10) MY REGISTRATIONS
      ************************************************************/
-    document.getElementById('refresh-registrations')
-      .addEventListener('click', loadUserRegistrations);
-
+    // Whenever the "My Registrations" tab is shown, load registrations:
     document.querySelector('a[data-bs-target="#tab-registrations"]')
       .addEventListener('shown.bs.tab', loadUserRegistrations);
 
@@ -924,6 +943,9 @@
         return;
       }
       showMessage('Loading user registrations from getUserRegistrations', 'debug');
+
+      // Show the registrations spinner
+      showRegistrationsSpinner(true);
 
       const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
       try {
@@ -938,6 +960,9 @@
         renderUpcomingRegistrations(data.upcoming || []);
       } catch (err) {
         showMessage('Load registrations error: ' + err.message, 'error');
+      } finally {
+        // Hide the spinner after fetching
+        showRegistrationsSpinner(false);
       }
     }
 
@@ -1015,3 +1040,4 @@
   </script>
 </body>
 </html>
+
