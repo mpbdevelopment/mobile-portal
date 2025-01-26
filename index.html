@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registration with Email Verification</title>
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <!-- Stripe.js -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin-bottom: 80px; /* for bottom nav */
+      background-color: #f9f9f9;
+    }
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+    }
+    .nav-bottom .nav-link {
+      padding: 10px 0;
+      text-align: center;
+      flex: 1;
+    }
+    .tab-content {
+      padding: 1rem;
+    }
+    /* The main content for verified users is hidden until we set it visible */
+    #tab-content-section {
+      display: none;
+    }
+    /* Verification UI for first-time devices */
+    #verification-section {
+      display: none; 
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 5px;
+    }
+    .card-errors {
+      color: red;
+    }
+    /* Profile container to position the spinner overlay */
+    #profile-container {
+      position: relative; /* so spinner can absolutely position within */
+    }
+    /* The spinner overlay (centered) */
+    #profile-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none; /* hidden by default */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    /* We'll also hide the actual profile fields until the spinner is done */
+    #profile-content {
+      display: none; /* hidden until we finish loading data */
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+  <!-- HEADER (Optional) -->
+  <header class="bg-primary text-white p-3 mb-2">
+    <h4 class="mb-0">Player Registration</h4>
+  </header>
+
+  <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
+  <section id="verification-section" class="shadow-sm">
+    <h5>Verify Your Email</h5>
+    <p>Enter your email to receive a 6-digit code.</p>
+    <form id="verification-form">
+      <div class="mb-3">
+        <label for="verify-email-input" class="form-label">Email Address</label>
+        <input type="email" class="form-control" id="verify-email-input" required />
+      </div>
+      <button type="submit" class="btn btn-primary w-100 mb-2">
+        Send Verification Code
+      </button>
+    </form>
+
+    <div id="code-entry" style="display: none;">
+      <p>Enter the 6-digit code we sent to your email:</p>
+      <div class="mb-3">
+        <input type="text" class="form-control" id="verify-code-input" placeholder="123456" />
+      </div>
+      <button id="verify-code-button" class="btn btn-secondary w-100">
+        Verify Code
+      </button>
+    </div>
+  </section>
+
+  <!-- MAIN TAB CONTENT (Once verified) -->
+  <section id="tab-content-section">
+    <div class="tab-content" id="myTabContent">
+
+      <!-- PROFILE TAB -->
+      <div class="tab-pane fade show active" id="tab-profile" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm" id="profile-container">
+          
+          <!-- Spinner Overlay (centered) -->
+          <div id="profile-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Logging you in!</p>
+            </div>
+          </div>
+          
+          <!-- Actual Profile Content -->
+          <div id="profile-content">
+            <h5>Profile</h5>
+            <p><strong>First Name:</strong> <span id="profile-first-name"></span></p>
+            <p><strong>Last Name:</strong> <span id="profile-last-name"></span></p>
+            <p><strong>Phone:</strong> <span id="profile-phone"></span></p>
+            <p><strong>Email:</strong> <span id="profile-email"></span></p>
+            <p><strong>Card on File:</strong> <span id="profile-card-last4">No card on file</span></p>
+        
+            <button id="logout-button" class="btn btn-danger w-100 mt-3">Logout</button>
+          </div>
+        </div>
+      </div>
+  
+<!-- REGISTER TAB -->
+<div class="tab-pane fade" id="tab-register" role="tabpanel">
+    <div class="bg-white p-3 rounded shadow-sm">
+      <h5>Register for a Program</h5>
+  
+      <!-- Session Selection -->
+      <div class="mb-3">
+        <label class="form-label">Select Session</label>
+        <select id="session-dropdown" class="form-select">
+          <option value="">--Select a Session--</option>
+        </select>
+      </div>
+  
+      <!-- Category Filter -->
+      <div class="mb-3">
+        <label class="form-label">Select Category</label>
+        <select id="category-filter" class="form-select">
+          <option value="">--All Categories--</option>
+        </select>
+      </div>
+  
+      <!-- Level Filter -->
+      <div class="mb-3">
+        <label class="form-label">Select Level</label>
+        <select id="level-filter" class="form-select">
+          <option value="">--All Levels--</option>
+        </select>
+      </div>
+  
+      <!-- Day/Time Filter -->
+      <div class="mb-3">
+        <label class="form-label">Select Day/Time</label>
+        <select id="daytime-filter" class="form-select">
+          <option value="">--All Day/Times--</option>
+        </select>
+      </div>
+  
+      <!-- Display Filtered Products -->
+      <table class="table table-striped table-sm" id="product-table">
+        <thead>
+          <tr>
+            <th>Program</th>
+            <th>Price</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+  
+      <hr/>
+  
+      <h6>Your Selections</h6>
+      <table class="table table-striped table-sm" id="cart-table">
+        <thead>
+          <tr>
+            <th>Program</th>
+            <th>Session</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button id="submit-cart-button" class="btn btn-primary w-100">Submit All</button>
+    </div>
+  </div>
+  
+
+      <!-- MY REGISTRATIONS TAB -->
+      <div class="tab-pane fade" id="tab-registrations" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm">
+          <h5>My Registrations</h5>
+          <button id="refresh-registrations" class="btn btn-sm btn-secondary mb-3">
+            Refresh
+          </button>
+
+          <h6>Current/Upcoming Seasons</h6>
+          <div class="accordion" id="accordion-upcoming"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIXED BOTTOM NAV -->
+  <nav class="nav nav-bottom d-flex justify-content-around">
+    <a class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab">
+      <span class="d-block">Profile</span>
+    </a>
+    <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-register" role="tab">
+      <span class="d-block">Register</span>
+    </a>
+    <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-registrations" role="tab">
+      <span class="d-block">My Registrations</span>
+    </a>
+  </nav>
+
+  <!-- PAYMENT MODAL -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Payment Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please add a payment method to continue.</p>
+          <form id="payment-form">
+            <div class="mb-3">
+              <label for="name-input" class="form-label">Name</label>
+              <input type="text" class="form-control" id="name-input" required />
+            </div>
+            <div class="mb-3">
+              <label for="card-element" class="form-label">Card</label>
+              <div id="card-element" class="form-control"></div>
+              <div id="card-errors" class="card-errors"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Add Payment Profile</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    /************************************************************
+     * 1) CONFIG & STRIPE SETUP
+     ************************************************************/
+    const GAS_PROXY = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy';
+    const FIND_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe';
+    const CREATE_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe';
+    const stripe = Stripe('pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb');
+    const elements = stripe.elements();
+    const cardElement = elements.create('card');
+    cardElement.mount('#card-element');
+  
+    let currentPlayer = null;         // from Players sheet
+    let allProducts = [];             // stores the "Products" for the chosen session
+    let cartItems = [];               // user’s cart (multi-session)
+    let availablePrograms = [];       // (Not used with chain approach, but keep if needed)
+  
+    /************************************************************
+     * 2) ON PAGE LOAD
+     ************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      const storedEmail = localStorage.getItem('playerEmail');
+      if (storedEmail) {
+        showMessage(`LocalStorage email found: ${storedEmail}`, 'debug');
+        document.getElementById('tab-content-section').style.display = 'block';
+        initiateValidationFlow(storedEmail);
+      } else {
+        showMessage('No stored email found; showing verification UI.', 'debug');
+        document.getElementById('verification-section').style.display = 'block';
+      }
+    });
+  
+    /************************************************************
+     * 3) SPINNER LOGIC (PROFILE TAB)
+     ************************************************************/
+    /**
+     * showProfileSpinner(true) => show "Logging you in!" spinner, hide profile content
+     * showProfileSpinner(false) => hide spinner, show profile content
+     */
+    function showProfileSpinner(shouldShow) {
+      const spinner = document.getElementById('profile-spinner');
+      const profileContent = document.getElementById('profile-content');
+      if (!spinner || !profileContent) return;
+  
+      if (shouldShow) {
+        spinner.style.display = 'block';
+        profileContent.style.display = 'none';
+      } else {
+        spinner.style.display = 'none';
+        profileContent.style.display = 'block';
+      }
+    }
+  
+    /************************************************************
+     * 4) EMAIL VERIFICATION LOGIC
+     ************************************************************/
+    document.getElementById('verification-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
+      if (!emailInput) return;
+  
+      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.success) {
+          // store code
+          window.__verificationCode = data.code;
+          document.getElementById('code-entry').style.display = 'block';
+          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+        } else {
+          alert('Error sending code: ' + (data.error || 'Unknown'));
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    });
+  
+    document.getElementById('verify-code-button').addEventListener('click', () => {
+      const userCode = document.getElementById('verify-code-input').value.trim();
+      const actualCode = window.__verificationCode;
+      if (userCode === actualCode) {
+        const verifiedEmail = document.getElementById('verify-email-input').value.trim().toLowerCase();
+        localStorage.setItem('playerEmail', verifiedEmail);
+  
+        alert('Email verified!');
+        document.getElementById('verification-section').style.display = 'none';
+        document.getElementById('tab-content-section').style.display = 'block';
+        initiateValidationFlow(verifiedEmail);
+      } else {
+        alert('Invalid code. Please check your email or resend.');
+      }
+    });
+  
+    /************************************************************
+     * 5) INITIATE VALIDATION FLOW (Players + Stripe)
+     ************************************************************/
+    async function initiateValidationFlow(email) {
+      showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+  
+      // Show spinner, hide the profile fields
+      showProfileSpinner(true);
+  
+      try {
+        // 1) getPlayerInfo
+        const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
+        showMessage(`Fetching player info from: ${playerUrl}`, 'debug');
+        const playerResp = await fetch(playerUrl);
+        const playerData = await playerResp.json();
+        showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+  
+        if (!playerData.success) {
+          showMessage(`Error retrieving player info: ${playerData.error}`, 'error');
+          showProfileSpinner(false);
+          return;
+        }
+        if (!playerData.player) {
+          showMessage('Not a registered user.', 'error');
+          showProfileSpinner(false);
+          return;
+        }
+  
+        currentPlayer = playerData.player;
+        // Initially set partial profile (no card last4 yet)
+        setProfileData(currentPlayer);
+  
+        // 2) Check Stripe
+        const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+        showMessage(`Fetching Stripe info from: ${stripeUrl}`, 'debug');
+        const stripeResp = await fetch(stripeUrl);
+        const stripeData = await stripeResp.json();
+        showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+  
+        if (!stripeData.success) {
+          showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+          showProfileSpinner(false);
+          return;
+        }
+  
+        if (!stripeData.exists) {
+          showMessage('No Stripe customer found -> show payment form', 'debug');
+          showProfileSpinner(false); // user sees the profile fields (no card)
+          const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+          modalEl.show();
+        } else {
+          showMessage('Stripe customer found', 'debug');
+          if (stripeData.cardLast4) {
+            currentPlayer.cardLast4 = stripeData.cardLast4;
+            showMessage(`Setting currentPlayer.cardLast4 = ${stripeData.cardLast4}`, 'debug');
+          } else {
+            currentPlayer.cardLast4 = null;
+            showMessage('No default card found (cardLast4 is null)', 'debug');
+          }
+  
+          // Re-set profile to show last4
+          setProfileData(currentPlayer);
+  
+          // Optionally load sessions now
+          await loadSessions();
+  
+          // Hide spinner => show final fields
+          showProfileSpinner(false);
+        }
+      } catch (err) {
+        showMessage('initiateValidationFlow error: ' + err.message, 'error');
+        showProfileSpinner(false);
+      }
+    }
+  
+    /************************************************************
+     * 6) PAYMENT PROFILE FORM
+     ************************************************************/
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('name-input').value.trim();
+      const email = currentPlayer?.email || '';
+  
+      showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: { name: nameInput, email }
+      });
+  
+      if (error) {
+        showMessage('Stripe error: ' + error.message, 'error');
+        return;
+      }
+      showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
+  
+      const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
+      showMessage(`Sending to createStripe: ${JSON.stringify(payload)}`, 'debug');
+      try {
+        const resp = await fetch(CREATE_STRIPE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
+  
+        if (!data.success) {
+          showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
+          return;
+        }
+        showMessage('Payment profile created successfully!', 'success');
+  
+        // Hide modal
+        const modalEl = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        modalEl.hide();
+  
+        // Re-check or just load sessions
+        await loadSessions();
+      } catch (err) {
+        showMessage('Payment profile error: ' + err.message, 'error');
+      }
+    });
+  
+    /************************************************************
+     * 7) LOAD SESSIONS (Multi-session approach)
+     ************************************************************/
+    async function loadSessions() {
+      showMessage('Loading sessions from getSessions', 'debug');
+      try {
+        const url = `${GAS_PROXY}?action=getSessions`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        showMessage(`getSessions response: ${JSON.stringify(data)}`, 'debug');
+  
+        if (!data.success) {
+          showMessage('Error loading sessions: ' + data.error, 'error');
+          return;
+        }
+        populateSessionDropdown(data.sessions || []);
+      } catch (err) {
+        showMessage('Session load error: ' + err.message, 'error');
+      }
+    }
+  
+    function populateSessionDropdown(sessions) {
+      const dropdown = document.getElementById('session-dropdown');
+      dropdown.innerHTML = '<option value="">--Select a Session--</option>';
+      sessions.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.spreadsheetId;
+        opt.textContent = `${s.location} - ${s.season} (${s.date})`;
+        dropdown.appendChild(opt);
+      });
+    }
+  
+    // If user re-selects a session => we fetch that session's "Products"
+    document.getElementById('session-dropdown').addEventListener('change', async () => {
+      const sessionId = document.getElementById('session-dropdown').value.trim();
+      if (!sessionId) {
+        resetProductFilters();
+        allProducts = [];
+        return;
+      }
+      await loadProductsForSession(sessionId);
+    });
+  
+    /************************************************************
+     * 8) LOAD PRODUCTS (Chain filtering: Category -> Level -> DayTime)
+     ************************************************************/
+    async function loadProductsForSession(sessionId) {
+      showMessage(`Loading products for sessionId: ${sessionId}`, 'debug');
+      try {
+        // ?action=getProgramList&sessionId=...
+        const url = `${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sessionId)}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        showMessage(`getProgramList response: ${JSON.stringify(data)}`, 'debug');
+  
+        if (!data.success) {
+          showMessage('Error loading products: ' + (data.error || ''), 'error');
+          return;
+        }
+  
+        // store all "Products"
+        allProducts = data.products || [];
+  
+        // Populate Category filter
+        populateCategoryFilter(allProducts);
+  
+        // Reset the other filters & product table
+        document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
+        document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+        renderProductTable([]);
+      } catch (err) {
+        showMessage('loadProductsForSession error: ' + err.message, 'error');
+      }
+    }
+  
+    function resetProductFilters() {
+      document.getElementById('category-filter').innerHTML = '<option value="">--All Categories--</option>';
+      document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
+      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+      renderProductTable([]);
+    }
+  
+    function populateCategoryFilter(products) {
+      const catSelect = document.getElementById('category-filter');
+      const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  
+      catSelect.innerHTML = '<option value="">--All Categories--</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        catSelect.appendChild(opt);
+      });
+    }
+  
+    // On Category change => filter 'allProducts' by that category => populate "Level"
+    document.getElementById('category-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
+  
+      // unique levels
+      const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
+      const levelSelect = document.getElementById('level-filter');
+      levelSelect.innerHTML = '<option value="">--All Levels--</option>';
+      levels.forEach(lv => {
+        const opt = document.createElement('option');
+        opt.value = lv;
+        opt.textContent = lv;
+        levelSelect.appendChild(opt);
+      });
+  
+      // clear day/time & product table
+      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+      renderProductTable([]);
+    });
+  
+    // On Level change => filter by category & level => populate day/time
+    document.getElementById('level-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      const lvl = document.getElementById('level-filter').value.trim();
+  
+      let filtered = allProducts;
+      if (cat) filtered = filtered.filter(p => p.category === cat);
+      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+  
+      const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
+      const dtSelect = document.getElementById('daytime-filter');
+      dtSelect.innerHTML = '<option value="">--All Day/Times--</option>';
+      dayTimes.forEach(dt => {
+        const opt = document.createElement('option');
+        opt.value = dt;
+        opt.textContent = dt;
+        dtSelect.appendChild(opt);
+      });
+  
+      renderProductTable([]);
+    });
+  
+    // On DayTime change => filter by cat+lvl+dt => show final subset
+    document.getElementById('daytime-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      const lvl = document.getElementById('level-filter').value.trim();
+      const dt  = document.getElementById('daytime-filter').value.trim();
+  
+      let filtered = allProducts;
+      if (cat) filtered = filtered.filter(p => p.category === cat);
+      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+      if (dt)  filtered = filtered.filter(p => p.dayTime === dt);
+  
+      renderProductTable(filtered);
+    });
+  
+    // Renders the final subset in #product-table with soldOut logic
+    function renderProductTable(products) {
+      const tbody = document.querySelector('#product-table tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+  
+      products.forEach(prod => {
+        const tr = document.createElement('tr');
+  
+        // Program cell (strike if soldOut)
+        let tdProgram = document.createElement('td');
+        if (prod.soldOut) {
+          tdProgram.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+        } else {
+          tdProgram.textContent = prod.program;
+        }
+        tr.appendChild(tdProgram);
+  
+        // Price cell
+        let tdPrice = document.createElement('td');
+        tdPrice.textContent = `$${prod.price}`;
+        tr.appendChild(tdPrice);
+  
+        // Action cell
+        let tdAction = document.createElement('td');
+        let btnAdd = document.createElement('button');
+        btnAdd.className = 'btn btn-sm btn-secondary';
+        btnAdd.textContent = 'Add';
+        if (prod.soldOut) {
+          btnAdd.disabled = true; // can't add sold-out
+        } else {
+          btnAdd.onclick = () => addProductToCart(prod);
+        }
+        tdAction.appendChild(btnAdd);
+        tr.appendChild(tdAction);
+  
+        tbody.appendChild(tr);
+      });
+    }
+  
+    /************************************************************
+     * 9) CART LOGIC
+     ************************************************************/
+    /**
+     * addProductToCart: store item in cartItems plus session label
+     */
+    function addProductToCart(product) {
+      const sessionDropdown = document.getElementById('session-dropdown');
+      const sessionLabel = sessionDropdown.options[sessionDropdown.selectedIndex].text;
+      cartItems.push({
+        program: product.program,
+        sessionLabel: sessionLabel
+        // could store more details if needed
+      });
+      updateCartTable();
+    }
+  
+    function updateCartTable() {
+      const tbody = document.querySelector('#cart-table tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+  
+      cartItems.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+  
+        // Program
+        let tdProg = document.createElement('td');
+        tdProg.textContent = item.program;
+        tr.appendChild(tdProg);
+  
+        // Session
+        let tdSession = document.createElement('td');
+        tdSession.textContent = item.sessionLabel;
+        tr.appendChild(tdSession);
+  
+        // Remove button
+        let tdRemove = document.createElement('td');
+        let btnRemove = document.createElement('button');
+        btnRemove.className = 'btn btn-sm btn-danger';
+        btnRemove.textContent = 'Remove';
+        btnRemove.onclick = () => {
+          cartItems.splice(idx, 1);
+          updateCartTable();
+        };
+        tdRemove.appendChild(btnRemove);
+        tr.appendChild(tdRemove);
+  
+        tbody.appendChild(tr);
+      });
+    }
+  
+    // Submitting multiple items => same "registerMultiple" approach
+    document.getElementById('submit-cart-button').addEventListener('click', async () => {
+      if (cartItems.length === 0) {
+        showMessage('Cart is empty.', 'error');
+        return;
+      }
+      showMessage('Submitting cart items...', 'debug');
+  
+      // group or just pass them all
+      const payload = {
+        action: 'registerMultiple',
+        firstName: currentPlayer.firstName,
+        lastName: currentPlayer.lastName,
+        email: currentPlayer.email,
+        phoneNumber: currentPlayer.phoneNumber,
+        // cartItems => user can pick from multiple sessions. 
+        // But we also need the "sessionId"? 
+        // If you want multi-session, you'd store the sessionId in addProductToCart. 
+        // For now, we only store sessionLabel. Up to you if you want sessionId. 
+        cartItems: cartItems.map(ci => ({
+          sessionId: '', // if we wanted multi. But you can do your existing grouping approach
+          program: ci.program
+        }))
+      };
+  
+      try {
+        const resp = await fetch(GAS_PROXY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        showMessage(`registerMultiple response: ${JSON.stringify(data)}`, 'debug');
+  
+        if (!data.success) {
+          showMessage('Error: ' + data.error, 'error');
+          return;
+        }
+        showMessage('Successfully registered!', 'success');
+        cartItems = [];
+        updateCartTable();
+      } catch (err) {
+        showMessage('Submit cart error: ' + err.message, 'error');
+      }
+    });
+  
+    /************************************************************
+     * 10) MY REGISTRATIONS
+     ************************************************************/
+    document.getElementById('refresh-registrations')
+      .addEventListener('click', loadUserRegistrations);
+  
+    document.querySelector('a[data-bs-target="#tab-registrations"]')
+      .addEventListener('shown.bs.tab', loadUserRegistrations);
+  
+    async function loadUserRegistrations() {
+      if (!currentPlayer || !currentPlayer.email) {
+        showMessage('No user data found for registrations.', 'error');
+        return;
+      }
+      showMessage('Loading user registrations from getUserRegistrations', 'debug');
+  
+      const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
+  
+        if (!data.success) {
+          showMessage('Error loading registrations: ' + (data.error || ''), 'error');
+          return;
+        }
+        renderUpcomingRegistrations(data.upcoming || []);
+      } catch (err) {
+        showMessage('Load registrations error: ' + err.message, 'error');
+      }
+    }
+  
+    function renderUpcomingRegistrations(sessionsArray) {
+      const container = document.getElementById('accordion-upcoming');
+      container.innerHTML = '';
+      sessionsArray.forEach((sessionObj, i) => {
+        const { location, season, programs } = sessionObj;
+        const itemId = `accordion-upcoming-item-${i}`;
+        const itemHtml = `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="${itemId}-heading">
+              <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#${itemId}-collapse"
+                aria-expanded="false" aria-controls="${itemId}-collapse">
+                ${location} - ${season}
+              </button>
+            </h2>
+            <div id="${itemId}-collapse" class="accordion-collapse collapse"
+              aria-labelledby="${itemId}-heading" data-bs-parent="#accordion-upcoming">
+              <div class="accordion-body">
+                <ul class="mb-0">
+                  ${programs.map(p => `<li>${p}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', itemHtml);
+      });
+  
+      if (sessionsArray.length === 0) {
+        container.innerHTML = '<p class="text-muted">No upcoming registrations found.</p>';
+      }
+    }
+  
+    /************************************************************
+     * 11) PROFILE & LOGOUT
+     ************************************************************/
+    function setProfileData(player) {
+      showMessage(`Setting profile data: ${JSON.stringify(player)}`, 'debug');
+  
+      document.getElementById('profile-first-name').textContent = player.firstName || '';
+      document.getElementById('profile-last-name').textContent = player.lastName || '';
+      document.getElementById('profile-phone').textContent = player.phoneNumber || '';
+      document.getElementById('profile-email').textContent = player.email || '';
+  
+      const cardSpan = document.getElementById('profile-card-last4');
+      if (cardSpan) {
+        if (player.cardLast4) {
+          cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
+          showMessage(`Profile card last4: ${player.cardLast4}`, 'debug');
+        } else {
+          cardSpan.textContent = 'No card on file';
+          showMessage(`Profile has no cardLast4`, 'debug');
+        }
+      }
+    }
+  
+    document.getElementById('logout-button').addEventListener('click', () => {
+      showMessage('Logout clicked, clearing localStorage.', 'debug');
+      localStorage.removeItem('playerEmail');
+      currentPlayer = null;
+      cartItems = [];
+      allProducts = [];
+      availablePrograms = [];
+      document.getElementById('tab-content-section').style.display = 'none';
+      document.getElementById('verification-section').style.display = 'block';
+      showMessage('Logged out.', 'info');
+    });
+  
+    /************************************************************
+     * 12) UTILITY: showMessage
+     ************************************************************/
+    function showMessage(msg, type = 'info') {
+      console.log(`[${type.toUpperCase()}] ${msg}`);
+      // Optionally display a toast or alert in the UI
+    }
+  </script>
+  
+
+</body>
+</html>
