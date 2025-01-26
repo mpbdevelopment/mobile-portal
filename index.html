@@ -25,26 +25,43 @@
   </script>
 
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <style>
-    body {
-      margin-bottom: 80px; /* for bottom nav */
-      background-color: #f9f9f9;
-    }
-    .nav-bottom {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      background-color: #fff;
-      border-top: 1px solid #ddd;
-      z-index: 999;
-    }
-    .nav-bottom .nav-link {
-      padding: 10px 0;
-      text-align: center;
-      flex: 1;
-    }
+/* Ensure body leaves space at the bottom and includes safe-area padding */
+body {
+  margin: 0; /* reset default margin */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* 80px + iPhone inset */
+  background-color: #f9f9f9;
+}
+
+/* The fixed bottom nav */
+.nav-bottom {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  /* Add bottom padding for iPhone safe-area inset */
+  padding-bottom: env(safe-area-inset-bottom);
+  background-color: #fff;
+  border-top: 1px solid #ddd;
+  z-index: 999;
+  display: flex; /* ensure horizontal layout */
+}
+
+.nav-bottom .nav-link {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  color: #000; /* default text color */
+}
+
+/* Highlight the active tab */
+.nav-bottom .nav-link.active {
+  background-color: #0d6efd; /* Bootstrap primary color, adjust as desired */
+  color: #fff;              /* White text for contrast */
+  font-weight: 500;         /* Slightly bolder text */
+}
+
     .tab-content {
       padding: 1rem;
     }
