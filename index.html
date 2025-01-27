@@ -487,22 +487,22 @@
       successBox.style.display = shouldShow ? 'block' : 'none';
     }
 
-    /************************************************************
+/************************************************************
      * 4) EMAIL VERIFICATION
-     ************************************************************/
+************************************************************/
     document.getElementById('verification-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
       if (!emailInput) return;
 
-      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+      const url = ${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)};
       try {
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.success) {
           window.__verificationCode = data.code;
           document.getElementById('code-entry').style.display = 'block';
-          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+          showMessage((Debug) Verification code is: ${data.code}, 'debug');
         } else {
           alert('Error sending code: ' + (data.error || 'Unknown'));
         }
