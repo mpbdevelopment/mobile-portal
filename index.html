@@ -158,13 +158,7 @@
       display: none;
     }
 
-    #cart-total-line {
-      display: none;
-      margin-top: 10px;
-      margin-bottom: 10px;
-      text-align: right;
-      font-weight: bold;
-    }
+    /* We no longer use #cart-total-line for "Total: $x" => removed */
 
     /* For "Amount Due" and breakdown lines */
     #amount-due-line {
@@ -181,12 +175,12 @@
 </head>
 <body class="bg-light">
 
-  <!-- HEADER -->
+  <!-- HEADER (Optional) -->
   <header class="bg-primary text-white p-3 mb-2">
     <h4 class="mb-0">Player Registration</h4>
   </header>
 
-  <!-- VERIFICATION SECTION (Only for first-time devices) -->
+  <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
   <section id="verification-section" class="shadow-sm">
     <h5>Verify Your Email</h5>
     <p>Enter your email to receive a 6-digit code.</p>
@@ -211,15 +205,15 @@
     </div>
   </section>
 
-  <!-- MAIN CONTENT (Once verified) -->
+  <!-- MAIN TAB CONTENT (Once verified) -->
   <section id="tab-content-section">
     <div class="tab-content" id="myTabContent">
 
       <!-- PROFILE TAB -->
       <div class="tab-pane fade show active" id="tab-profile" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm" id="profile-container">
-
-          <!-- Spinner Overlay -->
+          
+          <!-- Spinner Overlay (centered) -->
           <div id="profile-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -227,7 +221,7 @@
             </div>
           </div>
 
-          <!-- Profile Content -->
+          <!-- Actual Profile Content -->
           <div id="profile-content">
             <h5>Profile</h5>
             <p><strong>First Name:</strong> <span id="profile-first-name"></span></p>
@@ -235,7 +229,7 @@
             <p><strong>Phone:</strong> <span id="profile-phone"></span></p>
             <p><strong>Email:</strong> <span id="profile-email"></span></p>
             <p><strong>Card on File:</strong> <span id="profile-card-last4">No card on file</span></p>
-            <!-- Display credit from PromoCodes -->
+            <!-- Display user credit from PromoCodes -->
             <p><strong>Credit:</strong> <span id="profile-credit-amount">No credit available</span></p>
 
             <button id="logout-button" class="btn btn-danger w-100 mt-3">Logout</button>
@@ -246,8 +240,8 @@
       <!-- REGISTER TAB -->
       <div class="tab-pane fade" id="tab-register" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
-
-          <!-- Spinner for session loading -->
+          
+          <!-- Session Loading Spinner -->
           <div id="session-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -255,7 +249,7 @@
             </div>
           </div>
 
-          <!-- Spinner for payment processing -->
+          <!-- Payment Spinner overlay while processing payment -->
           <div id="payment-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -263,14 +257,14 @@
             </div>
           </div>
 
-          <!-- Payment success alert -->
+          <!-- Payment success alert (may show credit left) -->
           <div id="payment-success" class="alert alert-success" role="alert">
             Payment processed successfully! Your registration has been submitted.
           </div>
 
           <h5>Register for a Program</h5>
 
-          <!-- Session selection -->
+          <!-- Session Selection -->
           <div class="mb-3">
             <label class="form-label">Select Session</label>
             <select id="session-dropdown" class="form-select">
@@ -302,7 +296,7 @@
             </select>
           </div>
 
-          <!-- Products table -->
+          <!-- Products Section (hidden until we have products) -->
           <div id="products-section">
             <table class="table table-striped table-sm" id="product-table">
               <thead>
@@ -318,7 +312,7 @@
 
           <hr/>
 
-          <!-- Cart Section -->
+          <!-- Cart Section (hidden until user has selections) -->
           <div id="cart-section">
             <h6>Your Selections</h6>
             <table class="table table-striped table-sm" id="cart-table">
@@ -332,11 +326,9 @@
               <tbody></tbody>
             </table>
 
-            <div id="cart-total-line">
-              Total: <span id="cart-total-amount">$0.00</span>
-            </div>
+            <!-- We removed the "Total: $..." line -->
 
-            <!-- "Amount Due" lines -->
+            <!-- "Amount Due" + smaller breakdown line -->
             <div id="amount-due-line"></div>
             <div id="breakdown-line"></div>
 
@@ -362,7 +354,6 @@
           </div>
         </div>
       </div>
-
     </div>
   </section>
 
@@ -417,8 +408,6 @@
     const FIND_STRIPE_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe';
     const CREATE_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe';
     const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeCart';
-
-    // NEW: We'll fetch user credit from a new ?action=getCredit endpoint
     const GET_CREDIT_URL    = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy?action=getCredit';
 
     const stripe = Stripe('pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb');
@@ -429,9 +418,6 @@
     let currentPlayer = null; 
     let allProducts = [];
     let cartItems = [];
-
-    // We'll store "currentPlayer.credit" once we fetch it from the server
-    // That credit is auto-applied to cart totals
 
     /************************************************************
      * 2) ON PAGE LOAD
@@ -487,22 +473,22 @@
       successBox.style.display = shouldShow ? 'block' : 'none';
     }
 
-/************************************************************
+    /************************************************************
      * 4) EMAIL VERIFICATION
-************************************************************/
+     ************************************************************/
     document.getElementById('verification-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
       if (!emailInput) return;
 
-      const url = ${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)};
+      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
       try {
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.success) {
           window.__verificationCode = data.code;
           document.getElementById('code-entry').style.display = 'block';
-          showMessage((Debug) Verification code is: ${data.code}, 'debug');
+          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
         } else {
           alert('Error sending code: ' + (data.error || 'Unknown'));
         }
@@ -535,7 +521,7 @@
       showProfileSpinner(true);
 
       try {
-        // 1) Check "Players" sheet
+        // 1) getPlayerInfo
         const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
         const playerResp = await fetch(playerUrl);
         const playerData = await playerResp.json();
@@ -562,24 +548,20 @@
         if (stripeData.exists) {
           currentPlayer.cardLast4 = stripeData.cardLast4 || null;
         } else {
-          showMessage('No Stripe customer found => ask user to add Payment Profile', 'debug');
+          showMessage('No Stripe customer found => Payment Profile needed', 'debug');
         }
 
-        // 3) Check user credit
+        // 3) Fetch user credit from PromoCodes
         const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
         const creditResp = await fetch(creditUrl);
         const creditData = await creditResp.json();
         showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
-        if (creditData.success) {
-          currentPlayer.credit = creditData.credit || 0;
-        } else {
-          currentPlayer.credit = 0;
-        }
+        currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
 
-        // Done => set profile info
+        // Finally => show profile
         setProfileData(currentPlayer);
 
-        // If no stripe customer => show Payment modal?
+        // If no stripe => show modal
         if (!stripeData.exists) {
           const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
           modalEl.show();
@@ -683,7 +665,6 @@
     document.getElementById('session-dropdown').addEventListener('change', async () => {
       const sessionId = document.getElementById('session-dropdown').value.trim();
 
-      // We do NOT clear cartItems => multi-session
       resetProductFilters(); 
       allProducts = [];
 
@@ -853,17 +834,15 @@
     function updateCartTable() {
       const tbody = document.querySelector('#cart-table tbody');
       const cartSection = document.getElementById('cart-section');
-      const cartTotalLine = document.getElementById('cart-total-line');
-      const cartTotalAmount = document.getElementById('cart-total-amount');
-      const amountDueLine   = document.getElementById('amount-due-line');
-      const breakdownLine   = document.getElementById('breakdown-line');
 
-      if (!tbody || !cartSection || !cartTotalLine || !cartTotalAmount || !amountDueLine || !breakdownLine) return;
+      const amountDueLine = document.getElementById('amount-due-line');
+      const breakdownLine = document.getElementById('breakdown-line');
+
+      if (!tbody || !cartSection || !amountDueLine || !breakdownLine) return;
 
       tbody.innerHTML = '';
       if (cartItems.length === 0) {
         cartSection.style.display = 'none';
-        cartTotalLine.style.display = 'none';
         amountDueLine.textContent = '';
         breakdownLine.textContent = '';
         return;
@@ -872,6 +851,7 @@
 
       cartItems.forEach((item, idx) => {
         const tr = document.createElement('tr');
+
         let tdProg = document.createElement('td');
         tdProg.textContent = item.program;
         tr.appendChild(tdProg);
@@ -894,22 +874,20 @@
         tbody.appendChild(tr);
       });
 
-      // Show cart total
-      const totalInCents = calculateCartTotalCents();
-      const totalDollars = (totalInCents / 100).toFixed(2);
-      cartTotalAmount.textContent = `$${totalDollars}`;
-      cartTotalLine.style.display = 'block';
+      // Compute raw total
+      const totalCents = calculateCartTotalCents();
+      const programTotal = totalCents / 100;
 
-      // Now compute final "Amount Due" after applying credit
+      // Subtract credit from total
       const credit = currentPlayer?.credit || 0;
-      let programTotal = parseFloat(totalDollars);
-      let creditUsed = credit < programTotal ? credit : programTotal;
+      let creditUsed = (credit >= programTotal) ? programTotal : credit;
       let amountDue  = programTotal - creditUsed;
 
-      // "Amount Due: $XX.xx"
+      // Show "Amount Due: $xx.xx"
       amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
-      // Smaller line: "Program Total: $X.xx | Credit Amount: $Y.xx"
-      breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Amount: $${creditUsed.toFixed(2)}`;
+
+      // Show smaller line: "Program Total: $X.xx | Credit Balance: $Y.xx"
+      breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
     }
 
     function calculateCartTotalCents() {
@@ -924,7 +902,7 @@
       showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
       if (amountInCents <= 0) {
         // No charge needed
-        return true; // "success" with 0 charge
+        return true; 
       }
       try {
         const payload = { email, amount: amountInCents };
@@ -938,7 +916,7 @@
           showMessage('Payment succeeded in chargeCart.', 'info');
           return true;
         } else {
-          showMessage('Payment failed: ' + (data.error || 'Unknown'), 'error');
+          showMessage('Payment failed: ' + (data.error || ''), 'error');
           return false;
         }
       } catch (err) {
@@ -956,18 +934,18 @@
       showPaymentSpinner(true);
 
       // 1) Sum cart
-      const totalInCents = calculateCartTotalCents(); 
-      const programTotalDollars = totalInCents / 100;
+      const totalCents = calculateCartTotalCents(); 
+      const programTotal = totalCents / 100;
 
-      // 2) Figure out how much credit we can apply
+      // 2) Auto-apply credit
       const credit = currentPlayer?.credit || 0;
-      const creditUsed = (credit >= programTotalDollars) ? programTotalDollars : credit; 
-      const amountDueDollars = programTotalDollars - creditUsed;
-      const amountDueCents   = Math.round(amountDueDollars * 100);
+      let creditUsed = (credit >= programTotal) ? programTotal : credit; 
+      let amountDue  = programTotal - creditUsed;
+      let amountDueCents = Math.round(amountDue * 100);
 
-      showMessage(`Cart total: $${programTotalDollars.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
+      showMessage(`Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
 
-      // 3) Charge (only if amountDueCents>0)
+      // 3) If amountDue>0 => charge
       const email = currentPlayer.email;
       const success = await chargeCart(email, amountDueCents);
       if (!success) {
@@ -976,7 +954,7 @@
         return;
       }
 
-      // 4) Payment success => register in spreadsheet
+      // 4) Payment success => register
       showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
       await submitCartToSpreadsheet(creditUsed);
       showMessage('Successfully registered after payment!', 'success');
@@ -987,6 +965,19 @@
 
       showPaymentSpinner(false);
       showPaymentSuccess(true);
+
+      // If creditUsed>0 => show leftover in success msg
+      const leftoverCredit = Math.max(0, (currentPlayer?.credit || 0) - creditUsed);
+      if (creditUsed > 0) {
+        // Append extra line
+        const paySuccessBox = document.getElementById('payment-success');
+        if (paySuccessBox) {
+          paySuccessBox.innerHTML = `
+            Payment processed successfully! Your registration has been submitted.<br/>
+            You have $${leftoverCredit.toFixed(2)} credit left.
+          `;
+        }
+      }
     });
 
     async function submitCartToSpreadsheet(creditUsed) {
@@ -1014,9 +1005,8 @@
         if (!data.success) {
           showMessage('Error registering: ' + (data.error || ''), 'error');
         } else {
-          // If success, adjust user's local credit as well
+          // Update local credit
           currentPlayer.credit = Math.max(0, (currentPlayer.credit || 0) - creditUsed);
-          // Refresh the profile credit display
           updateCreditDisplay();
         }
       } catch (err) {
@@ -1107,7 +1097,6 @@
           cardSpan.textContent = 'No card on file';
         }
       }
-      // Show credit in profile
       updateCreditDisplay();
     }
 
