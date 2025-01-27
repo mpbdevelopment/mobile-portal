@@ -101,34 +101,50 @@
       display: none; 
     }
 
-    /* Register tab container with a spinner overlay */
+    /* Register tab container with position: relative for overlays */
     #register-container {
       position: relative; 
     }
-    /* Spinner overlay for Payment Processing */
-    #payment-spinner {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 2;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
+
+    /* 
+      FULL OVERLAY for Session Loading:
+      Covers everything except the Session dropdown. 
+    */
+    #session-spinner-overlay {
       display: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      position: absolute;
+      top: 0; 
+      left: 0; 
+      width: 100%;
+      height: 100%;
+      z-index: 800; /* Below the session dropdown but above filters */
+      background: rgba(255,255,255,0.9);
     }
-    /* Spinner overlay for Session Loading */
+    /* The spinner box itself (above the overlay) */
     #session-spinner {
       display: none;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 2;
+      z-index: 801; /* On top of the overlay */
       background: #fff;
       padding: 20px;
       border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    /* Payment Spinner overlay while processing payment */
+    #payment-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 999;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
@@ -147,7 +163,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 2;
+      z-index: 999;
       background: #fff;
       padding: 20px;
       border-radius: 8px;
@@ -155,11 +171,20 @@
     }
 
     /* 
-      NEW: We'll hide the filters + product list until the session data loads.
-      Once loading is complete, we'll show #filters-container.
+      Hide the entire filters container (Category, Level, Day/Time, product table) 
+      until we load the session data
     */
     #filters-container {
-      display: none; /* hidden by default */
+      display: none;
+    }
+
+    /* 
+      Place the Session dropdown at a higher z-index than the overlay,
+      so it remains visible when spinner shows.
+    */
+    #session-dropdown {
+      position: relative;
+      z-index: 900; /* Above the overlay at z-index: 800 */
     }
   </style>
 </head>
@@ -229,7 +254,9 @@
       <div class="tab-pane fade" id="tab-register" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
           
-          <!-- Session Loading Spinner -->
+          <!-- FULL OVERLAY to cover everything but session dropdown -->
+          <div id="session-spinner-overlay"></div>
+          <!-- The spinner box itself -->
           <div id="session-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -252,7 +279,7 @@
 
           <h5>Register for a Program</h5>
 
-          <!-- Session Selection (Always visible) -->
+          <!-- Session Selection (always visible, above the overlay) -->
           <div class="mb-3">
             <label class="form-label">Select Session</label>
             <select id="session-dropdown" class="form-select">
@@ -260,10 +287,7 @@
             </select>
           </div>
 
-          <!-- 
-            NEW: This container is hidden by default. We'll show it 
-            once session data is fully loaded in `loadProductsForSession()`.
-          -->
+          <!-- FILTERS + PRODUCT/CART TABLES, hidden until session data is loaded -->
           <div id="filters-container">
             <!-- Category Filter -->
             <div class="mb-3">
@@ -448,11 +472,19 @@
       }
     }
 
-    /* Spinner for Session Loading */
+    /* For the full overlay spinner */
     function showSessionSpinner(shouldShow) {
+      const overlay = document.getElementById('session-spinner-overlay');
       const spinner = document.getElementById('session-spinner');
-      if (!spinner) return;
-      spinner.style.display = shouldShow ? 'block' : 'none';
+      if (!overlay || !spinner) return;
+
+      if (shouldShow) {
+        overlay.style.display = 'block';  // The semi-transparent background
+        spinner.style.display = 'block';  // The spinner box
+      } else {
+        overlay.style.display = 'none';
+        spinner.style.display = 'none';
+      }
     }
 
     /* Spinner for Registrations */
@@ -468,7 +500,7 @@
       successBox.style.display = shouldShow ? 'block' : 'none';
     }
 
-    /* NEW: Show/hide the container with category/level/day/time + product table */
+    /* Show/hide the container with category/level/day/time + product table */
     function showFiltersContainer(shouldShow) {
       const container = document.getElementById('filters-container');
       if (!container) return;
@@ -666,21 +698,21 @@
       allProducts = [];
 
       if (!sessionId) {
-        // If user cleared selection, no spinner needed
+        // If user cleared selection, no spinner needed, just hide everything
         return;
       }
 
-      // Show the spinner while fetching products
+      // Show the spinner overlay
       showSessionSpinner(true);
       try {
         await loadProductsForSession(sessionId);
 
         // Once loaded successfully, hide spinner and show the filters
+        showSessionSpinner(false);
         showFiltersContainer(true);
 
       } catch (err) {
         showMessage('Error loading products: ' + err.message, 'error');
-      } finally {
         showSessionSpinner(false);
       }
     });
