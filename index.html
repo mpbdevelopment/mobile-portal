@@ -141,7 +141,6 @@
     #registrations-container {
       position: relative;
     }
-    /* Spinner in place of the "Current/Upcoming Seasons" content */
     #registrations-spinner {
       display: none;
       background: #fff; 
@@ -149,6 +148,17 @@
     }
     #registrations-content {
       display: none;
+    }
+
+    /*
+      Hide the Program/Price and Cart sections by default.
+      We'll show them only if there's data in them.
+    */
+    #products-section {
+      display: none; /* hidden until we have products */
+    }
+    #cart-section {
+      display: none; /* hidden until we have cart items */
     }
   </style>
 </head>
@@ -273,33 +283,39 @@
             </select>
           </div>
 
-          <!-- Display Filtered Products -->
-          <table class="table table-striped table-sm" id="product-table">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Price</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+          <!-- Products Section (hidden until we have products) -->
+          <div id="products-section">
+            <table class="table table-striped table-sm" id="product-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Price</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
 
           <hr/>
-          <h6>Your Selections</h6>
-          <table class="table table-striped table-sm" id="cart-table">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Session</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <button id="submit-cart-button" class="btn btn-primary w-100">
-            Submit All
-          </button>
+
+          <!-- Cart Section (hidden until user has selections) -->
+          <div id="cart-section">
+            <h6>Your Selections</h6>
+            <table class="table table-striped table-sm" id="cart-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Session</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <button id="submit-cart-button" class="btn btn-primary w-100 mt-2">
+              Submit All
+            </button>
+          </div>
         </div>
       </div>
 
@@ -677,10 +693,8 @@
         }
         allProducts = data.products || [];
 
-        // Populate category filter with the new product data
         populateCategoryFilter(allProducts);
-        // Clear the product table initially
-        renderProductTable([]);
+        renderProductTable([]); // Initially clear table
       } catch (err) {
         showMessage('loadProductsForSession error: ' + err.message, 'error');
       }
@@ -690,7 +704,12 @@
       document.getElementById('category-filter').innerHTML = '<option value="">--All Categories--</option>';
       document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
       document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
-      renderProductTable([]); // Clear the table
+
+      // Clear table
+      renderProductTable([]);
+      // Clear the "Your Selections" area too
+      cartItems = [];
+      updateCartTable();
     }
 
     function populateCategoryFilter(products) {
@@ -710,7 +729,6 @@
       const cat = document.getElementById('category-filter').value.trim();
       let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
 
-      // Populate Level dropdown
       const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
       const levelSelect = document.getElementById('level-filter');
       levelSelect.innerHTML = '<option value="">--All Levels--</option>';
@@ -721,7 +739,6 @@
         levelSelect.appendChild(opt);
       });
 
-      // Reset day/time filter
       document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
       renderProductTable([]);
     });
@@ -761,8 +778,19 @@
 
     function renderProductTable(products) {
       const tbody = document.querySelector('#product-table tbody');
-      if (!tbody) return;
+      const productsSection = document.getElementById('products-section');
+      if (!tbody || !productsSection) return;
+
       tbody.innerHTML = '';
+
+      // If no products, hide the table
+      if (!products || products.length === 0) {
+        productsSection.style.display = 'none';
+        return;
+      }
+
+      // Otherwise, show the table
+      productsSection.style.display = 'block';
 
       products.forEach(prod => {
         const tr = document.createElement('tr');
@@ -801,21 +829,30 @@
     function addProductToCart(product) {
       const sessionDropdown = document.getElementById('session-dropdown');
       const sessionLabel = sessionDropdown.options[sessionDropdown.selectedIndex].text;
-      const sessionId = sessionDropdown.value; 
+      const sessionId = sessionDropdown.value;
 
       cartItems.push({
-        sessionId: sessionId,
+        sessionId,
         program: product.program,
         price: product.price,
-        sessionLabel: sessionLabel
+        sessionLabel
       });
       updateCartTable();
     }
 
     function updateCartTable() {
       const tbody = document.querySelector('#cart-table tbody');
-      if (!tbody) return;
+      const cartSection = document.getElementById('cart-section');
+      if (!tbody || !cartSection) return;
+
       tbody.innerHTML = '';
+
+      if (cartItems.length === 0) {
+        cartSection.style.display = 'none';
+        return;
+      }
+
+      cartSection.style.display = 'block';
 
       cartItems.forEach((item, idx) => {
         const tr = document.createElement('tr');
@@ -966,7 +1003,6 @@
       } catch (err) {
         showMessage('Load registrations error: ' + err.message, 'error');
       } finally {
-        // Hide spinner, show content
         showRegistrationsSpinner(false);
       }
     }
