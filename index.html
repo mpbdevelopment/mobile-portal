@@ -101,50 +101,34 @@
       display: none; 
     }
 
-    /* Register tab container with position: relative for overlays */
+    /* Register tab container with a spinner overlay */
     #register-container {
       position: relative; 
     }
-
-    /* 
-      FULL OVERLAY for Session Loading:
-      Covers everything except the Session dropdown. 
-    */
-    #session-spinner-overlay {
-      display: none;
+    /* Spinner overlay for Payment Processing */
+    #payment-spinner {
       position: absolute;
-      top: 0; 
-      left: 0; 
-      width: 100%;
-      height: 100%;
-      z-index: 800; /* Below the session dropdown but above filters */
-      background: rgba(255,255,255,0.9);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
-    /* The spinner box itself (above the overlay) */
+    /* Spinner overlay for Session Loading */
     #session-spinner {
       display: none;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      z-index: 801; /* On top of the overlay */
+      z-index: 2;
       background: #fff;
       padding: 20px;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    /* Payment Spinner overlay while processing payment */
-    #payment-spinner {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 999;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      display: none;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
@@ -153,38 +137,18 @@
       margin-top: 10px;
     }
 
-    /* My Registrations container with a spinner overlay */
+    /* My Registrations container */
     #registrations-container {
       position: relative;
     }
+    /* Spinner in place of the "Current/Upcoming Seasons" content */
     #registrations-spinner {
       display: none;
-      position: absolute; 
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 999;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      background: #fff; 
+      text-align: center;
     }
-
-    /* 
-      Hide the entire filters container (Category, Level, Day/Time, product table) 
-      until we load the session data
-    */
-    #filters-container {
+    #registrations-content {
       display: none;
-    }
-
-    /* 
-      Place the Session dropdown at a higher z-index than the overlay,
-      so it remains visible when spinner shows.
-    */
-    #session-dropdown {
-      position: relative;
-      z-index: 900; /* Above the overlay at z-index: 800 */
     }
   </style>
 </head>
@@ -254,9 +218,7 @@
       <div class="tab-pane fade" id="tab-register" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
           
-          <!-- FULL OVERLAY to cover everything but session dropdown -->
-          <div id="session-spinner-overlay"></div>
-          <!-- The spinner box itself -->
+          <!-- Session Loading Spinner -->
           <div id="session-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
@@ -279,7 +241,7 @@
 
           <h5>Register for a Program</h5>
 
-          <!-- Session Selection (always visible, above the overlay) -->
+          <!-- Session Selection -->
           <div class="mb-3">
             <label class="form-label">Select Session</label>
             <select id="session-dropdown" class="form-select">
@@ -287,80 +249,77 @@
             </select>
           </div>
 
-          <!-- FILTERS + PRODUCT/CART TABLES, hidden until session data is loaded -->
-          <div id="filters-container">
-            <!-- Category Filter -->
-            <div class="mb-3">
-              <label class="form-label">Select Category</label>
-              <select id="category-filter" class="form-select">
-                <option value="">--All Categories--</option>
-              </select>
-            </div>
-
-            <!-- Level Filter -->
-            <div class="mb-3">
-              <label class="form-label">Select Level</label>
-              <select id="level-filter" class="form-select">
-                <option value="">--All Levels--</option>
-              </select>
-            </div>
-
-            <!-- Day/Time Filter -->
-            <div class="mb-3">
-              <label class="form-label">Select Day/Time</label>
-              <select id="daytime-filter" class="form-select">
-                <option value="">--All Day/Times--</option>
-              </select>
-            </div>
-
-            <!-- Display Filtered Products -->
-            <table class="table table-striped table-sm" id="product-table">
-              <thead>
-                <tr>
-                  <th>Program</th>
-                  <th>Price</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-
-            <hr/>
-            <h6>Your Selections</h6>
-            <table class="table table-striped table-sm" id="cart-table">
-              <thead>
-                <tr>
-                  <th>Program</th>
-                  <th>Session</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-            <button id="submit-cart-button" class="btn btn-primary w-100">
-              Submit All
-            </button>
+          <!-- Category Filter -->
+          <div class="mb-3">
+            <label class="form-label">Select Category</label>
+            <select id="category-filter" class="form-select">
+              <option value="">--All Categories--</option>
+            </select>
           </div>
+
+          <!-- Level Filter -->
+          <div class="mb-3">
+            <label class="form-label">Select Level</label>
+            <select id="level-filter" class="form-select">
+              <option value="">--All Levels--</option>
+            </select>
+          </div>
+
+          <!-- Day/Time Filter -->
+          <div class="mb-3">
+            <label class="form-label">Select Day/Time</label>
+            <select id="daytime-filter" class="form-select">
+              <option value="">--All Day/Times--</option>
+            </select>
+          </div>
+
+          <!-- Display Filtered Products -->
+          <table class="table table-striped table-sm" id="product-table">
+            <thead>
+              <tr>
+                <th>Program</th>
+                <th>Price</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <hr/>
+          <h6>Your Selections</h6>
+          <table class="table table-striped table-sm" id="cart-table">
+            <thead>
+              <tr>
+                <th>Program</th>
+                <th>Session</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <button id="submit-cart-button" class="btn btn-primary w-100">
+            Submit All
+          </button>
         </div>
       </div>
 
       <!-- MY REGISTRATIONS TAB -->
       <div class="tab-pane fade" id="tab-registrations" role="tabpanel">
-        <!-- Container for the registrations content + spinner overlay -->
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="registrations-container">
-          
-          <!-- Registrations Loading Spinner -->
-          <div id="registrations-spinner">
-            <div class="text-center">
-              <div class="spinner-border text-primary mb-2" role="status"></div>
-              <p class="mb-0">Loading Registrations...</p>
-            </div>
-          </div>
-
+          <!-- "My Registrations" heading is always visible -->
           <h5>My Registrations</h5>
 
-          <h6>Current/Upcoming Seasons</h6>
-          <div class="accordion" id="accordion-upcoming"></div>
+          <!-- Spinner replaces the Seasons section while loading -->
+          <div id="registrations-spinner">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <p class="mb-0">Loading Registrations...</p>
+          </div>
+
+          <!-- Hidden until data is loaded -->
+          <div id="registrations-content">
+            <h6>Current/Upcoming Seasons</h6>
+            <div class="accordion" id="accordion-upcoming"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -472,39 +431,32 @@
       }
     }
 
-    /* For the full overlay spinner */
+    /* Spinner for Session Loading */
     function showSessionSpinner(shouldShow) {
-      const overlay = document.getElementById('session-spinner-overlay');
       const spinner = document.getElementById('session-spinner');
-      if (!overlay || !spinner) return;
-
-      if (shouldShow) {
-        overlay.style.display = 'block';  // The semi-transparent background
-        spinner.style.display = 'block';  // The spinner box
-      } else {
-        overlay.style.display = 'none';
-        spinner.style.display = 'none';
-      }
+      if (!spinner) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
     }
 
     /* Spinner for Registrations */
     function showRegistrationsSpinner(shouldShow) {
       const spinner = document.getElementById('registrations-spinner');
-      if (!spinner) return;
-      spinner.style.display = shouldShow ? 'block' : 'none';
+      const content = document.getElementById('registrations-content');
+      if (!spinner || !content) return;
+
+      if (shouldShow) {
+        spinner.style.display = 'block';
+        content.style.display = 'none';
+      } else {
+        spinner.style.display = 'none';
+        content.style.display = 'block';
+      }
     }
 
     function showPaymentSuccess(shouldShow) {
       const successBox = document.getElementById('payment-success');
       if (!successBox) return;
       successBox.style.display = shouldShow ? 'block' : 'none';
-    }
-
-    /* Show/hide the container with category/level/day/time + product table */
-    function showFiltersContainer(shouldShow) {
-      const container = document.getElementById('filters-container');
-      if (!container) return;
-      container.style.display = shouldShow ? 'block' : 'none';
     }
 
     /************************************************************
@@ -591,7 +543,7 @@
           currentPlayer.cardLast4 = stripeData.cardLast4 || null;
           setProfileData(currentPlayer);
 
-          // 3) Load sessions with a session spinner
+          // 3) Load sessions with a session spinner (optional)
           showSessionSpinner(true);
           await loadSessions();
           showSessionSpinner(false);
@@ -692,27 +644,21 @@
     document.getElementById('session-dropdown').addEventListener('change', async () => {
       const sessionId = document.getElementById('session-dropdown').value.trim();
 
-      // Always hide the filters container until new data is loaded
-      showFiltersContainer(false);
+      // Reset filters and product list whenever session changes
       resetProductFilters();
       allProducts = [];
 
       if (!sessionId) {
-        // If user cleared selection, no spinner needed, just hide everything
-        return;
+        return; // no spinner needed if user clears selection
       }
 
-      // Show the spinner overlay
+      // Show the session spinner while fetching products
       showSessionSpinner(true);
       try {
         await loadProductsForSession(sessionId);
-
-        // Once loaded successfully, hide spinner and show the filters
-        showSessionSpinner(false);
-        showFiltersContainer(true);
-
       } catch (err) {
         showMessage('Error loading products: ' + err.message, 'error');
+      } finally {
         showSessionSpinner(false);
       }
     });
@@ -731,6 +677,7 @@
         }
         allProducts = data.products || [];
 
+        // Populate category filter with the new product data
         populateCategoryFilter(allProducts);
         // Clear the product table initially
         renderProductTable([]);
@@ -1019,7 +966,7 @@
       } catch (err) {
         showMessage('Load registrations error: ' + err.message, 'error');
       } finally {
-        // Hide the spinner after fetching
+        // Hide spinner, show content
         showRegistrationsSpinner(false);
       }
     }
