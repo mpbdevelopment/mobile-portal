@@ -36,6 +36,11 @@
       background-color: #f9f9f9;
     }
 
+    /*Brand color as the primary background */
+    .bg-primary {
+      background-color: #0e2f7b !important;
+    }
+
     /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
     .nav-bottom {
       position: fixed;
@@ -54,7 +59,7 @@
       color: #000;
     }
     .nav-bottom .nav-link.active {
-      background-color: #0d6efd; /* Bootstrap primary color */
+      background-color: #0e2f7b; /* Bootstrap primary color */
       color: #fff;              /* White text for contrast */
       font-weight: 500;
     }
@@ -171,14 +176,26 @@
       color: #555;
       margin-bottom: 1rem;
     }
+
+    .text-primary {
+      color: #0e2f7b !important;
+    }
   </style>
 </head>
 <body class="bg-light">
 
-  <!-- HEADER (Optional) -->
-  <header class="bg-primary text-white p-3 mb-2">
-    <h4 class="mb-0">Player Registration</h4>
-  </header>
+  <!-- HEADER -->
+<header 
+  class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
+  style="background-color: #0e2f7b;"
+>
+  <h4 class="mb-0">MP Player Portal</h4>
+  <img 
+    src="icons/icon-192x192.png" 
+    alt="Logo" 
+    style="height: 40px;"
+  >
+</header>
 
   <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
   <section id="verification-section" class="shadow-sm">
@@ -217,7 +234,7 @@
           <div id="profile-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
-              <p class="mb-0">Logging you in!</p>
+              <p class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
             </div>
           </div>
 
@@ -245,7 +262,7 @@
           <div id="session-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
-              <p class="mb-0">Loading...</p>
+              <p class="mb-0">Loading Session...</p>
             </div>
           </div>
 
@@ -266,7 +283,7 @@
 
           <!-- Session Selection -->
           <div class="mb-3">
-            <label class="form-label">Select Session</label>
+            <label class="form-label">Select Location & Session</label>
             <select id="session-dropdown" class="form-select">
               <option value="">--Select a Session--</option>
             </select>
