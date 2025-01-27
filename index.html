@@ -150,7 +150,7 @@
       display: none;
     }
 
-    /* Hide the Program/Price and Cart sections by default until we have them */
+    /* Hide the Product/Price and Cart sections by default */
     #products-section {
       display: none;
     }
@@ -318,7 +318,6 @@
               <tbody></tbody>
             </table>
 
-            <!-- Cart total label/row above the button -->
             <div id="cart-total-line">
               Total: <span id="cart-total-amount">$0.00</span>
             </div>
@@ -472,14 +471,14 @@
       const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
       if (!emailInput) return;
 
-      const url = ${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)};
+      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
       try {
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.success) {
           window.__verificationCode = data.code;
           document.getElementById('code-entry').style.display = 'block';
-          showMessage((Debug) Verification code is: ${data.code}, 'debug');
+          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
         } else {
           alert('Error sending code: ' + (data.error || 'Unknown'));
         }
@@ -508,18 +507,17 @@
      * 5) INITIATE VALIDATION FLOW (Players + Stripe)
      ************************************************************/
     async function initiateValidationFlow(email) {
-      showMessage(initiateValidationFlow for email: ${email}, 'debug');
+      showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
       showProfileSpinner(true);
 
       try {
-        // 1) getPlayerInfo
-        const playerUrl = ${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)};
+        const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
         const playerResp = await fetch(playerUrl);
         const playerData = await playerResp.json();
-        showMessage(playerData: ${JSON.stringify(playerData)}, 'debug');
+        showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
 
         if (!playerData.success || !playerData.player) {
-          showMessage(Error retrieving or not a valid player: ${playerData.error}, 'error');
+          showMessage(`Error retrieving or not a valid player: ${playerData.error}`, 'error');
           showProfileSpinner(false);
           return;
         }
@@ -527,10 +525,10 @@
         setProfileData(currentPlayer);
 
         // 2) Check Stripe
-        const stripeUrl = ${FIND_STRIPE_URL}?email=${encodeURIComponent(email)};
+        const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
         const stripeResp = await fetch(stripeUrl);
         const stripeData = await stripeResp.json();
-        showMessage(stripeData: ${JSON.stringify(stripeData)}, 'debug');
+        showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
 
         if (!stripeData.success) {
           showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
@@ -548,7 +546,7 @@
           currentPlayer.cardLast4 = stripeData.cardLast4 || null;
           setProfileData(currentPlayer);
 
-          // 3) Load sessions with a session spinner (optional)
+          // 3) Load sessions
           showSessionSpinner(true);
           await loadSessions();
           showSessionSpinner(false);
@@ -570,7 +568,7 @@
       const nameInput = document.getElementById('name-input').value.trim();
       const email = currentPlayer?.email || '';
 
-      showMessage(Creating PaymentMethod for email: ${email}, 'debug');
+      showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
       const { paymentMethod, error } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardElement,
@@ -580,7 +578,7 @@
         showMessage('Stripe error: ' + error.message, 'error');
         return;
       }
-      showMessage(PaymentMethod created: ${paymentMethod.id}, 'debug');
+      showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
 
       const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
       try {
@@ -590,7 +588,7 @@
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        showMessage(createStripe response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
@@ -598,11 +596,9 @@
         }
         showMessage('Payment profile created successfully!', 'success');
 
-        // Hide modal
         const modalEl = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
         modalEl.hide();
 
-        // Load sessions after creating the Stripe customer
         showSessionSpinner(true);
         await loadSessions();
         showSessionSpinner(false);
@@ -617,10 +613,10 @@
     async function loadSessions() {
       showMessage('Loading sessions from getSessions', 'debug');
       try {
-        const url = ${GAS_PROXY}?action=getSessions;
+        const url = `${GAS_PROXY}?action=getSessions`;
         const resp = await fetch(url);
         const data = await resp.json();
-        showMessage(getSessions response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`getSessions response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error loading sessions: ' + data.error, 'error');
@@ -637,8 +633,8 @@
       dropdown.innerHTML = '<option value="">--Select a Session--</option>';
       sessions.forEach(s => {
         const opt = document.createElement('option');
-        opt.value = s.spreadsheetId; 
-        opt.textContent = ${s.location} - ${s.season} (${s.date});
+        opt.value = s.spreadsheetId;
+        opt.textContent = `${s.location} - ${s.season} (${s.date})`;
         dropdown.appendChild(opt);
       });
     }
@@ -649,11 +645,11 @@
     document.getElementById('session-dropdown').addEventListener('change', async () => {
       const sessionId = document.getElementById('session-dropdown').value.trim();
 
-      // Clear only filters & products, but NOT the cart items
+      // Only reset product filters, do NOT clear cart
       resetProductFilters(); 
       allProducts = [];
 
-      if (!sessionId) return;
+      if (!sessionId) return; // user cleared selection
 
       showSessionSpinner(true);
       try {
@@ -670,9 +666,7 @@
       document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
       document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
       renderProductTable([]);
-      // DO NOT clear cartItems => user can pick multiple sessions
-      // cartItems = [];
-      // updateCartTable();
+      // We do NOT clear cartItems => multi-session cart
     }
 
     async function loadProductsForSession(sessionId) {
@@ -690,7 +684,7 @@
         allProducts = data.products || [];
 
         populateCategoryFilter(allProducts);
-        renderProductTable([]); 
+        renderProductTable([]);
       } catch (err) {
         showMessage('loadProductsForSession error: ' + err.message, 'error');
       }
@@ -708,7 +702,56 @@
       });
     }
 
-    // (chain filters: category-filter, level-filter, daytime-filter)...
+    document.getElementById('category-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
+
+      const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
+      const levelSelect = document.getElementById('level-filter');
+      levelSelect.innerHTML = '<option value="">--All Levels--</option>';
+      levels.forEach(lv => {
+        const opt = document.createElement('option');
+        opt.value = lv;
+        opt.textContent = lv;
+        levelSelect.appendChild(opt);
+      });
+
+      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+      renderProductTable([]);
+    });
+
+    document.getElementById('level-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      const lvl = document.getElementById('level-filter').value.trim();
+
+      let filtered = allProducts;
+      if (cat) filtered = filtered.filter(p => p.category === cat);
+      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+
+      const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
+      const dtSelect = document.getElementById('daytime-filter');
+      dtSelect.innerHTML = '<option value="">--All Day/Times--</option>';
+      dayTimes.forEach(dt => {
+        const opt = document.createElement('option');
+        opt.value = dt;
+        opt.textContent = dt;
+        dtSelect.appendChild(opt);
+      });
+      renderProductTable([]);
+    });
+
+    document.getElementById('daytime-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      const lvl = document.getElementById('level-filter').value.trim();
+      const dt  = document.getElementById('daytime-filter').value.trim();
+
+      let filtered = allProducts;
+      if (cat) filtered = filtered.filter(p => p.category === cat);
+      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+      if (dt)  filtered = filtered.filter(p => p.dayTime === dt);
+
+      renderProductTable(filtered);
+    });
 
     function renderProductTable(products) {
       const tbody = document.querySelector('#product-table tbody');
@@ -812,7 +855,7 @@
         tbody.appendChild(tr);
       });
 
-      // Show total 
+      // Show total
       const totalInCents = calculateCartTotalCents();
       const totalDollars = (totalInCents / 100).toFixed(2);
       cartTotalAmount.textContent = `$${totalDollars}`;
@@ -869,7 +912,6 @@
         return;
       }
 
-      // Payment success => register in spreadsheet
       showMessage('Payment succeeded, now registering items...', 'info');
       await submitCartToSpreadsheet();
       showMessage('Successfully registered after payment!', 'success');
@@ -923,7 +965,6 @@
         return;
       }
       showMessage('Loading user registrations from getUserRegistrations', 'debug');
-
       showRegistrationsSpinner(true);
 
       const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
