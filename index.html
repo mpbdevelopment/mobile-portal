@@ -445,6 +445,8 @@
     const cardElement = elements.create('card');
     cardElement.mount('#card-element');
 
+    const ADMIN_PASSWORD = 'password';
+
     let currentPlayer = null; 
     let allProducts = [];
     let cartItems = [];
@@ -506,26 +508,83 @@
     /************************************************************
      * 4) EMAIL VERIFICATION
      ************************************************************/
-    document.getElementById('verification-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
-      if (!emailInput) return;
+document.getElementById('verification-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const rawInput = document.getElementById('verify-email-input').value.trim();
+  if (!rawInput) return;
 
-      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
-      try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        if (data.success) {
-          window.__verificationCode = data.code;
-          document.getElementById('code-entry').style.display = 'block';
-          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
-        } else {
-          alert('Error sending code: ' + (data.error || 'Unknown'));
-        }
-      } catch (err) {
-        alert('Network error: ' + err.message);
+  // Check if admin password is embedded: "email@domain.com?adminPassword"
+  let isAdminLogin = false;
+  let adminEmail    = '';
+  let adminPassword = '';
+
+  // Split on '?'
+  if (rawInput.includes('?')) {
+    const parts = rawInput.split('?');
+    adminEmail    = parts[0].trim().toLowerCase();
+    adminPassword = parts[1].trim();
+    if (adminPassword === ADMIN_PASSWORD) {
+      isAdminLogin = true;
+    }
+  }
+
+  if (isAdminLogin) {
+    // ------------------------------
+    // 1) Admin login bypass
+    // ------------------------------
+    showMessage('Admin login detected. Checking if user exists...', 'info');
+
+    // Check if user actually exists; if not, show an error
+    const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
+    try {
+      const playerResp = await fetch(playerUrl);
+      const playerData = await playerResp.json();
+      if (!playerData.success || !playerData.player) {
+        // Player not found
+        alert('Error: That email does not exist in the system.');
+        return;
       }
-    });
+
+      // We have a valid player => proceed with initiateValidationFlow
+      document.getElementById('verification-section').style.display = 'none';
+      document.getElementById('tab-content-section').style.display = 'block';
+
+      // IMPORTANT: We do NOT store in localStorage (admin doesn't want to persist).
+      // localStorage.setItem('playerEmail', adminEmail); // <--- We skip this line entirely
+
+      // Now call the existing function to load profile/Stripe/etc.
+      initiateValidationFlow(adminEmail);
+
+    } catch (err) {
+      alert('Network error checking player info: ' + err.message);
+      return;
+    }
+
+  } else {
+    // ------------------------------
+    // 2) Normal user flow
+    // ------------------------------
+    const emailInput = rawInput.toLowerCase();  // for normal user, no password appended
+    showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
+
+    const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.success) {
+        window.__verificationCode = data.code;
+        document.getElementById('code-entry').style.display = 'block';
+        showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+      } else {
+        alert('Error sending code: ' + (data.error || 'Unknown'));
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+});
+
 
     document.getElementById('verify-code-button').addEventListener('click', () => {
       const userCode = document.getElementById('verify-code-input').value.trim();
