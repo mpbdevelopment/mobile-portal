@@ -153,6 +153,14 @@
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
+
+    /* 
+      NEW: We'll hide the filters + product list until the session data loads.
+      Once loading is complete, we'll show #filters-container.
+    */
+    #filters-container {
+      display: none; /* hidden by default */
+    }
   </style>
 </head>
 <body class="bg-light">
@@ -244,7 +252,7 @@
 
           <h5>Register for a Program</h5>
 
-          <!-- Session Selection -->
+          <!-- Session Selection (Always visible) -->
           <div class="mb-3">
             <label class="form-label">Select Session</label>
             <select id="session-dropdown" class="form-select">
@@ -252,57 +260,63 @@
             </select>
           </div>
 
-          <!-- Category Filter -->
-          <div class="mb-3">
-            <label class="form-label">Select Category</label>
-            <select id="category-filter" class="form-select">
-              <option value="">--All Categories--</option>
-            </select>
+          <!-- 
+            NEW: This container is hidden by default. We'll show it 
+            once session data is fully loaded in `loadProductsForSession()`.
+          -->
+          <div id="filters-container">
+            <!-- Category Filter -->
+            <div class="mb-3">
+              <label class="form-label">Select Category</label>
+              <select id="category-filter" class="form-select">
+                <option value="">--All Categories--</option>
+              </select>
+            </div>
+
+            <!-- Level Filter -->
+            <div class="mb-3">
+              <label class="form-label">Select Level</label>
+              <select id="level-filter" class="form-select">
+                <option value="">--All Levels--</option>
+              </select>
+            </div>
+
+            <!-- Day/Time Filter -->
+            <div class="mb-3">
+              <label class="form-label">Select Day/Time</label>
+              <select id="daytime-filter" class="form-select">
+                <option value="">--All Day/Times--</option>
+              </select>
+            </div>
+
+            <!-- Display Filtered Products -->
+            <table class="table table-striped table-sm" id="product-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Price</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+
+            <hr/>
+            <h6>Your Selections</h6>
+            <table class="table table-striped table-sm" id="cart-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Session</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <button id="submit-cart-button" class="btn btn-primary w-100">
+              Submit All
+            </button>
           </div>
-
-          <!-- Level Filter -->
-          <div class="mb-3">
-            <label class="form-label">Select Level</label>
-            <select id="level-filter" class="form-select">
-              <option value="">--All Levels--</option>
-            </select>
-          </div>
-
-          <!-- Day/Time Filter -->
-          <div class="mb-3">
-            <label class="form-label">Select Day/Time</label>
-            <select id="daytime-filter" class="form-select">
-              <option value="">--All Day/Times--</option>
-            </select>
-          </div>
-
-          <!-- Display Filtered Products -->
-          <table class="table table-striped table-sm" id="product-table">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Price</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-
-          <hr/>
-          <h6>Your Selections</h6>
-          <table class="table table-striped table-sm" id="cart-table">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Session</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-          <button id="submit-cart-button" class="btn btn-primary w-100">
-            Submit All
-          </button>
         </div>
       </div>
 
@@ -454,6 +468,13 @@
       successBox.style.display = shouldShow ? 'block' : 'none';
     }
 
+    /* NEW: Show/hide the container with category/level/day/time + product table */
+    function showFiltersContainer(shouldShow) {
+      const container = document.getElementById('filters-container');
+      if (!container) return;
+      container.style.display = shouldShow ? 'block' : 'none';
+    }
+
     /************************************************************
      * 4) EMAIL VERIFICATION
      ************************************************************/
@@ -538,7 +559,7 @@
           currentPlayer.cardLast4 = stripeData.cardLast4 || null;
           setProfileData(currentPlayer);
 
-          // 3) Load sessions with a session spinner (optional)
+          // 3) Load sessions with a session spinner
           showSessionSpinner(true);
           await loadSessions();
           showSessionSpinner(false);
@@ -639,18 +660,24 @@
     document.getElementById('session-dropdown').addEventListener('change', async () => {
       const sessionId = document.getElementById('session-dropdown').value.trim();
 
-      // Reset filters and product list whenever session changes
+      // Always hide the filters container until new data is loaded
+      showFiltersContainer(false);
       resetProductFilters();
       allProducts = [];
 
       if (!sessionId) {
-        return; // no spinner needed if user clears selection
+        // If user cleared selection, no spinner needed
+        return;
       }
 
-      // Show the session spinner while fetching products
+      // Show the spinner while fetching products
       showSessionSpinner(true);
       try {
         await loadProductsForSession(sessionId);
+
+        // Once loaded successfully, hide spinner and show the filters
+        showFiltersContainer(true);
+
       } catch (err) {
         showMessage('Error loading products: ' + err.message, 'error');
       } finally {
@@ -672,7 +699,6 @@
         }
         allProducts = data.products || [];
 
-        // Populate category filter with the new product data
         populateCategoryFilter(allProducts);
         // Clear the product table initially
         renderProductTable([]);
@@ -1040,4 +1066,3 @@
   </script>
 </body>
 </html>
-
