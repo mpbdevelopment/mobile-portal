@@ -42,17 +42,16 @@
     }
 
     .btn-primary {
-  background-color: #0e2f7b !important;
-  border-color: #0e2f7b !important;
-}
+      background-color: #0e2f7b !important;
+      border-color: #0e2f7b !important;
+    }
 
-.btn-primary:hover,
-.btn-primary:focus,
-.btn-primary:active {
-  background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
-  border-color: #0c2563 !important;
-}
-
+    .btn-primary:hover,
+    .btn-primary:focus,
+    .btn-primary:active {
+      background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
+      border-color: #0c2563 !important;
+    }
 
     /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
     .nav-bottom {
@@ -176,8 +175,6 @@
       display: none;
     }
 
-    /* We no longer use #cart-total-line for "Total: $x" => removed */
-
     /* For "Amount Due" and breakdown lines */
     #amount-due-line {
       margin-top: 8px;
@@ -198,17 +195,17 @@
 <body class="bg-light">
 
   <!-- HEADER -->
-<header 
-  class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
-  style="background-color: #0e2f7b;"
->
-  <h4 class="mb-0">MP Player Portal</h4>
-  <img 
-    src="icons/banner-logo.png" 
-    alt="Logo" 
-    style="height: 40px;"
+  <header 
+    class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
+    style="background-color: #0e2f7b;"
   >
-</header>
+    <h4 class="mb-0">MP Player Portal</h4>
+    <img 
+      src="icons/banner-logo.png" 
+      alt="Logo" 
+      style="height: 40px;"
+    >
+  </header>
 
   <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
   <section id="verification-section" class="shadow-sm">
@@ -247,7 +244,7 @@
           <div id="profile-spinner">
             <div class="text-center">
               <div class="spinner-border text-primary mb-2" role="status"></div>
-              <p class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
+              <p class="mb-0">Logging you in!<br/>This may take up to 20 seconds...</p>
             </div>
           </div>
 
@@ -356,8 +353,6 @@
               <tbody></tbody>
             </table>
 
-            <!-- We removed the "Total: $..." line -->
-
             <!-- "Amount Due" + smaller breakdown line -->
             <div id="amount-due-line"></div>
             <div id="breakdown-line"></div>
@@ -452,22 +447,28 @@
     let cartItems = [];
 
     /************************************************************
-     * 2) ON PAGE LOAD
+     * 2) UTILITY FUNCTIONS FOR BUTTON SPINNER STATE
      ************************************************************/
-    window.addEventListener('DOMContentLoaded', () => {
-      const storedEmail = localStorage.getItem('playerEmail');
-      if (storedEmail) {
-        showMessage(`LocalStorage email found: ${storedEmail}`, 'debug');
-        document.getElementById('tab-content-section').style.display = 'block';
-        initiateValidationFlow(storedEmail);
-      } else {
-        showMessage('No stored email found; showing verification UI.', 'debug');
-        document.getElementById('verification-section').style.display = 'block';
+    function setButtonLoading(button, loadingText) {
+      if (!button) return;
+      if (!button.dataset.originalText) {
+        button.dataset.originalText = button.innerHTML;
       }
-    });
+      button.disabled = true;
+      button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${loadingText}`;
+    }
+
+    function clearButtonLoading(button) {
+      if (!button) return;
+      if (button.dataset.originalText) {
+        button.innerHTML = button.dataset.originalText;
+        button.disabled = false;
+        delete button.dataset.originalText;
+      }
+    }
 
     /************************************************************
-     * 3) SPINNER LOGIC
+     * 3) SPINNER LOGIC (for overlays)
      ************************************************************/
     function showProfileSpinner(shouldShow) {
       const spinner = document.getElementById('profile-spinner');
@@ -508,85 +509,86 @@
     /************************************************************
      * 4) EMAIL VERIFICATION
      ************************************************************/
-document.getElementById('verification-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  const rawInput = document.getElementById('verify-email-input').value.trim();
-  if (!rawInput) return;
-
-  // Check if admin password is embedded: "email@domain.com?adminPassword"
-  let isAdminLogin = false;
-  let adminEmail    = '';
-  let adminPassword = '';
-
-  // Split on '?'
-  if (rawInput.includes('?')) {
-    const parts = rawInput.split('?');
-    adminEmail    = parts[0].trim().toLowerCase();
-    adminPassword = parts[1].trim();
-    if (adminPassword === ADMIN_PASSWORD) {
-      isAdminLogin = true;
-    }
-  }
-
-  if (isAdminLogin) {
-    // ------------------------------
-    // 1) Admin login bypass
-    // ------------------------------
-    showMessage('Admin login detected. Checking if user exists...', 'info');
-
-    // Check if user actually exists; if not, show an error
-    const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
-    try {
-      const playerResp = await fetch(playerUrl);
-      const playerData = await playerResp.json();
-      if (!playerData.success || !playerData.player) {
-        // Player not found
-        alert('Error: That email does not exist in the system.');
+    document.getElementById('verification-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      setButtonLoading(submitBtn, "Sending Code...");
+      
+      const rawInput = document.getElementById('verify-email-input').value.trim();
+      if (!rawInput) {
+        clearButtonLoading(submitBtn);
         return;
       }
 
-      // We have a valid player => proceed with initiateValidationFlow
-      document.getElementById('verification-section').style.display = 'none';
-      document.getElementById('tab-content-section').style.display = 'block';
+      // Check if admin password is embedded: "email@domain.com?adminPassword"
+      let isAdminLogin = false;
+      let adminEmail    = '';
+      let adminPassword = '';
 
-      // IMPORTANT: We do NOT store in localStorage (admin doesn't want to persist).
-      // localStorage.setItem('playerEmail', adminEmail); // <--- We skip this line entirely
-
-      // Now call the existing function to load profile/Stripe/etc.
-      initiateValidationFlow(adminEmail);
-
-    } catch (err) {
-      alert('Network error checking player info: ' + err.message);
-      return;
-    }
-
-  } else {
-    // ------------------------------
-    // 2) Normal user flow
-    // ------------------------------
-    const emailInput = rawInput.toLowerCase();  // for normal user, no password appended
-    showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
-
-    const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
-    try {
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (data.success) {
-        window.__verificationCode = data.code;
-        document.getElementById('code-entry').style.display = 'block';
-        showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
-      } else {
-        alert('Error sending code: ' + (data.error || 'Unknown'));
+      // Split on '?'
+      if (rawInput.includes('?')) {
+        const parts = rawInput.split('?');
+        adminEmail    = parts[0].trim().toLowerCase();
+        adminPassword = parts[1].trim();
+        if (adminPassword === ADMIN_PASSWORD) {
+          isAdminLogin = true;
+        }
       }
-    } catch (err) {
-      alert('Network error: ' + err.message);
-    }
-  }
-});
 
+      try {
+        if (isAdminLogin) {
+          // ------------------------------
+          // 1) Admin login bypass
+          // ------------------------------
+          showMessage('Admin login detected. Checking if user exists...', 'info');
 
-    document.getElementById('verify-code-button').addEventListener('click', () => {
+          // Check if user actually exists; if not, show an error
+          const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
+          const playerResp = await fetch(playerUrl);
+          const playerData = await playerResp.json();
+          if (!playerData.success || !playerData.player) {
+            // Player not found
+            alert('Error: That email does not exist in the system.');
+            return;
+          }
+
+          // We have a valid player => proceed with initiateValidationFlow
+          document.getElementById('verification-section').style.display = 'none';
+          document.getElementById('tab-content-section').style.display = 'block';
+
+          // IMPORTANT: We do NOT store in localStorage (admin doesn't want to persist).
+          // localStorage.setItem('playerEmail', adminEmail); // <--- We skip this line entirely
+
+          // Now call the existing function to load profile/Stripe/etc.
+          initiateValidationFlow(adminEmail);
+        } else {
+          // ------------------------------
+          // 2) Normal user flow
+          // ------------------------------
+          const emailInput = rawInput.toLowerCase();  // for normal user, no password appended
+          showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
+
+          const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+          const resp = await fetch(url);
+          const data = await resp.json();
+          if (data.success) {
+            window.__verificationCode = data.code;
+            document.getElementById('code-entry').style.display = 'block';
+            showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+          } else {
+            alert('Error sending code: ' + (data.error || 'Unknown'));
+          }
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      } finally {
+        clearButtonLoading(submitBtn);
+      }
+    });
+
+    document.getElementById('verify-code-button').addEventListener('click', async (e) => {
+      const btn = e.target;
+      setButtonLoading(btn, "Verifying...");
       const userCode = document.getElementById('verify-code-input').value.trim();
       const actualCode = window.__verificationCode;
       if (userCode === actualCode) {
@@ -596,10 +598,11 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         alert('Email verified!');
         document.getElementById('verification-section').style.display = 'none';
         document.getElementById('tab-content-section').style.display = 'block';
-        initiateValidationFlow(verifiedEmail);
+        await initiateValidationFlow(verifiedEmail);
       } else {
         alert('Invalid code. Please check your email or resend.');
       }
+      clearButtonLoading(btn);
     });
 
     /************************************************************
@@ -674,23 +677,25 @@ document.getElementById('verification-form').addEventListener('submit', async (e
      ************************************************************/
     document.getElementById('payment-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      setButtonLoading(btn, "Adding Payment Profile...");
       const nameInput = document.getElementById('name-input').value.trim();
       const email = currentPlayer?.email || '';
 
-      showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
-      const { paymentMethod, error } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-        billing_details: { name: nameInput, email }
-      });
-      if (error) {
-        showMessage('Stripe error: ' + error.message, 'error');
-        return;
-      }
-      showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
-
-      const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
       try {
+        showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+          billing_details: { name: nameInput, email }
+        });
+        if (error) {
+          showMessage('Stripe error: ' + error.message, 'error');
+          return;
+        }
+        showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
+
+        const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
         const resp = await fetch(CREATE_STRIPE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -713,6 +718,8 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         showSessionSpinner(false);
       } catch (err) {
         showMessage('Payment profile error: ' + err.message, 'error');
+      } finally {
+        clearButtonLoading(btn);
       }
     });
 
@@ -1014,58 +1021,68 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       }
     }
 
-    document.getElementById('submit-cart-button').addEventListener('click', async () => {
+    document.getElementById('submit-cart-button').addEventListener('click', async (e) => {
+      const btn = e.target;
+      setButtonLoading(btn, "Registering...");
+      
       if (cartItems.length === 0) {
         showMessage('Cart is empty.', 'error');
+        clearButtonLoading(btn);
         return;
       }
       showPaymentSuccess(false);
       showPaymentSpinner(true);
 
-      // 1) Sum cart
-      const totalCents = calculateCartTotalCents(); 
-      const programTotal = totalCents / 100;
+      try {
+        // 1) Sum cart
+        const totalCents = calculateCartTotalCents(); 
+        const programTotal = totalCents / 100;
 
-      // 2) Auto-apply credit
-      const credit = currentPlayer?.credit || 0;
-      let creditUsed = (credit >= programTotal) ? programTotal : credit; 
-      let amountDue  = programTotal - creditUsed;
-      let amountDueCents = Math.round(amountDue * 100);
+        // 2) Auto-apply credit
+        const credit = currentPlayer?.credit || 0;
+        let creditUsed = (credit >= programTotal) ? programTotal : credit; 
+        let amountDue  = programTotal - creditUsed;
+        let amountDueCents = Math.round(amountDue * 100);
 
-      showMessage(`Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
+        showMessage(`Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
 
-      // 3) If amountDue>0 => charge
-      const email = currentPlayer.email;
-      const success = await chargeCart(email, amountDueCents);
-      if (!success) {
-        showMessage('Payment failed, not registering.', 'error');
-        showPaymentSpinner(false);
-        return;
-      }
-
-      // 4) Payment success => register
-      showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
-      await submitCartToSpreadsheet(creditUsed);
-      showMessage('Successfully registered after payment!', 'success');
-
-      // Clear cart
-      cartItems = [];
-      updateCartTable();
-
-      showPaymentSpinner(false);
-      showPaymentSuccess(true);
-
-      // If creditUsed>0 => show leftover in success msg
-      const leftoverCredit = Math.max(0, (currentPlayer?.credit || 0) - creditUsed);
-      if (creditUsed > 0) {
-        // Append extra line
-        const paySuccessBox = document.getElementById('payment-success');
-        if (paySuccessBox) {
-          paySuccessBox.innerHTML = `
-            Payment processed successfully! Your registration has been submitted.<br/>
-            You have $${leftoverCredit.toFixed(2)} credit left.
-          `;
+        // 3) If amountDue>0 => charge
+        const email = currentPlayer.email;
+        const success = await chargeCart(email, amountDueCents);
+        if (!success) {
+          showMessage('Payment failed, not registering.', 'error');
+          showPaymentSpinner(false);
+          return;
         }
+
+        // 4) Payment success => register
+        showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
+        await submitCartToSpreadsheet(creditUsed);
+        showMessage('Successfully registered after payment!', 'success');
+
+        // Clear cart
+        cartItems = [];
+        updateCartTable();
+
+        showPaymentSpinner(false);
+        showPaymentSuccess(true);
+
+        // If creditUsed>0 => show leftover in success msg
+        const leftoverCredit = Math.max(0, (currentPlayer?.credit || 0) - creditUsed);
+        if (creditUsed > 0) {
+          // Append extra line
+          const paySuccessBox = document.getElementById('payment-success');
+          if (paySuccessBox) {
+            paySuccessBox.innerHTML = `
+              Payment processed successfully! Your registration has been submitted.<br/>
+              You have $${leftoverCredit.toFixed(2)} credit left.
+            `;
+          }
+        }
+      } catch (err) {
+        showMessage('Error during registration: ' + err.message, 'error');
+      } finally {
+        clearButtonLoading(btn);
       }
     });
 
