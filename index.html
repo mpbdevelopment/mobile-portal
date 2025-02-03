@@ -457,7 +457,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       const storedEmail = localStorage.getItem('playerEmail');
       if (storedEmail) {
-        showMessage(LocalStorage email found: ${storedEmail}, 'debug');
+        showMessage(`LocalStorage email found: ${storedEmail}`, 'debug');
         document.getElementById('tab-content-section').style.display = 'block';
         initiateValidationFlow(storedEmail);
       } else {
@@ -536,7 +536,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
     showMessage('Admin login detected. Checking if user exists...', 'info');
 
     // Check if user actually exists; if not, show an error
-    const playerUrl = ${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)};
+    const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
     try {
       const playerResp = await fetch(playerUrl);
       const playerData = await playerResp.json();
@@ -566,16 +566,16 @@ document.getElementById('verification-form').addEventListener('submit', async (e
     // 2) Normal user flow
     // ------------------------------
     const emailInput = rawInput.toLowerCase();  // for normal user, no password appended
-    showMessage(Sending verification code for email: ${emailInput}, 'debug');
+    showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
 
-    const url = ${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)};
+    const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
     try {
       const resp = await fetch(url);
       const data = await resp.json();
       if (data.success) {
         window.__verificationCode = data.code;
         document.getElementById('code-entry').style.display = 'block';
-        showMessage((Debug) Verification code is: ${data.code}, 'debug');
+        showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
       } else {
         alert('Error sending code: ' + (data.error || 'Unknown'));
       }
@@ -606,28 +606,28 @@ document.getElementById('verification-form').addEventListener('submit', async (e
      * 5) INITIATE VALIDATION FLOW (Players + Stripe + Credit)
      ************************************************************/
     async function initiateValidationFlow(email) {
-      showMessage(initiateValidationFlow for email: ${email}, 'debug');
+      showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
       showProfileSpinner(true);
 
       try {
         // 1) getPlayerInfo
-        const playerUrl = ${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)};
+        const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
         const playerResp = await fetch(playerUrl);
         const playerData = await playerResp.json();
-        showMessage(playerData: ${JSON.stringify(playerData)}, 'debug');
+        showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
 
         if (!playerData.success || !playerData.player) {
-          showMessage(Error retrieving or invalid player: ${playerData.error}, 'error');
+          showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
           showProfileSpinner(false);
           return;
         }
         currentPlayer = playerData.player;
 
         // 2) Check Stripe
-        const stripeUrl = ${FIND_STRIPE_URL}?email=${encodeURIComponent(email)};
+        const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
         const stripeResp = await fetch(stripeUrl);
         const stripeData = await stripeResp.json();
-        showMessage(stripeData: ${JSON.stringify(stripeData)}, 'debug');
+        showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
 
         if (!stripeData.success) {
           showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
@@ -641,10 +641,10 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         }
 
         // 3) Fetch user credit from PromoCodes
-        const creditUrl = ${GET_CREDIT_URL}&email=${encodeURIComponent(email)};
+        const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
         const creditResp = await fetch(creditUrl);
         const creditData = await creditResp.json();
-        showMessage(creditData: ${JSON.stringify(creditData)}, 'debug');
+        showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
         currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
 
         // Finally => show profile
@@ -677,7 +677,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       const nameInput = document.getElementById('name-input').value.trim();
       const email = currentPlayer?.email || '';
 
-      showMessage(Creating PaymentMethod for email: ${email}, 'debug');
+      showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
       const { paymentMethod, error } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardElement,
@@ -687,7 +687,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         showMessage('Stripe error: ' + error.message, 'error');
         return;
       }
-      showMessage(PaymentMethod created: ${paymentMethod.id}, 'debug');
+      showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
 
       const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
       try {
@@ -697,7 +697,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        showMessage(createStripe response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
@@ -722,10 +722,10 @@ document.getElementById('verification-form').addEventListener('submit', async (e
     async function loadSessions() {
       showMessage('Loading sessions from getSessions', 'debug');
       try {
-        const url = ${GAS_PROXY}?action=getSessions;
+        const url = `${GAS_PROXY}?action=getSessions`;
         const resp = await fetch(url);
         const data = await resp.json();
-        showMessage(getSessions response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`getSessions response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error loading sessions: ' + data.error, 'error');
@@ -743,7 +743,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       sessions.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.spreadsheetId;
-        opt.textContent = ${s.location} - ${s.season} (${s.date});
+        opt.textContent = `${s.location} - ${s.season} (${s.date})`;
         dropdown.appendChild(opt);
       });
     }
@@ -777,12 +777,12 @@ document.getElementById('verification-form').addEventListener('submit', async (e
     }
 
     async function loadProductsForSession(sessionId) {
-      showMessage(Loading products for sessionId: ${sessionId}, 'debug');
+      showMessage(`Loading products for sessionId: ${sessionId}`, 'debug');
       try {
-        const url = ${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sessionId)};
+        const url = `${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sessionId)}`;
         const resp = await fetch(url);
         const data = await resp.json();
-        showMessage(getProgramList response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`getProgramList response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error loading products: ' + (data.error || ''), 'error');
@@ -877,14 +877,14 @@ document.getElementById('verification-form').addEventListener('submit', async (e
 
         let tdProgram = document.createElement('td');
         if (prod.soldOut) {
-          tdProgram.innerHTML = <s>${prod.program}</s> (Sold Out);
+          tdProgram.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
         } else {
           tdProgram.textContent = prod.program;
         }
         tr.appendChild(tdProgram);
 
         let tdPrice = document.createElement('td');
-        tdPrice.textContent = $${prod.price};
+        tdPrice.textContent = `$${prod.price}`;
         tr.appendChild(tdPrice);
 
         let tdAction = document.createElement('td');
@@ -973,10 +973,10 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       let amountDue  = programTotal - creditUsed;
 
       // Show "Amount Due: $xx.xx"
-      amountDueLine.textContent = Amount Due: $${amountDue.toFixed(2)};
+      amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
 
       // Show smaller line: "Program Total: $X.xx | Credit Balance: $Y.xx"
-      breakdownLine.textContent = Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)};
+      breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
     }
 
     function calculateCartTotalCents() {
@@ -988,7 +988,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
     }
 
     async function chargeCart(email, amountInCents) {
-      showMessage(Charging cart: Email=${email}, Amount=${amountInCents} cents, 'debug');
+      showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
       if (amountInCents <= 0) {
         // No charge needed
         return true; 
@@ -1032,7 +1032,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       let amountDue  = programTotal - creditUsed;
       let amountDueCents = Math.round(amountDue * 100);
 
-      showMessage(Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}, 'debug');
+      showMessage(`Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
 
       // 3) If amountDue>0 => charge
       const email = currentPlayer.email;
@@ -1061,10 +1061,10 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         // Append extra line
         const paySuccessBox = document.getElementById('payment-success');
         if (paySuccessBox) {
-          paySuccessBox.innerHTML = 
+          paySuccessBox.innerHTML = `
             Payment processed successfully! Your registration has been submitted.<br/>
             You have $${leftoverCredit.toFixed(2)} credit left.
-          ;
+          `;
         }
       }
     });
@@ -1090,7 +1090,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        showMessage(registerMultiple response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`registerMultiple response: ${JSON.stringify(data)}`, 'debug');
         if (!data.success) {
           showMessage('Error registering: ' + (data.error || ''), 'error');
         } else {
@@ -1117,11 +1117,11 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       showMessage('Loading user registrations from getUserRegistrations', 'debug');
       showRegistrationsSpinner(true);
 
-      const url = ${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)};
+      const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
       try {
         const resp = await fetch(url);
         const data = await resp.json();
-        showMessage(getUserRegistrations response: ${JSON.stringify(data)}, 'debug');
+        showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error loading registrations: ' + (data.error || ''), 'error');
@@ -1140,8 +1140,8 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       container.innerHTML = '';
       sessionsArray.forEach((sessionObj, i) => {
         const { location, season, programs } = sessionObj;
-        const itemId = accordion-upcoming-item-${i};
-        const itemHtml = 
+        const itemId = `accordion-upcoming-item-${i}`;
+        const itemHtml = `
           <div class="accordion-item">
             <h2 class="accordion-header" id="${itemId}-heading">
               <button class="accordion-button collapsed" type="button"
@@ -1154,12 +1154,12 @@ document.getElementById('verification-form').addEventListener('submit', async (e
               aria-labelledby="${itemId}-heading" data-bs-parent="#accordion-upcoming">
               <div class="accordion-body">
                 <ul class="mb-0">
-                  ${programs.map(p => <li>${p}</li>).join('')}
+                  ${programs.map(p => `<li>${p}</li>`).join('')}
                 </ul>
               </div>
             </div>
           </div>
-        ;
+        `;
         container.insertAdjacentHTML('beforeend', itemHtml);
       });
 
@@ -1172,7 +1172,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
      * 11) PROFILE & LOGOUT
      ************************************************************/
     function setProfileData(player) {
-      showMessage(Setting profile data: ${JSON.stringify(player)}, 'debug');
+      showMessage(`Setting profile data: ${JSON.stringify(player)}`, 'debug');
       document.getElementById('profile-first-name').textContent = player.firstName || '';
       document.getElementById('profile-last-name').textContent = player.lastName || '';
       document.getElementById('profile-phone').textContent = player.phoneNumber || '';
@@ -1181,7 +1181,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       const cardSpan = document.getElementById('profile-card-last4');
       if (cardSpan) {
         if (player.cardLast4) {
-          cardSpan.textContent = **** **** **** ${player.cardLast4};
+          cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
         } else {
           cardSpan.textContent = 'No card on file';
         }
@@ -1194,7 +1194,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       if (!creditSpan) return;
       const creditVal = currentPlayer?.credit || 0;
       if (creditVal > 0) {
-        creditSpan.textContent = $${creditVal.toFixed(2)};
+        creditSpan.textContent = `$${creditVal.toFixed(2)}`;
       } else {
         creditSpan.textContent = 'No credit available';
       }
@@ -1215,7 +1215,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
      * 12) UTILITY: showMessage
      ************************************************************/
     function showMessage(msg, type = 'info') {
-      console.log([${type.toUpperCase()}] ${msg});
+      console.log(`[${type.toUpperCase()}] ${msg}`);
       // Optionally display a toast or alert in the UI
     }
   </script>
