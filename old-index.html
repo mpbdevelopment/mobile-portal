@@ -1,1 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registration with Email Verification & Payment</title>
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
 
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Stripe.js -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <link rel="icon" href="icons/icon-192x192.png">
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(registration => console.log('Service Worker registered:', registration))
+        .catch(error => console.error('Service Worker registration failed:', error));
+    }
+  </script>
+
+  <!-- IMPORTANT: Use viewport-fit=cover for iPhone safe-area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <style>
+    /* 1) Remove default margin on body and add padding for iPhone safe-area */
+    body {
+      margin: 0;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      background-color: #f9f9f9;
+    }
+
+    /*Brand color as the primary background and buttons */
+    .bg-primary {
+      background-color: #0e2f7b !important;
+    }
+
+    .btn-primary {
+  background-color: #0e2f7b !important;
+  border-color: #0e2f7b !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
+  border-color: #0c2563 !important;
+}
+
+
+    /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0e2f7b; /* Bootstrap primary color */
+      color: #fff;              /* White text for contrast */
+      font-weight: 500;
+    }
+
+    .tab-content {
+      padding: 1rem;
+    }
+
+    /* Hide main tab content until user is verified */
+    #tab-content-section {
+      display: none;
+    }
+
+    /* Email verification UI */
+    #verification-section {
+      display: none; 
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 5px;
+    }
+    .card-errors {
+      color: red;
+    }
+
+    /* Profile container with a spinner overlay */
+    #profile-container {
+      position: relative; 
+    }
+    #profile-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    #profile-content {
+      display: none; 
+    }
+
+    /* Register tab container with a spinner overlay */
+    #register-container {
+      position: relative; 
+    }
+    /* Spinner overlay for Payment Processing */
+    #payment-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    /* Spinner overlay for Session Loading */
+    #session-spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    #payment-success {
+      display: none; 
+      margin-top: 10px;
+    }
+
+    /* My Registrations container */
+    #registrations-container {
+      position: relative;
+    }
+    #registrations-spinner {
+      display: none;
+      background: #fff; 
+      text-align: center;
+    }
+    #registrations-content {
+      display: none;
+    }
+
+    /* Hide the Product/Price and Cart sections by default */
+    #products-section {
+      display: none;
+    }
+    #cart-section {
+      display: none;
+    }
+
+    /* We no longer use #cart-total-line for "Total: $x" => removed */
+
+    /* For "Amount Due" and breakdown lines */
+    #amount-due-line {
+      margin-top: 8px;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    #breakdown-line {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+
+    .text-primary {
+      color: #0e2f7b !important;
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+  <!-- HEADER -->
+<header 
+  class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
+  style="background-color: #0e2f7b;"
+>
+  <h4 class="mb-0">MP Player Portal</h4>
+  <img 
+    src="icons/banner-logo.png" 
+    alt="Logo" 
+    style="height: 40px;"
+  >
+</header>
+
+  <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
+  <section id="verification-section" class="shadow-sm">
+    <h5>Verify Your Email</h5>
+    <p>Enter your email to receive a 6-digit code.</p>
+    <form id="verification-form">
+      <div class="mb-3">
+        <label for="verify-email-input" class="form-label">Email Address</label>
+        <input type="text" class="form-control" id="verify-email-input" required />
+      </div>
+      <button type="submit" class="btn btn-primary w-100 mb-2">
+        Send Verification Code
+      </button>
+    </form>
+
+    <div id="code-entry" style="display: none;">
+      <p>Enter the 6-digit code we sent to your email:</p>
+      <div class="mb-3">
+        <input type="text" class="form-control" id="verify-code-input" placeholder="123456" />
+      </div>
+      <button id="verify-code-button" class="btn btn-secondary w-100">
+        Verify Code
+      </button>
+    </div>
+  </section>
+
+  <!-- MAIN TAB CONTENT (Once verified) -->
+  <section id="tab-content-section">
+    <div class="tab-content" id="myTabContent">
+
+      <!-- PROFILE TAB -->
+      <div class="tab-pane fade show active" id="tab-profile" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm" id="profile-container">
+          
+          <!-- Spinner Overlay (centered) -->
+          <div id="profile-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
+            </div>
+          </div>
+
+          <!-- Actual Profile Content -->
+          <div id="profile-content">
+            <h5>Profile</h5>
+            <p><strong>First Name:</strong> <span id="profile-first-name"></span></p>
+            <p><strong>Last Name:</strong> <span id="profile-last-name"></span></p>
+            <p><strong>Phone:</strong> <span id="profile-phone"></span></p>
+            <p><strong>Email:</strong> <span id="profile-email"></span></p>
+            <p><strong>Card on File:</strong> <span id="profile-card-last4">No card on file</span></p>
+            <!-- Display user credit from PromoCodes -->
+            <p><strong>Credit:</strong> <span id="profile-credit-amount">No credit available</span></p>
+
+            <button id="logout-button" class="btn btn-danger w-100 mt-3">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGISTER TAB -->
+      <div class="tab-pane fade" id="tab-register" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
+          
+          <!-- Session Loading Spinner -->
+          <div id="session-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Loading Session...</p>
+            </div>
+          </div>
+
+          <!-- Payment Spinner overlay while processing payment -->
+          <div id="payment-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Processing Payment...</p>
+            </div>
+          </div>
+
+          <!-- Payment success alert (may show credit left) -->
+          <div id="payment-success" class="alert alert-success" role="alert">
+            Payment processed successfully! Your registration has been submitted.
+          </div>
+
+          <h5>Register for a Program</h5>
+
+          <!-- Session Selection -->
+          <div class="mb-3">
+            <label class="form-label">Select Location & Session</label>
+            <select id="session-dropdown" class="form-select">
+              <option value="">--Select a Session--</option>
+            </select>
+          </div>
+
+          <!-- Category Filter -->
+          <div class="mb-3">
+            <label class="form-label">Select Category</label>
+            <select id="category-filter" class="form-select">
+              <option value="">--All Categories--</option>
+            </select>
+          </div>
+
+          <!-- Level Filter -->
+          <div class="mb-3">
+            <label class="form-label">Select Level</label>
+            <select id="level-filter" class="form-select">
+              <option value="">--All Levels--</option>
+            </select>
+          </div>
+
+          <!-- Day/Time Filter -->
+          <div class="mb-3">
+            <label class="form-label">Select Day/Time</label>
+            <select id="daytime-filter" class="form-select">
+              <option value="">--All Day/Times--</option>
+            </select>
+          </div>
+
+          <!-- Products Section (hidden until we have products) -->
+          <div id="products-section">
+            <table class="table table-striped table-sm" id="product-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Price</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <hr/>
+
+          <!-- Cart Section (hidden until user has selections) -->
+          <div id="cart-section">
+            <h6>Your Selections</h6>
+            <table class="table table-striped table-sm" id="cart-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Session</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+
+            <!-- We removed the "Total: $..." line -->
+
+            <!-- "Amount Due" + smaller breakdown line -->
+            <div id="amount-due-line"></div>
+            <div id="breakdown-line"></div>
+
+            <button id="submit-cart-button" class="btn btn-primary w-100">
+              Register & Charge Card on File
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MY REGISTRATIONS TAB -->
+      <div class="tab-pane fade" id="tab-registrations" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm position-relative" id="registrations-container">
+          <h5>My Registrations</h5>
+
+          <div id="registrations-spinner">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <p class="mb-0">Loading Registrations...</p>
+          </div>
+          <div id="registrations-content">
+            <h6>Current/Upcoming Seasons</h6>
+            <div class="accordion" id="accordion-upcoming"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIXED BOTTOM NAV -->
+  <nav class="nav nav-bottom d-flex justify-content-around">
+    <a class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab">
+      <span class="d-block">Profile</span>
+    </a>
+    <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-register" role="tab">
+      <span class="d-block">Register</span>
+    </a>
+    <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-registrations" role="tab">
+      <span class="d-block">My Registrations</span>
+    </a>
+  </nav>
+
+  <!-- PAYMENT MODAL -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Payment Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please add a payment method to continue.</p>
+          <form id="payment-form">
+            <div class="mb-3">
+              <label for="name-input" class="form-label">Name</label>
+              <input type="text" class="form-control" id="name-input" required />
+            </div>
+            <div class="mb-3">
+              <label for="card-element" class="form-label">Card</label>
+              <div id="card-element" class="form-control"></div>
+              <div id="card-errors" class="card-errors"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Add Payment Profile</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    /************************************************************
+     * 1) CONFIG & STRIPE SETUP
+     ************************************************************/
+    const GAS_PROXY         = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy';
+    const FIND_STRIPE_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe';
+    const CREATE_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe';
+    const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeCart';
+    const GET_CREDIT_URL    = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy?action=getCredit';
+
+    const stripe = Stripe('pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb');
+    const elements = stripe.elements();
+    const cardElement = elements.create('card');
+    cardElement.mount('#card-element');
+
+    const ADMIN_PASSWORD = 'password';
+
+    let currentPlayer = null; 
+    let allProducts = [];
+    let cartItems = [];
+
+    /************************************************************
+     * 2) ON PAGE LOAD
+     ************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      const storedEmail = localStorage.getItem('playerEmail');
+      if (storedEmail) {
+        showMessage(`LocalStorage email found: ${storedEmail}`, 'debug');
+        document.getElementById('tab-content-section').style.display = 'block';
+        initiateValidationFlow(storedEmail);
+      } else {
+        showMessage('No stored email found; showing verification UI.', 'debug');
+        document.getElementById('verification-section').style.display = 'block';
+      }
+    });
+
+    /************************************************************
+     * 3) SPINNER LOGIC
+     ************************************************************/
+    function showProfileSpinner(shouldShow) {
+      const spinner = document.getElementById('profile-spinner');
+      const profileContent = document.getElementById('profile-content');
+      if (!spinner || !profileContent) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
+      profileContent.style.display = shouldShow ? 'none' : 'block';
+    }
+
+    function showPaymentSpinner(shouldShow) {
+      const spinner = document.getElementById('payment-spinner');
+      const successBox = document.getElementById('payment-success');
+      if (!spinner || !successBox) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
+      if (shouldShow) successBox.style.display = 'none';
+    }
+
+    function showSessionSpinner(shouldShow) {
+      const spinner = document.getElementById('session-spinner');
+      if (!spinner) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
+    }
+
+    function showRegistrationsSpinner(shouldShow) {
+      const spinner = document.getElementById('registrations-spinner');
+      const content = document.getElementById('registrations-content');
+      if (!spinner || !content) return;
+      spinner.style.display = shouldShow ? 'block' : 'none';
+      content.style.display = shouldShow ? 'none' : 'block';
+    }
+
+    function showPaymentSuccess(shouldShow) {
+      const successBox = document.getElementById('payment-success');
+      if (!successBox) return;
+      successBox.style.display = shouldShow ? 'block' : 'none';
+    }
+
+    /************************************************************
+     * 4) EMAIL VERIFICATION
+     ************************************************************/
+document.getElementById('verification-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const rawInput = document.getElementById('verify-email-input').value.trim();
+  if (!rawInput) return;
+
+  // Check if admin password is embedded: "email@domain.com?adminPassword"
+  let isAdminLogin = false;
+  let adminEmail    = '';
+  let adminPassword = '';
+
+  // Split on '?'
+  if (rawInput.includes('?')) {
+    const parts = rawInput.split('?');
+    adminEmail    = parts[0].trim().toLowerCase();
+    adminPassword = parts[1].trim();
+    if (adminPassword === ADMIN_PASSWORD) {
+      isAdminLogin = true;
+    }
+  }
+
+  if (isAdminLogin) {
+    // ------------------------------
+    // 1) Admin login bypass
+    // ------------------------------
+    showMessage('Admin login detected. Checking if user exists...', 'info');
+
+    // Check if user actually exists; if not, show an error
+    const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
+    try {
+      const playerResp = await fetch(playerUrl);
+      const playerData = await playerResp.json();
+      if (!playerData.success || !playerData.player) {
+        // Player not found
+        alert('Error: That email does not exist in the system.');
+        return;
+      }
+
+      // We have a valid player => proceed with initiateValidationFlow
+      document.getElementById('verification-section').style.display = 'none';
+      document.getElementById('tab-content-section').style.display = 'block';
+
+      // IMPORTANT: We do NOT store in localStorage (admin doesn't want to persist).
+      // localStorage.setItem('playerEmail', adminEmail); // <--- We skip this line entirely
+
+      // Now call the existing function to load profile/Stripe/etc.
+      initiateValidationFlow(adminEmail);
+
+    } catch (err) {
+      alert('Network error checking player info: ' + err.message);
+      return;
+    }
+
+  } else {
+    // ------------------------------
+    // 2) Normal user flow
+    // ------------------------------
+    const emailInput = rawInput.toLowerCase();  // for normal user, no password appended
+    showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
+
+    const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.success) {
+        window.__verificationCode = data.code;
+        document.getElementById('code-entry').style.display = 'block';
+        showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+      } else {
+        alert('Error sending code: ' + (data.error || 'Unknown'));
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+});
+
+
+    document.getElementById('verify-code-button').addEventListener('click', () => {
+      const userCode = document.getElementById('verify-code-input').value.trim();
+      const actualCode = window.__verificationCode;
+      if (userCode === actualCode) {
+        const verifiedEmail = document.getElementById('verify-email-input').value.trim().toLowerCase();
+        localStorage.setItem('playerEmail', verifiedEmail);
+
+        alert('Email verified!');
+        document.getElementById('verification-section').style.display = 'none';
+        document.getElementById('tab-content-section').style.display = 'block';
+        initiateValidationFlow(verifiedEmail);
+      } else {
+        alert('Invalid code. Please check your email or resend.');
+      }
+    });
+
+    /************************************************************
+     * 5) INITIATE VALIDATION FLOW (Players + Stripe + Credit)
+     ************************************************************/
+    async function initiateValidationFlow(email) {
+      showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+      showProfileSpinner(true);
+
+      try {
+        // 1) getPlayerInfo
+        const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
+        const playerResp = await fetch(playerUrl);
+        const playerData = await playerResp.json();
+        showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+
+        if (!playerData.success || !playerData.player) {
+          showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+          showProfileSpinner(false);
+          return;
+        }
+        currentPlayer = playerData.player;
+
+        // 2) Check Stripe
+        const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+        const stripeResp = await fetch(stripeUrl);
+        const stripeData = await stripeResp.json();
+        showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+
+        if (!stripeData.success) {
+          showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+          showProfileSpinner(false);
+          return;
+        }
+        if (stripeData.exists) {
+          currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+        } else {
+          showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+        }
+
+        // 3) Fetch user credit from PromoCodes
+        const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
+        const creditResp = await fetch(creditUrl);
+        const creditData = await creditResp.json();
+        showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
+        currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
+
+        // Finally => show profile
+        setProfileData(currentPlayer);
+
+        // If no stripe => show modal
+        if (!stripeData.exists) {
+          const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+          modalEl.show();
+        } else {
+          // Load sessions
+          showSessionSpinner(true);
+          await loadSessions();
+          showSessionSpinner(false);
+        }
+
+        showProfileSpinner(false);
+      } catch (err) {
+        showMessage('initiateValidationFlow error: ' + err.message, 'error');
+        showProfileSpinner(false);
+        showSessionSpinner(false);
+      }
+    }
+
+    /************************************************************
+     * 6) PAYMENT PROFILE FORM
+     ************************************************************/
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('name-input').value.trim();
+      const email = currentPlayer?.email || '';
+
+      showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: { name: nameInput, email }
+      });
+      if (error) {
+        showMessage('Stripe error: ' + error.message, 'error');
+        return;
+      }
+      showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
+
+      const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
+      try {
+        const resp = await fetch(CREATE_STRIPE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
+
+        if (!data.success) {
+          showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
+          return;
+        }
+        showMessage('Payment profile created successfully!', 'success');
+
+        const modalEl = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        modalEl.hide();
+
+        showSessionSpinner(true);
+        await loadSessions();
+        showSessionSpinner(false);
+      } catch (err) {
+        showMessage('Payment profile error: ' + err.message, 'error');
+      }
+    });
+
+    /************************************************************
+     * 7) LOAD SESSIONS
+     ************************************************************/
+    async function loadSessions() {
+      showMessage('Loading sessions from getSessions', 'debug');
+      try {
+        const url = `${GAS_PROXY}?action=getSessions`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        showMessage(`getSessions response: ${JSON.stringify(data)}`, 'debug');
+
+        if (!data.success) {
+          showMessage('Error loading sessions: ' + data.error, 'error');
+          return;
+        }
+        populateSessionDropdown(data.sessions || []);
+      } catch (err) {
+        showMessage('Session load error: ' + err.message, 'error');
+      }
+    }
+
+    function populateSessionDropdown(sessions) {
+      const dropdown = document.getElementById('session-dropdown');
+      dropdown.innerHTML = '<option value="">--Select a Session--</option>';
+      sessions.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.spreadsheetId;
+        opt.textContent = `${s.location} - ${s.season} (${s.date})`;
+        dropdown.appendChild(opt);
+      });
+    }
+
+    /************************************************************
+     * 8) LOAD PRODUCTS (CHAIN FILTERING)
+     ************************************************************/
+    document.getElementById('session-dropdown').addEventListener('change', async () => {
+      const sessionId = document.getElementById('session-dropdown').value.trim();
+
+      resetProductFilters(); 
+      allProducts = [];
+
+      if (!sessionId) return;
+
+      showSessionSpinner(true);
+      try {
+        await loadProductsForSession(sessionId);
+      } catch (err) {
+        showMessage('Error loading products: ' + err.message, 'error');
+      } finally {
+        showSessionSpinner(false);
+      }
+    });
+
+    function resetProductFilters() {
+      document.getElementById('category-filter').innerHTML = '<option value="">--All Categories--</option>';
+      document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
+      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+      renderProductTable([]);
+    }
+
+    async function loadProductsForSession(sessionId) {
+      showMessage(`Loading products for sessionId: ${sessionId}`, 'debug');
+      try {
+        const url = `${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sessionId)}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        showMessage(`getProgramList response: ${JSON.stringify(data)}`, 'debug');
+
+        if (!data.success) {
+          showMessage('Error loading products: ' + (data.error || ''), 'error');
+          return;
+        }
+        allProducts = data.products || [];
+
+        populateCategoryFilter(allProducts);
+        renderProductTable([]);
+      } catch (err) {
+        showMessage('loadProductsForSession error: ' + err.message, 'error');
+      }
+    }
+
+    function populateCategoryFilter(products) {
+      const catSelect = document.getElementById('category-filter');
+      const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+      catSelect.innerHTML = '<option value="">--All Categories--</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        catSelect.appendChild(opt);
+      });
+    }
+
+    document.getElementById('category-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
+
+      const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
+      const levelSelect = document.getElementById('level-filter');
+      levelSelect.innerHTML = '<option value="">--All Levels--</option>';
+      levels.forEach(lv => {
+        const opt = document.createElement('option');
+        opt.value = lv;
+        opt.textContent = lv;
+        levelSelect.appendChild(opt);
+      });
+
+      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+      renderProductTable([]);
+    });
+
+    document.getElementById('level-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      const lvl = document.getElementById('level-filter').value.trim();
+
+      let filtered = allProducts;
+      if (cat) filtered = filtered.filter(p => p.category === cat);
+      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+
+      const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
+      const dtSelect = document.getElementById('daytime-filter');
+      dtSelect.innerHTML = '<option value="">--All Day/Times--</option>';
+      dayTimes.forEach(dt => {
+        const opt = document.createElement('option');
+        opt.value = dt;
+        opt.textContent = dt;
+        dtSelect.appendChild(opt);
+      });
+      renderProductTable([]);
+    });
+
+    document.getElementById('daytime-filter').addEventListener('change', () => {
+      const cat = document.getElementById('category-filter').value.trim();
+      const lvl = document.getElementById('level-filter').value.trim();
+      const dt  = document.getElementById('daytime-filter').value.trim();
+
+      let filtered = allProducts;
+      if (cat) filtered = filtered.filter(p => p.category === cat);
+      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+      if (dt)  filtered = filtered.filter(p => p.dayTime === dt);
+
+      renderProductTable(filtered);
+    });
+
+    function renderProductTable(products) {
+      const tbody = document.querySelector('#product-table tbody');
+      const productsSection = document.getElementById('products-section');
+      if (!tbody || !productsSection) return;
+
+      tbody.innerHTML = '';
+      if (!products || products.length === 0) {
+        productsSection.style.display = 'none';
+        return;
+      }
+      productsSection.style.display = 'block';
+
+      products.forEach(prod => {
+        const tr = document.createElement('tr');
+
+        let tdProgram = document.createElement('td');
+        if (prod.soldOut) {
+          tdProgram.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+        } else {
+          tdProgram.textContent = prod.program;
+        }
+        tr.appendChild(tdProgram);
+
+        let tdPrice = document.createElement('td');
+        tdPrice.textContent = `$${prod.price}`;
+        tr.appendChild(tdPrice);
+
+        let tdAction = document.createElement('td');
+        let btnAdd = document.createElement('button');
+        btnAdd.className = 'btn btn-sm btn-secondary';
+        btnAdd.textContent = 'Add';
+        if (prod.soldOut) {
+          btnAdd.disabled = true;
+        } else {
+          btnAdd.onclick = () => addProductToCart(prod);
+        }
+        tdAction.appendChild(btnAdd);
+        tr.appendChild(tdAction);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    /************************************************************
+     * 9) CART LOGIC + Payment Before Registration
+     ************************************************************/
+    function addProductToCart(product) {
+      const sessionDropdown = document.getElementById('session-dropdown');
+      const sessionLabel = sessionDropdown.options[sessionDropdown.selectedIndex].text;
+      const sessionId = sessionDropdown.value;
+
+      cartItems.push({
+        sessionId,
+        program: product.program,
+        price: product.price,
+        sessionLabel
+      });
+      updateCartTable();
+    }
+
+    function updateCartTable() {
+      const tbody = document.querySelector('#cart-table tbody');
+      const cartSection = document.getElementById('cart-section');
+
+      const amountDueLine = document.getElementById('amount-due-line');
+      const breakdownLine = document.getElementById('breakdown-line');
+
+      if (!tbody || !cartSection || !amountDueLine || !breakdownLine) return;
+
+      tbody.innerHTML = '';
+      if (cartItems.length === 0) {
+        cartSection.style.display = 'none';
+        amountDueLine.textContent = '';
+        breakdownLine.textContent = '';
+        return;
+      }
+      cartSection.style.display = 'block';
+
+      cartItems.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+
+        let tdProg = document.createElement('td');
+        tdProg.textContent = item.program;
+        tr.appendChild(tdProg);
+
+        let tdSession = document.createElement('td');
+        tdSession.textContent = item.sessionLabel;
+        tr.appendChild(tdSession);
+
+        let tdRemove = document.createElement('td');
+        let btnRemove = document.createElement('button');
+        btnRemove.className = 'btn btn-sm btn-danger';
+        btnRemove.textContent = 'Remove';
+        btnRemove.onclick = () => {
+          cartItems.splice(idx, 1);
+          updateCartTable();
+        };
+        tdRemove.appendChild(btnRemove);
+        tr.appendChild(tdRemove);
+
+        tbody.appendChild(tr);
+      });
+
+      // Compute raw total
+      const totalCents = calculateCartTotalCents();
+      const programTotal = totalCents / 100;
+
+      // Subtract credit from total
+      const credit = currentPlayer?.credit || 0;
+      let creditUsed = (credit >= programTotal) ? programTotal : credit;
+      let amountDue  = programTotal - creditUsed;
+
+      // Show "Amount Due: $xx.xx"
+      amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
+
+      // Show smaller line: "Program Total: $X.xx | Credit Balance: $Y.xx"
+      breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
+    }
+
+    function calculateCartTotalCents() {
+      let total = 0;
+      cartItems.forEach(item => {
+        total += (item.price || 0);
+      });
+      return total * 100; // convert to cents
+    }
+
+    async function chargeCart(email, amountInCents) {
+      showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
+      if (amountInCents <= 0) {
+        // No charge needed
+        return true; 
+      }
+      try {
+        const payload = { email, amount: amountInCents };
+        const resp = await fetch(CHARGE_CART_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.success) {
+          showMessage('Payment succeeded in chargeCart.', 'info');
+          return true;
+        } else {
+          showMessage('Payment failed: ' + (data.error || ''), 'error');
+          return false;
+        }
+      } catch (err) {
+        showMessage('Network error charging cart: ' + err.message, 'error');
+        return false;
+      }
+    }
+
+    document.getElementById('submit-cart-button').addEventListener('click', async () => {
+      if (cartItems.length === 0) {
+        showMessage('Cart is empty.', 'error');
+        return;
+      }
+      showPaymentSuccess(false);
+      showPaymentSpinner(true);
+
+      // 1) Sum cart
+      const totalCents = calculateCartTotalCents(); 
+      const programTotal = totalCents / 100;
+
+      // 2) Auto-apply credit
+      const credit = currentPlayer?.credit || 0;
+      let creditUsed = (credit >= programTotal) ? programTotal : credit; 
+      let amountDue  = programTotal - creditUsed;
+      let amountDueCents = Math.round(amountDue * 100);
+
+      showMessage(`Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
+
+      // 3) If amountDue>0 => charge
+      const email = currentPlayer.email;
+      const success = await chargeCart(email, amountDueCents);
+      if (!success) {
+        showMessage('Payment failed, not registering.', 'error');
+        showPaymentSpinner(false);
+        return;
+      }
+
+      // 4) Payment success => register
+      showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
+      await submitCartToSpreadsheet(creditUsed);
+      showMessage('Successfully registered after payment!', 'success');
+
+      // Clear cart
+      cartItems = [];
+      updateCartTable();
+
+      showPaymentSpinner(false);
+      showPaymentSuccess(true);
+
+      // If creditUsed>0 => show leftover in success msg
+      const leftoverCredit = Math.max(0, (currentPlayer?.credit || 0) - creditUsed);
+      if (creditUsed > 0) {
+        // Append extra line
+        const paySuccessBox = document.getElementById('payment-success');
+        if (paySuccessBox) {
+          paySuccessBox.innerHTML = `
+            Payment processed successfully! Your registration has been submitted.<br/>
+            You have $${leftoverCredit.toFixed(2)} credit left.
+          `;
+        }
+      }
+    });
+
+    async function submitCartToSpreadsheet(creditUsed) {
+      const payload = {
+        action: 'registerMultiple',
+        firstName: currentPlayer.firstName,
+        lastName: currentPlayer.lastName,
+        email: currentPlayer.email,
+        phoneNumber: currentPlayer.phoneNumber,
+        cartItems: cartItems.map(ci => ({
+          sessionId: ci.sessionId,
+          program: ci.program
+        })),
+        creditUsed: creditUsed || 0
+      };
+
+      try {
+        const resp = await fetch(GAS_PROXY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        showMessage(`registerMultiple response: ${JSON.stringify(data)}`, 'debug');
+        if (!data.success) {
+          showMessage('Error registering: ' + (data.error || ''), 'error');
+        } else {
+          // Update local credit
+          currentPlayer.credit = Math.max(0, (currentPlayer.credit || 0) - creditUsed);
+          updateCreditDisplay();
+        }
+      } catch (err) {
+        showMessage('submitCartToSpreadsheet error: ' + err.message, 'error');
+      }
+    }
+
+    /************************************************************
+     * 10) MY REGISTRATIONS
+     ************************************************************/
+    document.querySelector('a[data-bs-target="#tab-registrations"]')
+      .addEventListener('shown.bs.tab', loadUserRegistrations);
+
+    async function loadUserRegistrations() {
+      if (!currentPlayer || !currentPlayer.email) {
+        showMessage('No user data found for registrations.', 'error');
+        return;
+      }
+      showMessage('Loading user registrations from getUserRegistrations', 'debug');
+      showRegistrationsSpinner(true);
+
+      const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
+
+        if (!data.success) {
+          showMessage('Error loading registrations: ' + (data.error || ''), 'error');
+          return;
+        }
+        renderUpcomingRegistrations(data.upcoming || []);
+      } catch (err) {
+        showMessage('Load registrations error: ' + err.message, 'error');
+      } finally {
+        showRegistrationsSpinner(false);
+      }
+    }
+
+    function renderUpcomingRegistrations(sessionsArray) {
+      const container = document.getElementById('accordion-upcoming');
+      container.innerHTML = '';
+      sessionsArray.forEach((sessionObj, i) => {
+        const { location, season, programs } = sessionObj;
+        const itemId = `accordion-upcoming-item-${i}`;
+        const itemHtml = `
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="${itemId}-heading">
+              <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#${itemId}-collapse"
+                aria-expanded="false" aria-controls="${itemId}-collapse">
+                ${location} - ${season}
+              </button>
+            </h2>
+            <div id="${itemId}-collapse" class="accordion-collapse collapse"
+              aria-labelledby="${itemId}-heading" data-bs-parent="#accordion-upcoming">
+              <div class="accordion-body">
+                <ul class="mb-0">
+                  ${programs.map(p => `<li>${p}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', itemHtml);
+      });
+
+      if (sessionsArray.length === 0) {
+        container.innerHTML = '<p class="text-muted">No upcoming registrations found.</p>';
+      }
+    }
+
+    /************************************************************
+     * 11) PROFILE & LOGOUT
+     ************************************************************/
+    function setProfileData(player) {
+      showMessage(`Setting profile data: ${JSON.stringify(player)}`, 'debug');
+      document.getElementById('profile-first-name').textContent = player.firstName || '';
+      document.getElementById('profile-last-name').textContent = player.lastName || '';
+      document.getElementById('profile-phone').textContent = player.phoneNumber || '';
+      document.getElementById('profile-email').textContent = player.email || '';
+
+      const cardSpan = document.getElementById('profile-card-last4');
+      if (cardSpan) {
+        if (player.cardLast4) {
+          cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
+        } else {
+          cardSpan.textContent = 'No card on file';
+        }
+      }
+      updateCreditDisplay();
+    }
+
+    function updateCreditDisplay() {
+      const creditSpan = document.getElementById('profile-credit-amount');
+      if (!creditSpan) return;
+      const creditVal = currentPlayer?.credit || 0;
+      if (creditVal > 0) {
+        creditSpan.textContent = `$${creditVal.toFixed(2)}`;
+      } else {
+        creditSpan.textContent = 'No credit available';
+      }
+    }
+
+    document.getElementById('logout-button').addEventListener('click', () => {
+      showMessage('Logout clicked, clearing localStorage.', 'debug');
+      localStorage.removeItem('playerEmail');
+      currentPlayer = null;
+      cartItems = [];
+      allProducts = [];
+      document.getElementById('tab-content-section').style.display = 'none';
+      document.getElementById('verification-section').style.display = 'block';
+      showMessage('Logged out.', 'info');
+    });
+
+    /************************************************************
+     * 12) UTILITY: showMessage
+     ************************************************************/
+    function showMessage(msg, type = 'info') {
+      console.log(`[${type.toUpperCase()}] ${msg}`);
+      // Optionally display a toast or alert in the UI
+    }
+  </script>
+</body>
+</html>
