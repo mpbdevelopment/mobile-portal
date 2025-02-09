@@ -11,6 +11,9 @@
 
   <link rel="manifest" href="manifest.json">
 
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js"></script>
+
   <!-- Stripe.js -->
   <script src="https://js.stripe.com/v3/"></script>
 
@@ -42,17 +45,16 @@
     }
 
     .btn-primary {
-  background-color: #0e2f7b !important;
-  border-color: #0e2f7b !important;
-}
+      background-color: #0e2f7b !important;
+      border-color: #0e2f7b !important;
+    }
 
-.btn-primary:hover,
-.btn-primary:focus,
-.btn-primary:active {
-  background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
-  border-color: #0c2563 !important;
-}
-
+    .btn-primary:hover,
+    .btn-primary:focus,
+    .btn-primary:active {
+      background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
+      border-color: #0c2563 !important;
+    }
 
     /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
     .nav-bottom {
@@ -168,15 +170,16 @@
       display: none;
     }
 
-    /* Hide the Product/Price and Cart sections by default */
+    /* Program listing & cart are replaced by a new card layout
+       but keep them hidden or repurposed as needed. */
+
+    /* [CHANGED] Hide the old #products-section & #cart-section by default (we'll re-use some logic) */
     #products-section {
       display: none;
     }
     #cart-section {
       display: none;
     }
-
-    /* We no longer use #cart-total-line for "Total: $x" => removed */
 
     /* For "Amount Due" and breakdown lines */
     #amount-due-line {
@@ -193,22 +196,100 @@
     .text-primary {
       color: #0e2f7b !important;
     }
+
+    /* [CHANGED] Session Cards Container */
+    #session-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .session-card {
+      flex: 1 1 200px; /* responsive sizing */
+      min-width: 200px;
+      max-width: 300px;
+    }
+
+    /* [CHANGED] Hide filters initially (progressive) */
+    #filter-section {
+      display: none;
+      margin-bottom: 1rem;
+    }
+
+    /* [CHANGED] Program Cards Container */
+    #program-cards-container {
+      display: none; /* shown only once filters are all selected */
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .program-card {
+      width: 100%;
+      max-width: 300px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 1rem;
+      background: #fff;
+      position: relative;
+    }
+    .program-card .program-name {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .program-card .program-price {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .program-card .badges {
+      margin-bottom: 0.5rem;
+    }
+
+    /* [CHANGED] "Added" state styling */
+    .program-card.added {
+      background-color: #e6f7e8; /* light greenish */
+      border-color: #81c784;    /* greener border */
+    }
+
+    .program-card.added .btn-add {
+      display: none;
+    }
+    .program-card.added .added-controls {
+      display: block;
+    }
+    .added-controls {
+      display: none;
+    }
+
+    /* [CHANGED] Floating Cart Pill */
+    #cart-summary-pill {
+      position: fixed;
+      bottom: 60px; /* just above the nav */
+      right: 15px;
+      z-index: 9999;
+      background: #0e2f7b;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body class="bg-light">
 
   <!-- HEADER -->
-<header 
-  class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
-  style="background-color: #0e2f7b;"
->
-  <h4 class="mb-0">MP Player Portal</h4>
-  <img 
-    src="icons/banner-logo.png" 
-    alt="Logo" 
-    style="height: 40px;"
+  <header 
+    class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
+    style="background-color: #0e2f7b;"
   >
-</header>
+    <h4 class="mb-0">MP Player Portal</h4>
+    <img 
+      src="icons/banner-logo.png" 
+      alt="Logo" 
+      style="height: 40px;"
+    >
+  </header>
 
   <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
   <section id="verification-section" class="shadow-sm">
@@ -258,7 +339,14 @@
             <p><strong>Last Name:</strong> <span id="profile-last-name"></span></p>
             <p><strong>Phone:</strong> <span id="profile-phone"></span></p>
             <p><strong>Email:</strong> <span id="profile-email"></span></p>
-            <p><strong>Card on File:</strong> <span id="profile-card-last4">No card on file</span></p>
+            <p><strong>Card on File:</strong>
+                <span id="profile-card-last4">No card on file</span>
+                <!-- We'll show/hide or change the text on this button in JS -->
+                <button id="profile-card-button" 
+                        class="btn btn-sm btn-outline-secondary ms-2" 
+                        style="display: none;">
+                </button>
+            </p>              
             <!-- Display user credit from PromoCodes -->
             <p><strong>Credit:</strong> <span id="profile-credit-amount">No credit available</span></p>
 
@@ -294,56 +382,61 @@
 
           <h5>Register for a Program</h5>
 
-          <!-- Session Selection -->
-          <div class="mb-3">
-            <label class="form-label">Select Location & Session</label>
-            <select id="session-dropdown" class="form-select">
-              <option value="">--Select a Session--</option>
-            </select>
+          <!-- [CHANGED] 1) Session Cards Container -->
+          <div id="session-cards" class="row">
+            <!-- Dynamically populated in loadSessions() -->
           </div>
 
-          <!-- Category Filter -->
-          <div class="mb-3">
-            <label class="form-label">Select Category</label>
-            <select id="category-filter" class="form-select">
-              <option value="">--All Categories--</option>
-            </select>
+          <!-- [CHANGED] 2) Filter Section (Progressive) -->
+          <div id="filter-section">
+            <!-- We still use the same 3 filters, but they appear one at a time. -->
+
+            <!-- Calendar Container (initially hidden) -->
+<div id="calendar-container" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6>Calendar View</h6>
+      <button type="button" id="hide-calendar-btn" class="btn btn-sm btn-secondary">
+        Hide Calendar
+      </button>
+    </div>
+  
+    <div id="calendar"></div>
+  </div>
+  
+            
+            <!-- Category Filter -->
+            <div id="category-filter-group" style="display: none;">
+              <label class="form-label"><strong>Select Category</strong></label>
+              <select id="category-filter" class="form-select mb-3">
+                <option value="">--All Categories--</option>
+              </select>
+            </div>
+
+            <!-- Level Filter -->
+            <div id="level-filter-group" style="display: none;">
+              <label class="form-label"><strong>Select Level</strong></label>
+              <select id="level-filter" class="form-select mb-3">
+                <option value="">--All Levels--</option>
+              </select>
+            </div>
+
+            <!-- Day/Time Filter -->
+            <div id="daytime-filter-group" style="display: none;">
+              <label class="form-label"><strong>Select Day/Time</strong></label>
+              <select id="daytime-filter" class="form-select mb-3">
+                <option value="">--All Day/Times--</option>
+              </select>
+            </div>
           </div>
 
-          <!-- Level Filter -->
-          <div class="mb-3">
-            <label class="form-label">Select Level</label>
-            <select id="level-filter" class="form-select">
-              <option value="">--All Levels--</option>
-            </select>
-          </div>
+          <!-- [CHANGED] 3) Program Cards Container -->
+          <div id="program-cards-container" class="d-flex"></div>
 
-          <!-- Day/Time Filter -->
-          <div class="mb-3">
-            <label class="form-label">Select Day/Time</label>
-            <select id="daytime-filter" class="form-select">
-              <option value="">--All Day/Times--</option>
-            </select>
-          </div>
+          
 
-          <!-- Products Section (hidden until we have products) -->
-          <div id="products-section">
-            <table class="table table-striped table-sm" id="product-table">
-              <thead>
-                <tr>
-                  <th>Program</th>
-                  <th>Price</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-
+          <!-- The old cart-section is still in code, but hidden. We'll keep the logic for payment. -->
           <hr/>
-
-          <!-- Cart Section (hidden until user has selections) -->
-          <div id="cart-section">
+          <div id="cart-section" style="display: none;">
             <h6>Your Selections</h6>
             <table class="table table-striped table-sm" id="cart-table">
               <thead>
@@ -355,17 +448,24 @@
               </thead>
               <tbody></tbody>
             </table>
-
-            <!-- We removed the "Total: $..." line -->
-
-            <!-- "Amount Due" + smaller breakdown line -->
+          
             <div id="amount-due-line"></div>
             <div id="breakdown-line"></div>
+          
+            <!-- TWO buttons -->
+            <div class="d-flex gap-2 mt-3">
+              <!-- 1) Charge On-File -->
+              <button id="btn-charge-on-file" class="btn btn-primary flex-fill">
+                Charge Card on File
+              </button>
+          
+              <!-- 2) One-Time Payment -->
+              <button id="btn-credit-debit" class="btn btn-secondary flex-fill">
+                Credit/Debit Card
+              </button>
+            </div>
+          </div>          
 
-            <button id="submit-cart-button" class="btn btn-primary w-100">
-              Register & Charge Card on File
-            </button>
-          </div>
         </div>
       </div>
 
@@ -379,8 +479,7 @@
             <p class="mb-0">Loading Registrations...</p>
           </div>
           <div id="registrations-content">
-            <h6>Current/Upcoming Seasons</h6>
-            <div class="accordion" id="accordion-upcoming"></div>
+            <div id="calendar"></div>
           </div>
         </div>
       </div>
@@ -427,6 +526,36 @@
     </div>
   </div>
 
+  <!-- ONE-TIME PAYMENT MODAL -->
+  <div class="modal fade" id="oneTimePaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Pay with Credit/Debit Card</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please enter your card details to complete the payment. This card will <strong>not</strong> be saved on file.</p>
+          <form id="one-time-payment-form">
+            <div class="mb-3">
+              <label for="otpf-name" class="form-label">Name on Card</label>
+              <input type="text" class="form-control" id="otpf-name" required />
+            </div>
+            <div class="mb-3">
+              <label for="otpf-card-element" class="form-label">Card</label>
+              <div id="otpf-card-element" class="form-control"></div>
+              <div id="otpf-card-errors" class="card-errors text-danger mt-1"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Pay Now</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- [CHANGED] Floating Cart Summary Pill -->
+  <div id="cart-summary-pill" style="display: none;">0 items - $0.00</div>
+
   <!-- Bootstrap 5 JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -445,11 +574,25 @@
     const cardElement = elements.create('card');
     cardElement.mount('#card-element');
 
+    // Create a second Elements instance
+    const oneTimeElements = stripe.elements();
+    const oneTimeCard = oneTimeElements.create('card');
+    oneTimeCard.mount('#otpf-card-element'); // "otpf" = One-Time Payment Form
+
     const ADMIN_PASSWORD = 'password';
 
     let currentPlayer = null; 
-    let allProducts = [];
+    let allSessions = [];   // holds full data for all sessions
     let cartItems = [];
+
+    // [CHANGED] We'll keep track of the currently selected session, category, level, dayTime
+    let selectedSession = null;
+    let selectedCategory = null;
+    let selectedLevel = null;
+    let selectedDayTime = null;
+
+    // We'll keep a global array of "allProducts" for the chosen session
+    let allProducts = [];
 
     /************************************************************
      * 2) ON PAGE LOAD
@@ -508,83 +651,67 @@
     /************************************************************
      * 4) EMAIL VERIFICATION
      ************************************************************/
-document.getElementById('verification-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  
-  const rawInput = document.getElementById('verify-email-input').value.trim();
-  if (!rawInput) return;
+    document.getElementById('verification-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const rawInput = document.getElementById('verify-email-input').value.trim();
+      if (!rawInput) return;
 
-  // Check if admin password is embedded: "email@domain.com?adminPassword"
-  let isAdminLogin = false;
-  let adminEmail    = '';
-  let adminPassword = '';
+      // Check if admin password is embedded: "email@domain.com?adminPassword"
+      let isAdminLogin = false;
+      let adminEmail    = '';
+      let adminPassword = '';
 
-  // Split on '?'
-  if (rawInput.includes('?')) {
-    const parts = rawInput.split('?');
-    adminEmail    = parts[0].trim().toLowerCase();
-    adminPassword = parts[1].trim();
-    if (adminPassword === ADMIN_PASSWORD) {
-      isAdminLogin = true;
-    }
-  }
-
-  if (isAdminLogin) {
-    // ------------------------------
-    // 1) Admin login bypass
-    // ------------------------------
-    showMessage('Admin login detected. Checking if user exists...', 'info');
-
-    // Check if user actually exists; if not, show an error
-    const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
-    try {
-      const playerResp = await fetch(playerUrl);
-      const playerData = await playerResp.json();
-      if (!playerData.success || !playerData.player) {
-        // Player not found
-        alert('Error: That email does not exist in the system.');
-        return;
+      // Split on '?'
+      if (rawInput.includes('?')) {
+        const parts = rawInput.split('?');
+        adminEmail    = parts[0].trim().toLowerCase();
+        adminPassword = parts[1].trim();
+        if (adminPassword === ADMIN_PASSWORD) {
+          isAdminLogin = true;
+        }
       }
 
-      // We have a valid player => proceed with initiateValidationFlow
-      document.getElementById('verification-section').style.display = 'none';
-      document.getElementById('tab-content-section').style.display = 'block';
-
-      // IMPORTANT: We do NOT store in localStorage (admin doesn't want to persist).
-      // localStorage.setItem('playerEmail', adminEmail); // <--- We skip this line entirely
-
-      // Now call the existing function to load profile/Stripe/etc.
-      initiateValidationFlow(adminEmail);
-
-    } catch (err) {
-      alert('Network error checking player info: ' + err.message);
-      return;
-    }
-
-  } else {
-    // ------------------------------
-    // 2) Normal user flow
-    // ------------------------------
-    const emailInput = rawInput.toLowerCase();  // for normal user, no password appended
-    showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
-
-    const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
-    try {
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (data.success) {
-        window.__verificationCode = data.code;
-        document.getElementById('code-entry').style.display = 'block';
-        showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+      if (isAdminLogin) {
+        // Admin login bypass
+        showMessage('Admin login detected. Checking if user exists...', 'info');
+        const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
+        try {
+          const playerResp = await fetch(playerUrl);
+          const playerData = await playerResp.json();
+          if (!playerData.success || !playerData.player) {
+            alert('Error: That email does not exist in the system.');
+            return;
+          }
+          document.getElementById('verification-section').style.display = 'none';
+          document.getElementById('tab-content-section').style.display = 'block';
+          // We do NOT store in localStorage for admin
+          initiateValidationFlow(adminEmail);
+        } catch (err) {
+          alert('Network error checking player info: ' + err.message);
+          return;
+        }
       } else {
-        alert('Error sending code: ' + (data.error || 'Unknown'));
-      }
-    } catch (err) {
-      alert('Network error: ' + err.message);
-    }
-  }
-});
+        // Normal user flow
+        const emailInput = rawInput.toLowerCase();
+        showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
 
+        const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+        try {
+          const resp = await fetch(url);
+          const data = await resp.json();
+          if (data.success) {
+            window.__verificationCode = data.code;
+            document.getElementById('code-entry').style.display = 'block';
+            showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+          } else {
+            alert('Error sending code: ' + (data.error || 'Unknown'));
+          }
+        } catch (err) {
+          alert('Network error: ' + err.message);
+        }
+      }
+    });
 
     document.getElementById('verify-code-button').addEventListener('click', () => {
       const userCode = document.getElementById('verify-code-input').value.trim();
@@ -717,7 +844,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
     });
 
     /************************************************************
-     * 7) LOAD SESSIONS
+     * 7) LOAD SESSIONS -> DISPLAY AS CARDS
      ************************************************************/
     async function loadSessions() {
       showMessage('Loading sessions from getSessions', 'debug');
@@ -725,191 +852,480 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         const url = `${GAS_PROXY}?action=getSessions`;
         const resp = await fetch(url);
         const data = await resp.json();
-        showMessage(`getSessions response: ${JSON.stringify(data)}`, 'debug');
 
         if (!data.success) {
           showMessage('Error loading sessions: ' + data.error, 'error');
           return;
         }
-        populateSessionDropdown(data.sessions || []);
+        const sessionInfos = data.sessions || [];
+        // For each session, fetch programs
+        const sessionPromises = sessionInfos.map(sess => fetchProgramsForSession(sess));
+        const results = await Promise.all(sessionPromises);
+        allSessions = results; 
+        // Now display them as cards:
+        displaySessionCards(allSessions);
       } catch (err) {
         showMessage('Session load error: ' + err.message, 'error');
       }
     }
 
-    function populateSessionDropdown(sessions) {
-      const dropdown = document.getElementById('session-dropdown');
-      dropdown.innerHTML = '<option value="">--Select a Session--</option>';
-      sessions.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.spreadsheetId;
-        opt.textContent = `${s.location} - ${s.season} (${s.date})`;
-        dropdown.appendChild(opt);
+    async function fetchProgramsForSession(sess) {
+      const programUrl = `${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sess.spreadsheetId)}`;
+      const resp = await fetch(programUrl);
+      const data = await resp.json();
+      if (!data.success) {
+        showMessage('Error loading programs for ' + sess.spreadsheetId, 'error');
+        return { ...sess, products: [] };
+      }
+      return {
+        ...sess,
+        products: data.products || []
+      };
+    }
+
+    // [CHANGED] Build session cards
+    function displaySessionCards(sessions) {
+      const container = document.getElementById('session-cards');
+      container.innerHTML = '';
+      if (!sessions.length) {
+        container.innerHTML = '<p>No sessions found.</p>';
+        return;
+      }
+      sessions.forEach(sessionObj => {
+        // The label is the same as the old dropdown: "location - season (date)"
+        const label = `${sessionObj.location} - ${sessionObj.season} (${sessionObj.date})`;
+
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card session-card p-2';
+        
+        const cardBody = document.createElement('div');
+        cardBody.className = 'card-body';
+
+        const titleEl = document.createElement('h6');
+        titleEl.className = 'card-title mb-2';
+        titleEl.textContent = label;
+
+        // "Select Session" button
+        const selectBtn = document.createElement('button');
+        selectBtn.className = 'btn btn-sm btn-primary';
+        selectBtn.textContent = 'Select';
+        selectBtn.addEventListener('click', () => {
+          // set as current session
+          selectedSession = sessionObj;
+          const progContainer = document.getElementById('program-cards-container');
+            progContainer.innerHTML = '';
+            progContainer.style.display = 'none';
+          // show filters
+          showFilterStep(1); 
+          // populate category filter
+          allProducts = sessionObj.products || [];
+          resetProductFilters(); 
+          showCalendarToggleButton();
+          showMessage(`Selected session: ${label}`, 'debug');
+        });
+
+        cardBody.appendChild(titleEl);
+        cardBody.appendChild(selectBtn);
+        cardDiv.appendChild(cardBody);
+        container.appendChild(cardDiv);
       });
     }
 
-    /************************************************************
-     * 8) LOAD PRODUCTS (CHAIN FILTERING)
-     ************************************************************/
-    document.getElementById('session-dropdown').addEventListener('change', async () => {
-      const sessionId = document.getElementById('session-dropdown').value.trim();
+    function showCalendarToggleButton() {
+  // Suppose you place a small button near the top of #register-container
+  // or inside #filter-section. Up to you:
+  const filterSection = document.getElementById('filter-section');
+  
+  // Avoid duplicates
+  if (document.getElementById('btn-show-calendar')) return;
 
-      resetProductFilters(); 
-      allProducts = [];
+  const btn = document.createElement('button');
+  btn.id = 'btn-show-calendar';
+  btn.className = 'btn btn-outline-primary btn-sm mb-2';
+  btn.textContent = 'Show Calendar';
+  btn.addEventListener('click', () => {
+    // Hide normal product filters except session-cards
+    document.getElementById('level-filter-group').style.display = 'none';
+    document.getElementById('daytime-filter-group').style.display = 'none';
+    document.getElementById('program-cards-container').style.display = 'none';
 
-      if (!sessionId) return;
+    // Show the calendar container
+    document.getElementById('calendar-container').style.display = 'block';
 
-      showSessionSpinner(true);
-      try {
-        await loadProductsForSession(sessionId);
-      } catch (err) {
-        showMessage('Error loading products: ' + err.message, 'error');
-      } finally {
-        showSessionSpinner(false);
-      }
+    // Build the calendar events
+    buildCalendarEvents();
+  });
+
+  filterSection.appendChild(btn);
+}
+
+document.getElementById('hide-calendar-btn').addEventListener('click', () => {
+  document.getElementById('calendar-container').style.display = 'none';
+  
+  // Show the normal filter UI again
+  document.getElementById('level-filter-group').style.display = 'block';
+  document.getElementById('daytime-filter-group').style.display = 'block';
+  document.getElementById('program-cards-container').style.display = 'flex';
+});
+
+function buildCalendarEvents() {
+  // A. Get the list of programs from the selected session
+  const programs = selectedSession ? selectedSession.products : [];
+  
+  // B. Filter out "Package" items
+  const filtered = programs.filter(p => {
+    // If "Package" is in p.program, skip
+    return !p.program.toLowerCase().includes('package');
+  });
+
+  // C. Convert each program -> FullCalendar event
+  const events = [];
+  filtered.forEach(product => {
+    const eventObj = parseProgramToEvent(product);
+    if (eventObj) {
+      events.push(eventObj);
+    }
+  });
+
+  // D. Render FullCalendar
+  renderCalendar(events);
+}
+
+function parseProgramToEvent(product) {
+  // The product object has .program, .category, .level, .price, etc.
+  // Example: product.program = "Monday 12/23 | 7:00pm - 8:00pm (2.0 - 3.0)"
+
+  const { program, category, level, soldOut } = product;
+  
+  // 1) Skip if no " | " found
+  if (!program.includes('|')) return null;
+
+  // 2) Parse the date portion
+  // e.g. "Monday 12/23" => we want "12/23"
+  const datePartMatch = program.match(/\b(\d{1,2}\/\d{1,2})\b/);
+  if (!datePartMatch) return null;
+  const mmdd = datePartMatch[1]; // e.g. "12/23"
+  const [m, d] = mmdd.split('/').map(Number);
+
+  // 3) Parse the time range => "7:00pm - 8:00pm"
+  const timeRangeMatch = program.match(/(\d{1,2}:\d{2}[ap]m)\s*-\s*(\d{1,2}:\d{2}[ap]m)/i);
+  if (!timeRangeMatch) return null;
+  const startTimeStr = timeRangeMatch[1];
+  const endTimeStr   = timeRangeMatch[2];
+
+  // Convert to 24hr
+  function to24Hr(tstr) {
+    // e.g. "7:00pm"
+    const ampm = tstr.toLowerCase().includes('pm') ? 'pm' : 'am';
+    let [hh, mmPart] = tstr.replace(/am|pm/i, '').split(':');
+    let hour = parseInt(hh, 10);
+    let minute = parseInt(mmPart, 10) || 0;
+    if (ampm === 'pm' && hour < 12) hour += 12;
+    if (ampm === 'am' && hour === 12) hour = 0;
+    return { hour, minute };
+  }
+
+  const sTime = to24Hr(startTimeStr);
+  const eTime = to24Hr(endTimeStr);
+
+  const currentYear = new Date().getFullYear(); // or a session-specific year if needed
+  const startDate = new Date(currentYear, m - 1, d, sTime.hour, sTime.minute);
+  const endDate   = new Date(currentYear, m - 1, d, eTime.hour, eTime.minute);
+
+  // 4) The calendar event title is "Category Level"
+  // If either is missing, handle gracefully
+  const eventTitle = `${category || ''} ${level || ''}`.trim() || 'Unlabeled';
+
+  return {
+    title: eventTitle,
+    start: startDate,
+    end:   endDate,
+    extendedProps: {
+      product,
+      soldOut: soldOut === true
+    },
+    color: soldOut ? '#ccc' : '#3788d8',
+  };
+}
+
+let fcCalendar = null; // keep a global reference
+
+function renderCalendar(events) {
+  const calendarEl = document.getElementById('calendar');
+
+  // Destroy old instance if any
+  if (fcCalendar) {
+    fcCalendar.destroy();
+  }
+
+  fcCalendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,listWeek'
+    },
+    events: events,
+    eventClick: function(info) {
+      const { product, soldOut } = info.event.extendedProps;
+      if (soldOut) return; // do nothing
+
+      toggleCalendarItemInCart(product);
+      // (Optional) visually highlight the event if it’s in the cart
+      const inCart = isInCart(product);
+      info.event.setProp('color', inCart ? '#0e2f7b' : '#3788d8');
+    }
+  });
+
+  fcCalendar.render();
+}
+
+// A helper to see if a product is in cart
+function isInCart(product) {
+  return cartItems.some(item => 
+    item.sessionId === selectedSession.spreadsheetId &&
+    item.program === product.program
+  );
+}
+
+// Toggle a product in the cart
+function toggleCalendarItemInCart(product) {
+  const existingIdx = cartItems.findIndex(item =>
+    item.sessionId === selectedSession.spreadsheetId &&
+    item.program === product.program
+  );
+  if (existingIdx >= 0) {
+    // remove
+    cartItems.splice(existingIdx, 1);
+  } else {
+    // add
+    cartItems.push({
+      sessionId: selectedSession.spreadsheetId,
+      program:   product.program,
+      price:     product.price,
+      sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
     });
+  }
+  updateCartTable(); // or whichever method recalculates & redraws
+}
+
+
+    /************************************************************
+     * 8) FILTERS => PROGRESSIVE
+     ************************************************************/
+    function showFilterStep(step) {
+      // step=1 => show category
+      document.getElementById('filter-section').style.display = 'block';
+      if (step === 1) {
+        document.getElementById('category-filter-group').style.display = 'block';
+        document.getElementById('level-filter-group').style.display = 'none';
+        document.getElementById('daytime-filter-group').style.display = 'none';
+        document.getElementById('program-cards-container').style.display = 'none';
+      } else if (step === 2) {
+        document.getElementById('level-filter-group').style.display = 'block';
+        document.getElementById('daytime-filter-group').style.display = 'none';
+        document.getElementById('program-cards-container').style.display = 'none';
+      } else if (step === 3) {
+        document.getElementById('daytime-filter-group').style.display = 'block';
+        document.getElementById('program-cards-container').style.display = 'none';
+      } else if (step === 4) {
+        document.getElementById('program-cards-container').style.display = 'flex';
+      }
+    }
 
     function resetProductFilters() {
-      document.getElementById('category-filter').innerHTML = '<option value="">--All Categories--</option>';
-      document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
-      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
-      renderProductTable([]);
-    }
+      // Clear filters
+      selectedCategory = null;
+      selectedLevel = null;
+      selectedDayTime = null;
 
-    async function loadProductsForSession(sessionId) {
-      showMessage(`Loading products for sessionId: ${sessionId}`, 'debug');
-      try {
-        const url = `${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sessionId)}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-        showMessage(`getProgramList response: ${JSON.stringify(data)}`, 'debug');
-
-        if (!data.success) {
-          showMessage('Error loading products: ' + (data.error || ''), 'error');
-          return;
-        }
-        allProducts = data.products || [];
-
-        populateCategoryFilter(allProducts);
-        renderProductTable([]);
-      } catch (err) {
-        showMessage('loadProductsForSession error: ' + err.message, 'error');
-      }
-    }
-
-    function populateCategoryFilter(products) {
+      // Populate Category from allProducts
       const catSelect = document.getElementById('category-filter');
-      const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
       catSelect.innerHTML = '<option value="">--All Categories--</option>';
+
+      const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
       categories.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat;
         opt.textContent = cat;
         catSelect.appendChild(opt);
       });
+
+      // hide other steps
+      document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
+      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+
+      // show step=1
+      showFilterStep(1);
     }
 
+    // Category change => show step=2 => populate level
     document.getElementById('category-filter').addEventListener('change', () => {
-      const cat = document.getElementById('category-filter').value.trim();
-      let filtered = cat ? allProducts.filter(p => p.category === cat) : allProducts;
+      selectedCategory = document.getElementById('category-filter').value.trim();
+      let filtered = selectedCategory
+        ? allProducts.filter(p => p.category === selectedCategory)
+        : allProducts;
 
-      const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
+        // Hide/clear the program cards
+        document.getElementById('program-cards-container').innerHTML = '';
+        document.getElementById('program-cards-container').style.display = 'none';
+
+      // populate level
       const levelSelect = document.getElementById('level-filter');
       levelSelect.innerHTML = '<option value="">--All Levels--</option>';
+      const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
       levels.forEach(lv => {
         const opt = document.createElement('option');
         opt.value = lv;
         opt.textContent = lv;
         levelSelect.appendChild(opt);
       });
-
-      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
-      renderProductTable([]);
+      showFilterStep(2);
     });
 
+    // Level change => step=3 => populate day/time
     document.getElementById('level-filter').addEventListener('change', () => {
-      const cat = document.getElementById('category-filter').value.trim();
-      const lvl = document.getElementById('level-filter').value.trim();
+      selectedLevel = document.getElementById('level-filter').value.trim();
+
+      const progContainer = document.getElementById('program-cards-container');
+        progContainer.innerHTML = '';
+        progContainer.style.display = 'none';
 
       let filtered = allProducts;
-      if (cat) filtered = filtered.filter(p => p.category === cat);
-      if (lvl) filtered = filtered.filter(p => p.level === lvl);
+      if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
+      if (selectedLevel)    filtered = filtered.filter(p => p.level === selectedLevel);
 
-      const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
+      // populate day/time
       const dtSelect = document.getElementById('daytime-filter');
       dtSelect.innerHTML = '<option value="">--All Day/Times--</option>';
+      const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
       dayTimes.forEach(dt => {
         const opt = document.createElement('option');
         opt.value = dt;
         opt.textContent = dt;
         dtSelect.appendChild(opt);
       });
-      renderProductTable([]);
+      showFilterStep(3);
     });
 
+    // Day/Time => step=4 => show program cards
     document.getElementById('daytime-filter').addEventListener('change', () => {
-      const cat = document.getElementById('category-filter').value.trim();
-      const lvl = document.getElementById('level-filter').value.trim();
-      const dt  = document.getElementById('daytime-filter').value.trim();
+      selectedDayTime = document.getElementById('daytime-filter').value.trim();
+      renderProgramCards();
+      showFilterStep(4);
+    });
+
+    // [CHANGED] 9) Program Cards
+    function renderProgramCards() {
+      const container = document.getElementById('program-cards-container');
+      container.innerHTML = '';
 
       let filtered = allProducts;
-      if (cat) filtered = filtered.filter(p => p.category === cat);
-      if (lvl) filtered = filtered.filter(p => p.level === lvl);
-      if (dt)  filtered = filtered.filter(p => p.dayTime === dt);
+      if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
+      if (selectedLevel)    filtered = filtered.filter(p => p.level === selectedLevel);
+      if (selectedDayTime)  filtered = filtered.filter(p => p.dayTime === selectedDayTime);
 
-      renderProductTable(filtered);
-    });
-
-    function renderProductTable(products) {
-      const tbody = document.querySelector('#product-table tbody');
-      const productsSection = document.getElementById('products-section');
-      if (!tbody || !productsSection) return;
-
-      tbody.innerHTML = '';
-      if (!products || products.length === 0) {
-        productsSection.style.display = 'none';
+      if (!filtered.length) {
+        container.innerHTML = '<p>No programs match these filters.</p>';
         return;
       }
-      productsSection.style.display = 'block';
 
-      products.forEach(prod => {
-        const tr = document.createElement('tr');
+      filtered.forEach(prod => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'program-card';
 
-        let tdProgram = document.createElement('td');
-        if (prod.soldOut) {
-          tdProgram.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
-        } else {
-          tdProgram.textContent = prod.program;
+        // If it's in the cart, mark added
+        const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+        if (inCart) {
+          cardDiv.classList.add('added');
         }
-        tr.appendChild(tdProgram);
 
-        let tdPrice = document.createElement('td');
-        tdPrice.textContent = `$${prod.price}`;
-        tr.appendChild(tdPrice);
+        // Program name
+        const nameEl = document.createElement('div');
+        nameEl.className = 'program-name';
+        nameEl.textContent = prod.program;
 
-        let tdAction = document.createElement('td');
-        let btnAdd = document.createElement('button');
-        btnAdd.className = 'btn btn-sm btn-secondary';
-        btnAdd.textContent = 'Add';
+        // Price
+        const priceEl = document.createElement('div');
+        priceEl.className = 'program-price';
+        priceEl.textContent = `$${prod.price}`;
+
+        // Badges for category & level
+        const badgesEl = document.createElement('div');
+        badgesEl.className = 'badges';
+        // category badge
+        const catBadge = document.createElement('span');
+        catBadge.className = 'badge bg-primary me-2';
+        catBadge.textContent = prod.category || 'N/A';
+
+        // level badge
+        const levelBadge = document.createElement('span');
+        levelBadge.className = 'badge bg-info';
+        levelBadge.textContent = prod.level || 'N/A';
+
+        badgesEl.appendChild(catBadge);
+        badgesEl.appendChild(levelBadge);
+
+        // "Add" button
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-sm btn-success btn-add';
+        addBtn.textContent = 'Add';
         if (prod.soldOut) {
-          btnAdd.disabled = true;
-        } else {
-          btnAdd.onclick = () => addProductToCart(prod);
+          addBtn.disabled = true;
+          nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
         }
-        tdAction.appendChild(btnAdd);
-        tr.appendChild(tdAction);
+        addBtn.addEventListener('click', () => {
+          addProductToCart(prod);
+          cardDiv.classList.add('added');
+          updateProgramCardState(cardDiv, prod);
+        });
 
-        tbody.appendChild(tr);
+        // Already-added "Remove" state
+        const addedControls = document.createElement('div');
+        addedControls.className = 'added-controls';
+        addedControls.innerHTML = `
+          <span class="text-success"><strong>&check;</strong> Added</span>
+          <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
+        `;
+        // Remove button inside
+        const removeBtn = addedControls.querySelector('button');
+        removeBtn.addEventListener('click', () => {
+          removeProductFromCart(prod);
+          cardDiv.classList.remove('added');
+          updateProgramCardState(cardDiv, prod);
+        });
+
+        cardDiv.appendChild(nameEl);
+        cardDiv.appendChild(priceEl);
+        cardDiv.appendChild(badgesEl);
+        cardDiv.appendChild(addBtn);
+        cardDiv.appendChild(addedControls);
+
+        container.appendChild(cardDiv);
       });
     }
 
+    function updateProgramCardState(cardDiv, prod) {
+      // Check if item is in cart
+      const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+      if (inCart) {
+        cardDiv.classList.add('added');
+      } else {
+        cardDiv.classList.remove('added');
+      }
+    }
+
     /************************************************************
-     * 9) CART LOGIC + Payment Before Registration
+     * 9) CART LOGIC
      ************************************************************/
     function addProductToCart(product) {
-      const sessionDropdown = document.getElementById('session-dropdown');
-      const sessionLabel = sessionDropdown.options[sessionDropdown.selectedIndex].text;
-      const sessionId = sessionDropdown.value;
+      // We rely on selectedSession, etc.
+      const sessionLabel = `${selectedSession.location} - ${selectedSession.season} (${selectedSession.date})`;
+      const sessionId = selectedSession.spreadsheetId;
+
+      // Check if it's already in cart (should not be, but just in case)
+      const existing = cartItems.find(ci => ci.program === product.program && ci.sessionId === sessionId);
+      if (existing) return;
 
       cartItems.push({
         sessionId,
@@ -920,10 +1336,18 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       updateCartTable();
     }
 
+    function removeProductFromCart(product) {
+      const sessionId = selectedSession.spreadsheetId;
+      const idx = cartItems.findIndex(ci => ci.program === product.program && ci.sessionId === sessionId);
+      if (idx > -1) {
+        cartItems.splice(idx, 1);
+      }
+      updateCartTable();
+    }
+
     function updateCartTable() {
       const tbody = document.querySelector('#cart-table tbody');
       const cartSection = document.getElementById('cart-section');
-
       const amountDueLine = document.getElementById('amount-due-line');
       const breakdownLine = document.getElementById('breakdown-line');
 
@@ -934,6 +1358,9 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         cartSection.style.display = 'none';
         amountDueLine.textContent = '';
         breakdownLine.textContent = '';
+        updateCartSummaryPill();
+        // Also update any "added" states in program cards
+        renderProgramCards();
         return;
       }
       cartSection.style.display = 'block';
@@ -967,16 +1394,31 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       const totalCents = calculateCartTotalCents();
       const programTotal = totalCents / 100;
 
-      // Subtract credit from total
+      // Subtract credit
       const credit = currentPlayer?.credit || 0;
       let creditUsed = (credit >= programTotal) ? programTotal : credit;
       let amountDue  = programTotal - creditUsed;
 
-      // Show "Amount Due: $xx.xx"
       amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
-
-      // Show smaller line: "Program Total: $X.xx | Credit Balance: $Y.xx"
       breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
+
+      // update pill
+      updateCartSummaryPill();
+      // refresh program card states
+      renderProgramCards();
+    }
+
+    function updateCartSummaryPill() {
+      const pill = document.getElementById('cart-summary-pill');
+      const totalCents = calculateCartTotalCents();
+      const total = (totalCents / 100).toFixed(2);
+
+      if (cartItems.length === 0) {
+        pill.style.display = 'none';
+        return;
+      }
+      pill.style.display = 'block';
+      pill.textContent = `${cartItems.length} item(s) - $${total}`;
     }
 
     function calculateCartTotalCents() {
@@ -984,9 +1426,10 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       cartItems.forEach(item => {
         total += (item.price || 0);
       });
-      return total * 100; // convert to cents
+      return total * 100;
     }
 
+    // The old single-button approach was replaced. But we keep "chargeCart" for stored card usage.
     async function chargeCart(email, amountInCents) {
       showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
       if (amountInCents <= 0) {
@@ -1014,7 +1457,11 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       }
     }
 
-    document.getElementById('submit-cart-button').addEventListener('click', async () => {
+    /************************************************************
+     * Payment Buttons
+     ************************************************************/
+    // 1) Charge Card on File
+    document.getElementById('btn-charge-on-file').addEventListener('click', async () => {
       if (cartItems.length === 0) {
         showMessage('Cart is empty.', 'error');
         return;
@@ -1022,19 +1469,13 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       showPaymentSuccess(false);
       showPaymentSpinner(true);
 
-      // 1) Sum cart
-      const totalCents = calculateCartTotalCents(); 
+      const totalCents = calculateCartTotalCents();
       const programTotal = totalCents / 100;
-
-      // 2) Auto-apply credit
       const credit = currentPlayer?.credit || 0;
-      let creditUsed = (credit >= programTotal) ? programTotal : credit; 
+      let creditUsed = (credit >= programTotal) ? programTotal : credit;
       let amountDue  = programTotal - creditUsed;
       let amountDueCents = Math.round(amountDue * 100);
 
-      showMessage(`Cart total: $${programTotal.toFixed(2)}, creditUsed: $${creditUsed.toFixed(2)}, amountDueCents=${amountDueCents}`, 'debug');
-
-      // 3) If amountDue>0 => charge
       const email = currentPlayer.email;
       const success = await chargeCart(email, amountDueCents);
       if (!success) {
@@ -1043,22 +1484,17 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         return;
       }
 
-      // 4) Payment success => register
+      // register
       showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
       await submitCartToSpreadsheet(creditUsed);
       showMessage('Successfully registered after payment!', 'success');
-
-      // Clear cart
       cartItems = [];
       updateCartTable();
-
       showPaymentSpinner(false);
       showPaymentSuccess(true);
 
-      // If creditUsed>0 => show leftover in success msg
       const leftoverCredit = Math.max(0, (currentPlayer?.credit || 0) - creditUsed);
       if (creditUsed > 0) {
-        // Append extra line
         const paySuccessBox = document.getElementById('payment-success');
         if (paySuccessBox) {
           paySuccessBox.innerHTML = `
@@ -1068,6 +1504,107 @@ document.getElementById('verification-form').addEventListener('submit', async (e
         }
       }
     });
+
+    // 2) One-Time Payment
+    document.getElementById('btn-credit-debit').addEventListener('click', () => {
+      if (cartItems.length === 0) {
+        alert('Cart is empty.');
+        return;
+      }
+      const modalEl = new bootstrap.Modal(document.getElementById('oneTimePaymentModal'));
+      modalEl.show();
+    });
+
+    // One-Time Payment form
+    document.getElementById('one-time-payment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('otpf-card-errors').textContent = '';
+
+      const nameOnCard = document.getElementById('otpf-name').value.trim();
+      if (!nameOnCard) {
+        document.getElementById('otpf-card-errors').textContent = 'Name is required.';
+        return;
+      }
+
+      // Create PaymentMethod
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: oneTimeCard,
+        billing_details: {
+          name: nameOnCard,
+          email: currentPlayer?.email || ''
+        }
+      });
+      if (error) {
+        document.getElementById('otpf-card-errors').textContent = error.message;
+        return;
+      }
+      showPaymentSpinner(true);
+
+      // Calc total
+      const totalCents   = calculateCartTotalCents();
+      const programTotal = totalCents / 100;
+      const credit       = currentPlayer?.credit || 0;
+      let creditUsed     = (credit >= programTotal) ? programTotal : credit; 
+      let amountDue      = programTotal - creditUsed;
+      let amountDueCents = Math.round(amountDue * 100);
+
+      if (amountDueCents <= 0) {
+        await registerAndCleanup(creditUsed);
+        return;
+      }
+
+      // Call one-time function
+      const payload = {
+        amount: amountDueCents,
+        paymentMethodId: paymentMethod.id
+      };
+      let clientSecret;
+      try {
+        const resp = await fetch('https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTime', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to create PaymentIntent.');
+        }
+        clientSecret = data.clientSecret;
+      } catch (err) {
+        showPaymentSpinner(false);
+        document.getElementById('otpf-card-errors').textContent = err.message;
+        return;
+      }
+
+      try {
+        const confirmResult = await stripe.confirmCardPayment(clientSecret);
+        if (confirmResult.error) {
+          showPaymentSpinner(false);
+          document.getElementById('otpf-card-errors').textContent = confirmResult.error.message;
+          return;
+        }
+        if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
+          await registerAndCleanup(creditUsed);
+        } else {
+          showPaymentSpinner(false);
+          document.getElementById('otpf-card-errors').textContent = 'Payment not completed.';
+        }
+      } catch (err) {
+        showPaymentSpinner(false);
+        document.getElementById('otpf-card-errors').textContent = err.message;
+      }
+    });
+
+    async function registerAndCleanup(creditUsed) {
+      await submitCartToSpreadsheet(creditUsed);
+      cartItems = [];
+      updateCartTable();
+      showPaymentSpinner(false);
+      showPaymentSuccess(true);
+      const modalEl = bootstrap.Modal.getInstance(document.getElementById('oneTimePaymentModal'));
+      modalEl.hide();
+    }
 
     async function submitCartToSpreadsheet(creditUsed) {
       const payload = {
@@ -1127,7 +1664,7 @@ document.getElementById('verification-form').addEventListener('submit', async (e
           showMessage('Error loading registrations: ' + (data.error || ''), 'error');
           return;
         }
-        renderUpcomingRegistrations(data.upcoming || []);
+        renderFullCalendar(data.upcoming || []);
       } catch (err) {
         showMessage('Load registrations error: ' + err.message, 'error');
       } finally {
@@ -1135,57 +1672,194 @@ document.getElementById('verification-form').addEventListener('submit', async (e
       }
     }
 
-    function renderUpcomingRegistrations(sessionsArray) {
-      const container = document.getElementById('accordion-upcoming');
-      container.innerHTML = '';
-      sessionsArray.forEach((sessionObj, i) => {
-        const { location, season, programs } = sessionObj;
-        const itemId = `accordion-upcoming-item-${i}`;
-        const itemHtml = `
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="${itemId}-heading">
-              <button class="accordion-button collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#${itemId}-collapse"
-                aria-expanded="false" aria-controls="${itemId}-collapse">
-                ${location} - ${season}
-              </button>
-            </h2>
-            <div id="${itemId}-collapse" class="accordion-collapse collapse"
-              aria-labelledby="${itemId}-heading" data-bs-parent="#accordion-upcoming">
-              <div class="accordion-body">
-                <ul class="mb-0">
-                  ${programs.map(p => `<li>${p}</li>`).join('')}
-                </ul>
-              </div>
-            </div>
-          </div>
-        `;
-        container.insertAdjacentHTML('beforeend', itemHtml);
+    function renderFullCalendar(sessionsArray) {
+      const events = [];
+      sessionsArray.forEach(sessionObj => {
+        sessionObj.programs.forEach(programStr => {
+          const parsedEvents = parseProgramString(programStr, sessionObj);
+          if (Array.isArray(parsedEvents)) {
+            events.push(...parsedEvents);
+          }
+        });
       });
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,listWeek'
+        },
+        events: events,
+      });
+      calendar.render();
+    }
 
-      if (sessionsArray.length === 0) {
-        container.innerHTML = '<p class="text-muted">No upcoming registrations found.</p>';
+    function parseProgramString(programStr, sessionObj) {
+      const fallbackYear = new Date().getFullYear();
+      if (programStr.includes(';')) {
+        // e.g. (12/2 - 1/6; 1:00pm - 2:00pm)
+        const dayMatch = programStr.match(/\b(Monday|Mondays|Tuesday|Tuesdays|Wednesday|Wednesdays|Thursday|Thursdays|Friday|Fridays|Saturday|Saturdays|Sunday|Sundays)\b/i);
+        let dayName = 'Monday';
+        if (dayMatch) {
+          dayName = dayMatch[1];
+        }
+        const dayOfWeek = mapDayNameToNumber(dayName);
+
+        const parenMatch = programStr.match(/\(([^)]+)\)/);
+        if (!parenMatch) return [];
+        const inside = parenMatch[1].trim(); 
+        const [datesPart, timesPart] = inside.split(';').map(s => s.trim());
+        const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
+        const startDate = parseMMDD(startDateStr, fallbackYear);
+        const endDate   = parseMMDD(endDateStr, fallbackYear);
+
+        const [startTimeStr, endTimeStr] = timesPart.split('-').map(s => s.trim());
+        const startTime = parseTime(startTimeStr);
+        const endTime   = parseTime(endTimeStr);
+
+        return createWeeklyEventsInRange({
+          title: formatEventTitleWithCategory(programStr),
+          dayOfWeek,
+          startDate,
+          endDate,
+          startTime,
+          endTime
+        });
+      } else {
+        // e.g. "Monday 1/6 | 1:00pm - 2:00pm (2.0 - 3.0)"
+        const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|\s*([\d:apm\s]+-\s*[\d:apm\s]+)/);
+        if (!match) return [];
+        const dateStr   = match[1];
+        const timesStr  = match[2];
+        const singleDate = parseMMDD(dateStr, fallbackYear);
+        const [startTimeStr, endTimeStr] = timesStr.split('-').map(s => s.trim());
+        const startTime = parseTime(startTimeStr);
+        const endTime   = parseTime(endTimeStr);
+
+        const startDateTime = combineDateTime(singleDate, startTime);
+        const endDateTime   = combineDateTime(singleDate, endTime);
+
+        return [{
+          title: formatEventTitleWithCategory(programStr),
+          start: startDateTime.toISOString(),
+          end: endDateTime.toISOString()
+        }];
       }
+    }
+
+    function formatEventTitleWithCategory(rawString) {
+      const matchParen = rawString.match(/\s*\(([^)]+)\)$/);
+      if (!matchParen) {
+        return rawString;
+      }
+      const locationName = matchParen[1].trim();  
+      const trimmedProgram = rawString.replace(/\s*\([^)]*\)$/, '');
+      const sessionObj = allSessions.find(s => {
+        return s.location && s.location.includes(locationName);
+      });
+      if (!sessionObj) {
+        return rawString;
+      }
+      const product = sessionObj.products.find(p => p.program === trimmedProgram);
+      if (!product) {
+        return rawString;
+      }
+      const cat = product.category || 'Unknown Category';
+      const lvl = product.level || 'Unknown Level';
+      return `${cat} ${lvl} (${locationName})`;
+    }
+
+    function mapDayNameToNumber(dayName) {
+      const dn = dayName.toLowerCase();
+      if (dn.startsWith('sun')) return 0;
+      if (dn.startsWith('mon')) return 1;
+      if (dn.startsWith('tue')) return 2;
+      if (dn.startsWith('wed')) return 3;
+      if (dn.startsWith('thu')) return 4;
+      if (dn.startsWith('fri')) return 5;
+      if (dn.startsWith('sat')) return 6;
+      return 1;
+    }
+
+    function createWeeklyEventsInRange({ title, dayOfWeek, startDate, endDate, startTime, endTime }) {
+      const events = [];
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        if (current.getDay() === dayOfWeek) {
+          const startDateTime = combineDateTime(current, startTime);
+          const endDateTime   = combineDateTime(current, endTime);
+          events.push({
+            title,
+            start: startDateTime.toISOString(),
+            end:   endDateTime.toISOString()
+          });
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      return events;
+    }
+
+    function parseMMDD(mmdd, year) {
+      const [m, d] = mmdd.split('/').map(Number);
+      return new Date(year, m - 1, d);
+    }
+
+    function parseTime(timestr) {
+      timestr = timestr.toLowerCase().replace(/\s+/g, '');
+      const ampm = timestr.endsWith('am') ? 'am' : 'pm';
+      timestr = timestr.replace(/am|pm/, '');
+
+      const [hh, mm] = timestr.split(':').map(Number);
+      let hour = hh;
+      let minute = mm || 0;
+
+      if (ampm === 'pm' && hour < 12) hour += 12;
+      if (ampm === 'am' && hour === 12) hour = 0;
+
+      return { hour, minute };
+    }
+
+    function combineDateTime(dateObj, timeObj) {
+      return new Date(
+        dateObj.getFullYear(),
+        dateObj.getMonth(),
+        dateObj.getDate(),
+        timeObj.hour,
+        timeObj.minute,
+        0
+      );
     }
 
     /************************************************************
      * 11) PROFILE & LOGOUT
      ************************************************************/
     function setProfileData(player) {
-      showMessage(`Setting profile data: ${JSON.stringify(player)}`, 'debug');
       document.getElementById('profile-first-name').textContent = player.firstName || '';
       document.getElementById('profile-last-name').textContent = player.lastName || '';
       document.getElementById('profile-phone').textContent = player.phoneNumber || '';
       document.getElementById('profile-email').textContent = player.email || '';
 
-      const cardSpan = document.getElementById('profile-card-last4');
-      if (cardSpan) {
-        if (player.cardLast4) {
-          cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
-        } else {
-          cardSpan.textContent = 'No card on file';
-        }
+      const cardSpan   = document.getElementById('profile-card-last4');
+      const cardButton = document.getElementById('profile-card-button');
+
+      if (player.cardLast4) {
+        cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
+        cardButton.style.display = 'inline-block';
+        cardButton.textContent   = 'Update Card';
+        cardButton.onclick = () => {
+          window.open('https://billing.stripe.com/p/login/9AQ9Dc83k8pg6QM7ss', '_blank');
+        };
+      } else {
+        cardSpan.textContent = 'No card on file';
+        cardButton.style.display = 'inline-block';
+        cardButton.textContent   = 'Add Card';
+        cardButton.onclick = () => {
+          const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+          modalEl.show();
+        };
       }
+
       updateCreditDisplay();
     }
 
