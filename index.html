@@ -391,16 +391,18 @@
           <div id="filter-section">
             <!-- We still use the same 3 filters, but they appear one at a time. -->
 
-            <!-- Calendar Container (initially hidden) -->
-<div id="calendar-container" style="display: none;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h6>Calendar View</h6>
-      <button type="button" id="hide-calendar-btn" class="btn btn-sm btn-secondary">
-        Hide Calendar
-      </button>
-    </div>
+            <!-- [ADDED] Toggle Calendar/List Button & List-View Container (initially hidden) -->
+<div class="d-flex justify-content-end mb-3" id="toggle-view-container" style="display: none;">
+    <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm">Toggle Calendar View</button>
+  </div>
   
-    <div id="calendar"></div>
+  <!-- [ADDED] List View Container (7-day list) -->
+  <div id="list-view-container" style="display: none;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <button id="btn-list-prev" class="btn btn-sm btn-secondary">&laquo; Previous 7 Days</button>
+      <button id="btn-list-next" class="btn btn-sm btn-secondary">Next 7 Days &raquo;</button>
+    </div>
+    <div id="program-list-content"></div>
   </div>
   
             
@@ -431,8 +433,6 @@
 
           <!-- [CHANGED] 3) Program Cards Container -->
           <div id="program-cards-container" class="d-flex"></div>
-
-          
 
           <!-- The old cart-section is still in code, but hidden. We'll keep the logic for payment. -->
           <hr/>
@@ -593,6 +593,12 @@
 
     // We'll keep a global array of "allProducts" for the chosen session
     let allProducts = [];
+
+    // [ADDED] Globals for the new “Toggle Calendar View” / 7-day listing
+    let isListView = false;          // Tracks if we are currently in "list view"
+    let listViewStartDate = null;    // Start date for the current 7-day range
+    let minProgramDate = null;       // Earliest date in the selected session's programs
+    let maxProgramDate = null;       // Latest date in the selected session's programs
 
     /************************************************************
      * 2) ON PAGE LOAD
@@ -883,7 +889,6 @@
       };
     }
 
-    // [CHANGED] Build session cards
     function displaySessionCards(sessions) {
       const container = document.getElementById('session-cards');
       container.innerHTML = '';
@@ -913,14 +918,18 @@
           // set as current session
           selectedSession = sessionObj;
           const progContainer = document.getElementById('program-cards-container');
-            progContainer.innerHTML = '';
-            progContainer.style.display = 'none';
+          progContainer.innerHTML = '';
+          progContainer.style.display = 'none';
           // show filters
           showFilterStep(1); 
           // populate category filter
           allProducts = sessionObj.products || [];
-          resetProductFilters(); 
-          showCalendarToggleButton();
+          resetProductFilters();
+
+          // [ADDED] Show the toggle button & prepare list view data
+          showToggleCalendarButton(true);
+          prepareListViewDates(sessionObj);
+
           showMessage(`Selected session: ${label}`, 'debug');
         });
 
@@ -930,185 +939,6 @@
         container.appendChild(cardDiv);
       });
     }
-
-    function showCalendarToggleButton() {
-  // Suppose you place a small button near the top of #register-container
-  // or inside #filter-section. Up to you:
-  const filterSection = document.getElementById('filter-section');
-  
-  // Avoid duplicates
-  if (document.getElementById('btn-show-calendar')) return;
-
-  const btn = document.createElement('button');
-  btn.id = 'btn-show-calendar';
-  btn.className = 'btn btn-outline-primary btn-sm mb-2';
-  btn.textContent = 'Show Calendar';
-  btn.addEventListener('click', () => {
-    // Hide normal product filters except session-cards
-    document.getElementById('level-filter-group').style.display = 'none';
-    document.getElementById('daytime-filter-group').style.display = 'none';
-    document.getElementById('program-cards-container').style.display = 'none';
-
-    // Show the calendar container
-    document.getElementById('calendar-container').style.display = 'block';
-
-    // Build the calendar events
-    buildCalendarEvents();
-  });
-
-  filterSection.appendChild(btn);
-}
-
-document.getElementById('hide-calendar-btn').addEventListener('click', () => {
-  document.getElementById('calendar-container').style.display = 'none';
-  
-  // Show the normal filter UI again
-  document.getElementById('level-filter-group').style.display = 'block';
-  document.getElementById('daytime-filter-group').style.display = 'block';
-  document.getElementById('program-cards-container').style.display = 'flex';
-});
-
-function buildCalendarEvents() {
-  // A. Get the list of programs from the selected session
-  const programs = selectedSession ? selectedSession.products : [];
-  
-  // B. Filter out "Package" items
-  const filtered = programs.filter(p => {
-    // If "Package" is in p.program, skip
-    return !p.program.toLowerCase().includes('package');
-  });
-
-  // C. Convert each program -> FullCalendar event
-  const events = [];
-  filtered.forEach(product => {
-    const eventObj = parseProgramToEvent(product);
-    if (eventObj) {
-      events.push(eventObj);
-    }
-  });
-
-  // D. Render FullCalendar
-  renderCalendar(events);
-}
-
-function parseProgramToEvent(product) {
-  // The product object has .program, .category, .level, .price, etc.
-  // Example: product.program = "Monday 12/23 | 7:00pm - 8:00pm (2.0 - 3.0)"
-
-  const { program, category, level, soldOut } = product;
-  
-  // 1) Skip if no " | " found
-  if (!program.includes('|')) return null;
-
-  // 2) Parse the date portion
-  // e.g. "Monday 12/23" => we want "12/23"
-  const datePartMatch = program.match(/\b(\d{1,2}\/\d{1,2})\b/);
-  if (!datePartMatch) return null;
-  const mmdd = datePartMatch[1]; // e.g. "12/23"
-  const [m, d] = mmdd.split('/').map(Number);
-
-  // 3) Parse the time range => "7:00pm - 8:00pm"
-  const timeRangeMatch = program.match(/(\d{1,2}:\d{2}[ap]m)\s*-\s*(\d{1,2}:\d{2}[ap]m)/i);
-  if (!timeRangeMatch) return null;
-  const startTimeStr = timeRangeMatch[1];
-  const endTimeStr   = timeRangeMatch[2];
-
-  // Convert to 24hr
-  function to24Hr(tstr) {
-    // e.g. "7:00pm"
-    const ampm = tstr.toLowerCase().includes('pm') ? 'pm' : 'am';
-    let [hh, mmPart] = tstr.replace(/am|pm/i, '').split(':');
-    let hour = parseInt(hh, 10);
-    let minute = parseInt(mmPart, 10) || 0;
-    if (ampm === 'pm' && hour < 12) hour += 12;
-    if (ampm === 'am' && hour === 12) hour = 0;
-    return { hour, minute };
-  }
-
-  const sTime = to24Hr(startTimeStr);
-  const eTime = to24Hr(endTimeStr);
-
-  const currentYear = new Date().getFullYear(); // or a session-specific year if needed
-  const startDate = new Date(currentYear, m - 1, d, sTime.hour, sTime.minute);
-  const endDate   = new Date(currentYear, m - 1, d, eTime.hour, eTime.minute);
-
-  // 4) The calendar event title is "Category Level"
-  // If either is missing, handle gracefully
-  const eventTitle = `${category || ''} ${level || ''}`.trim() || 'Unlabeled';
-
-  return {
-    title: eventTitle,
-    start: startDate,
-    end:   endDate,
-    extendedProps: {
-      product,
-      soldOut: soldOut === true
-    },
-    color: soldOut ? '#ccc' : '#3788d8',
-  };
-}
-
-let fcCalendar = null; // keep a global reference
-
-function renderCalendar(events) {
-  const calendarEl = document.getElementById('calendar');
-
-  // Destroy old instance if any
-  if (fcCalendar) {
-    fcCalendar.destroy();
-  }
-
-  fcCalendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,listWeek'
-    },
-    events: events,
-    eventClick: function(info) {
-      const { product, soldOut } = info.event.extendedProps;
-      if (soldOut) return; // do nothing
-
-      toggleCalendarItemInCart(product);
-      // (Optional) visually highlight the event if it’s in the cart
-      const inCart = isInCart(product);
-      info.event.setProp('color', inCart ? '#0e2f7b' : '#3788d8');
-    }
-  });
-
-  fcCalendar.render();
-}
-
-// A helper to see if a product is in cart
-function isInCart(product) {
-  return cartItems.some(item => 
-    item.sessionId === selectedSession.spreadsheetId &&
-    item.program === product.program
-  );
-}
-
-// Toggle a product in the cart
-function toggleCalendarItemInCart(product) {
-  const existingIdx = cartItems.findIndex(item =>
-    item.sessionId === selectedSession.spreadsheetId &&
-    item.program === product.program
-  );
-  if (existingIdx >= 0) {
-    // remove
-    cartItems.splice(existingIdx, 1);
-  } else {
-    // add
-    cartItems.push({
-      sessionId: selectedSession.spreadsheetId,
-      program:   product.program,
-      price:     product.price,
-      sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
-    });
-  }
-  updateCartTable(); // or whichever method recalculates & redraws
-}
-
 
     /************************************************************
      * 8) FILTERS => PROGRESSIVE
@@ -1159,16 +989,15 @@ function toggleCalendarItemInCart(product) {
       showFilterStep(1);
     }
 
-    // Category change => show step=2 => populate level
     document.getElementById('category-filter').addEventListener('change', () => {
       selectedCategory = document.getElementById('category-filter').value.trim();
       let filtered = selectedCategory
         ? allProducts.filter(p => p.category === selectedCategory)
         : allProducts;
 
-        // Hide/clear the program cards
-        document.getElementById('program-cards-container').innerHTML = '';
-        document.getElementById('program-cards-container').style.display = 'none';
+      // Hide/clear the program cards
+      document.getElementById('program-cards-container').innerHTML = '';
+      document.getElementById('program-cards-container').style.display = 'none';
 
       // populate level
       const levelSelect = document.getElementById('level-filter');
@@ -1183,13 +1012,12 @@ function toggleCalendarItemInCart(product) {
       showFilterStep(2);
     });
 
-    // Level change => step=3 => populate day/time
     document.getElementById('level-filter').addEventListener('change', () => {
       selectedLevel = document.getElementById('level-filter').value.trim();
 
       const progContainer = document.getElementById('program-cards-container');
-        progContainer.innerHTML = '';
-        progContainer.style.display = 'none';
+      progContainer.innerHTML = '';
+      progContainer.style.display = 'none';
 
       let filtered = allProducts;
       if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
@@ -1208,7 +1036,6 @@ function toggleCalendarItemInCart(product) {
       showFilterStep(3);
     });
 
-    // Day/Time => step=4 => show program cards
     document.getElementById('daytime-filter').addEventListener('change', () => {
       selectedDayTime = document.getElementById('daytime-filter').value.trim();
       renderProgramCards();
@@ -1323,7 +1150,7 @@ function toggleCalendarItemInCart(product) {
       const sessionLabel = `${selectedSession.location} - ${selectedSession.season} (${selectedSession.date})`;
       const sessionId = selectedSession.spreadsheetId;
 
-      // Check if it's already in cart (should not be, but just in case)
+      // Check if it's already in cart
       const existing = cartItems.find(ci => ci.program === product.program && ci.sessionId === sessionId);
       if (existing) return;
 
@@ -1429,7 +1256,6 @@ function toggleCalendarItemInCart(product) {
       return total * 100;
     }
 
-    // The old single-button approach was replaced. But we keep "chargeCart" for stored card usage.
     async function chargeCart(email, amountInCents) {
       showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
       if (amountInCents <= 0) {
@@ -1460,7 +1286,6 @@ function toggleCalendarItemInCart(product) {
     /************************************************************
      * Payment Buttons
      ************************************************************/
-    // 1) Charge Card on File
     document.getElementById('btn-charge-on-file').addEventListener('click', async () => {
       if (cartItems.length === 0) {
         showMessage('Cart is empty.', 'error');
@@ -1505,7 +1330,6 @@ function toggleCalendarItemInCart(product) {
       }
     });
 
-    // 2) One-Time Payment
     document.getElementById('btn-credit-debit').addEventListener('click', () => {
       if (cartItems.length === 0) {
         alert('Cart is empty.');
@@ -1515,7 +1339,6 @@ function toggleCalendarItemInCart(product) {
       modalEl.show();
     });
 
-    // One-Time Payment form
     document.getElementById('one-time-payment-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       document.getElementById('otpf-card-errors').textContent = '';
@@ -1541,7 +1364,6 @@ function toggleCalendarItemInCart(product) {
       }
       showPaymentSpinner(true);
 
-      // Calc total
       const totalCents   = calculateCartTotalCents();
       const programTotal = totalCents / 100;
       const credit       = currentPlayer?.credit || 0;
@@ -1892,6 +1714,237 @@ function toggleCalendarItemInCart(product) {
       console.log(`[${type.toUpperCase()}] ${msg}`);
       // Optionally display a toast or alert in the UI
     }
-  </script>
+
+    /************************************************************
+     * [ADDED] TOGGLE CALENDAR VIEW & 7-DAY LIST
+     ************************************************************/
+
+    // Show/hide the "Toggle Calendar View" button after session is chosen
+    function showToggleCalendarButton(shouldShow) {
+      const toggleViewContainer = document.getElementById('toggle-view-container');
+      if (!toggleViewContainer) return;
+      toggleViewContainer.style.display = shouldShow ? 'block' : 'none';
+    }
+
+    // Toggle button click => switch between filter-based view and list-based view
+    document.getElementById('btn-toggle-calendar-view').addEventListener('click', () => {
+      isListView = !isListView;
+      updateRegisterViewMode();
+    });
+
+    // Switch between "filter view" vs. "7-day list" view
+    function updateRegisterViewMode() {
+      const filterSection = document.getElementById('filter-section');
+      const programCardsContainer = document.getElementById('program-cards-container');
+      const listViewContainer = document.getElementById('list-view-container');
+
+      if (isListView) {
+        // Hide filter approach
+        filterSection.style.display = 'none';
+        programCardsContainer.style.display = 'none';
+        // Show 7-day list
+        listViewContainer.style.display = 'block';
+        // Render or refresh the list
+        renderProgramListForRange();
+      } else {
+        // Show original filter approach
+        filterSection.style.display = 'block';
+        if (selectedDayTime) {
+          programCardsContainer.style.display = 'flex';
+        }
+        // Hide the 7-day list
+        listViewContainer.style.display = 'none';
+      }
+    }
+
+    // Prepare earliest & latest date for the session (ignoring "Package")
+    function prepareListViewDates(sessionObj) {
+      const validDates = [];
+      const today = startOfDay(new Date());
+      (sessionObj.products || []).forEach(prod => {
+        if (!prod.program || prod.program.toLowerCase().includes('package')) return;
+        const dt = parseProgramDate(prod.program);
+        if (dt) validDates.push(dt);
+      });
+      if (!validDates.length) {
+        minProgramDate = today;
+        maxProgramDate = today;
+        listViewStartDate = today;
+        return;
+      }
+      validDates.sort((a, b) => a - b);
+      minProgramDate = startOfDay(validDates[0]);
+      maxProgramDate = startOfDay(validDates[validDates.length - 1]);
+      // Start date is the later of minProgramDate or today
+      listViewStartDate = minProgramDate < today ? today : minProgramDate;
+    }
+
+    // Helper: zero-out time
+    function startOfDay(d) {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    // parse "Monday 12/23 | 7:00pm - 8:00pm (2.0 - 3.0)" => returns just the Date portion
+    function parseProgramDate(programStr) {
+      if (!programStr.includes('|')) return null;
+      // left side: "Monday 12/23"
+      const leftSide = programStr.split('|')[0].trim(); // e.g. "Monday 12/23"
+      const parts = leftSide.split(' ');
+      if (parts.length < 2) return null;
+      // The last chunk should be "12/23"
+      const mmdd = parts[parts.length - 1];
+      const [mm, dd] = mmdd.split('/').map(Number);
+      if (!mm || !dd) return null;
+
+      // Basic approach: assume current year
+      const now = new Date();
+      let yyyy = now.getFullYear();
+      const dateObj = new Date(yyyy, mm - 1, dd);
+
+      // If it's more than ~6 months in the past, bump to next year (optional)
+      if (dateObj.getTime() < now.getTime() - 15778476000) {
+        dateObj.setFullYear(yyyy + 1);
+      }
+      return startOfDay(dateObj);
+    }
+
+    // Render the 7-day list for [listViewStartDate .. +6 days]
+    function renderProgramListForRange() {
+      const container = document.getElementById('program-list-content');
+      if (!container || !selectedSession || !listViewStartDate) return;
+      container.innerHTML = '';
+
+      const rangeStart = startOfDay(listViewStartDate);
+      const rangeEnd   = new Date(rangeStart);
+      rangeEnd.setDate(rangeEnd.getDate() + 6); // 7-day window
+
+      // Filter session products that fall within this range, ignoring "Package"
+      let filtered = (selectedSession.products || []).filter(prod => {
+        if (!prod.program) return false;
+        if (prod.program.toLowerCase().includes('package')) return false;
+        const dt = parseProgramDate(prod.program);
+        if (!dt) return false;
+        return dt >= rangeStart && dt <= rangeEnd;
+      });
+
+      // Sort by date ascending
+      filtered.sort((a, b) => {
+        const dA = parseProgramDate(a.program);
+        const dB = parseProgramDate(b.program);
+        return dA - dB;
+      });
+
+      // Group by date => { '2025-01-03': [products], ... }
+      const groups = {};
+      filtered.forEach(prod => {
+        const dt = parseProgramDate(prod.program);
+        const dateKey = dt.toISOString().substr(0, 10);
+        if (!groups[dateKey]) groups[dateKey] = [];
+        groups[dateKey].push(prod);
+      });
+
+      if (!Object.keys(groups).length) {
+        container.innerHTML = `<p>No programs found in this 7-day window.</p>`;
+        return;
+      }
+
+      Object.keys(groups).sort().forEach(dateKey => {
+        const dt = new Date(dateKey + 'T00:00:00');
+        const dateLabel = dt.toLocaleDateString(undefined, {
+          weekday: 'long', month: 'short', day: 'numeric'
+        });
+
+        const dateHeader = document.createElement('h6');
+        dateHeader.textContent = dateLabel;
+        container.appendChild(dateHeader);
+
+        groups[dateKey].forEach(prod => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'mb-2 p-2 border rounded d-flex justify-content-between align-items-center';
+
+          // Left side => show the program string + badges
+          const leftDiv = document.createElement('div');
+
+          const nameEl = document.createElement('div');
+          nameEl.textContent = prod.program;
+          if (prod.soldOut) {
+            nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+          }
+          leftDiv.appendChild(nameEl);
+
+          const badgesDiv = document.createElement('div');
+          if (prod.category) {
+            const catBadge = document.createElement('span');
+            catBadge.className = 'badge bg-primary me-2';
+            catBadge.textContent = prod.category;
+            badgesDiv.appendChild(catBadge);
+          }
+          if (prod.level) {
+            const lvlBadge = document.createElement('span');
+            lvlBadge.className = 'badge bg-info';
+            lvlBadge.textContent = prod.level;
+            badgesDiv.appendChild(lvlBadge);
+          }
+          leftDiv.appendChild(badgesDiv);
+
+          itemDiv.appendChild(leftDiv);
+
+          // Right side => "Add"/"Remove" or "Sold Out"
+          const rightDiv = document.createElement('div');
+          if (prod.soldOut) {
+            rightDiv.textContent = 'Sold Out';
+          } else {
+            const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+            if (inCart) {
+              const removeBtn = document.createElement('button');
+              removeBtn.className = 'btn btn-sm btn-danger';
+              removeBtn.textContent = 'Remove';
+              removeBtn.onclick = () => {
+                removeProductFromCart(prod);
+                renderProgramListForRange();
+              };
+              rightDiv.appendChild(removeBtn);
+            } else {
+              const addBtn = document.createElement('button');
+              addBtn.className = 'btn btn-sm btn-success';
+              addBtn.textContent = 'Add';
+              addBtn.onclick = () => {
+                addProductToCart(prod);
+                renderProgramListForRange();
+              };
+              rightDiv.appendChild(addBtn);
+            }
+          }
+          itemDiv.appendChild(rightDiv);
+
+          container.appendChild(itemDiv);
+        });
+      });
+    }
+
+    // Buttons for prev/next 7-day window
+    document.getElementById('btn-list-prev').addEventListener('click', () => {
+      if (!listViewStartDate || !minProgramDate) return;
+      const newStart = new Date(listViewStartDate);
+      newStart.setDate(newStart.getDate() - 7);
+      if (newStart < minProgramDate) {
+        newStart.setTime(minProgramDate.getTime());
+      }
+      listViewStartDate = newStart;
+      renderProgramListForRange();
+    });
+
+    document.getElementById('btn-list-next').addEventListener('click', () => {
+      if (!listViewStartDate || !maxProgramDate) return;
+      const newStart = new Date(listViewStartDate);
+      newStart.setDate(newStart.getDate() + 7);
+      if (newStart > maxProgramDate) {
+        newStart.setTime(maxProgramDate.getTime());
+      }
+      listViewStartDate = newStart;
+      renderProgramListForRange();
+    });
+</script>
+
 </body>
 </html>
