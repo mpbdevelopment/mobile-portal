@@ -585,7 +585,7 @@
     let allSessions = [];   // holds full data for all sessions
     let cartItems = [];
 
-    // [CHANGED] We'll keep track of the currently selected session, category, level, dayTime
+    // We'll keep track of the currently selected session, category, level, dayTime
     let selectedSession = null;
     let selectedCategory = null;
     let selectedLevel = null;
@@ -914,21 +914,28 @@
         const selectBtn = document.createElement('button');
         selectBtn.className = 'btn btn-sm btn-primary';
         selectBtn.textContent = 'Select';
+        
+        // [MODIFIED] On selection, we handle both filter-mode or list-mode
         selectBtn.addEventListener('click', () => {
-          // set as current session
           selectedSession = sessionObj;
-          const progContainer = document.getElementById('program-cards-container');
-          progContainer.innerHTML = '';
-          progContainer.style.display = 'none';
-          // show filters
-          showFilterStep(1); 
-          // populate category filter
           allProducts = sessionObj.products || [];
+          // Always reset filters
           resetProductFilters();
 
-          // [ADDED] Show the toggle button & prepare list view data
+          // If we're in list view, rebuild the calendar list
+          if (isListView) {
+            showFilterStep(0); // effectively hide filter section
+            document.getElementById('program-cards-container').style.display = 'none';
+            // Prepare min/max date for this session
+            prepareListViewDates(sessionObj);
+            // Show the list container, rebuild
+            updateRegisterViewMode(); 
+          } else {
+            // Otherwise, show filter approach
+            showFilterStep(1);
+          }
+          // Show the toggle button for switching if desired
           showToggleCalendarButton(true);
-          prepareListViewDates(sessionObj);
 
           showMessage(`Selected session: ${label}`, 'debug');
         });
@@ -944,35 +951,56 @@
      * 8) FILTERS => PROGRESSIVE
      ************************************************************/
     function showFilterStep(step) {
-      // step=1 => show category
-      document.getElementById('filter-section').style.display = 'block';
+      const filterSection = document.getElementById('filter-section');
+      const catGroup      = document.getElementById('category-filter-group');
+      const lvlGroup      = document.getElementById('level-filter-group');
+      const dtGroup       = document.getElementById('daytime-filter-group');
+      const progContainer = document.getElementById('program-cards-container');
+
+      if (step === 0) {
+        // [MODIFIED] step=0 means hide all filter steps entirely
+        filterSection.style.display  = 'none';
+        catGroup.style.display       = 'none';
+        lvlGroup.style.display       = 'none';
+        dtGroup.style.display        = 'none';
+        progContainer.style.display  = 'none';
+        return;
+      }
+
+      filterSection.style.display = 'block';
       if (step === 1) {
-        document.getElementById('category-filter-group').style.display = 'block';
-        document.getElementById('level-filter-group').style.display = 'none';
-        document.getElementById('daytime-filter-group').style.display = 'none';
-        document.getElementById('program-cards-container').style.display = 'none';
+        catGroup.style.display      = 'block';
+        lvlGroup.style.display      = 'none';
+        dtGroup.style.display       = 'none';
+        progContainer.style.display = 'none';
       } else if (step === 2) {
-        document.getElementById('level-filter-group').style.display = 'block';
-        document.getElementById('daytime-filter-group').style.display = 'none';
-        document.getElementById('program-cards-container').style.display = 'none';
+        lvlGroup.style.display      = 'block';
+        dtGroup.style.display       = 'none';
+        progContainer.style.display = 'none';
       } else if (step === 3) {
-        document.getElementById('daytime-filter-group').style.display = 'block';
-        document.getElementById('program-cards-container').style.display = 'none';
+        dtGroup.style.display       = 'block';
+        progContainer.style.display = 'none';
       } else if (step === 4) {
-        document.getElementById('program-cards-container').style.display = 'flex';
+        // [MODIFIED] Only show program cards if day/time is selected
+        progContainer.style.display = 'flex';
       }
     }
 
     function resetProductFilters() {
-      // Clear filters
       selectedCategory = null;
-      selectedLevel = null;
-      selectedDayTime = null;
+      selectedLevel    = null;
+      selectedDayTime  = null;
 
-      // Populate Category from allProducts
       const catSelect = document.getElementById('category-filter');
       catSelect.innerHTML = '<option value="">--All Categories--</option>';
 
+      if (!allProducts.length) {
+        // No data => hide filter
+        showFilterStep(0);
+        return;
+      }
+
+      // Populate categories
       const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
       categories.forEach(cat => {
         const opt = document.createElement('option');
@@ -981,11 +1009,11 @@
         catSelect.appendChild(opt);
       });
 
-      // hide other steps
-      document.getElementById('level-filter').innerHTML = '<option value="">--All Levels--</option>';
-      document.getElementById('daytime-filter').innerHTML = '<option value="">--All Day/Times--</option>';
+      // Clear other filter selects
+      document.getElementById('level-filter').innerHTML    = '<option value="">--All Levels--</option>';
+      document.getElementById('daytime-filter').innerHTML  = '<option value="">--All Day/Times--</option>';
 
-      // show step=1
+      // By default, show filter step=1 (category)
       showFilterStep(1);
     }
 
@@ -995,11 +1023,9 @@
         ? allProducts.filter(p => p.category === selectedCategory)
         : allProducts;
 
-      // Hide/clear the program cards
       document.getElementById('program-cards-container').innerHTML = '';
       document.getElementById('program-cards-container').style.display = 'none';
 
-      // populate level
       const levelSelect = document.getElementById('level-filter');
       levelSelect.innerHTML = '<option value="">--All Levels--</option>';
       const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
@@ -1015,9 +1041,8 @@
     document.getElementById('level-filter').addEventListener('change', () => {
       selectedLevel = document.getElementById('level-filter').value.trim();
 
-      const progContainer = document.getElementById('program-cards-container');
-      progContainer.innerHTML = '';
-      progContainer.style.display = 'none';
+      document.getElementById('program-cards-container').innerHTML = '';
+      document.getElementById('program-cards-container').style.display = 'none';
 
       let filtered = allProducts;
       if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
@@ -1042,7 +1067,6 @@
       showFilterStep(4);
     });
 
-    // [CHANGED] 9) Program Cards
     function renderProgramCards() {
       const container = document.getElementById('program-cards-container');
       container.innerHTML = '';
@@ -1080,12 +1104,10 @@
         // Badges for category & level
         const badgesEl = document.createElement('div');
         badgesEl.className = 'badges';
-        // category badge
         const catBadge = document.createElement('span');
         catBadge.className = 'badge bg-primary me-2';
         catBadge.textContent = prod.category || 'N/A';
 
-        // level badge
         const levelBadge = document.createElement('span');
         levelBadge.className = 'badge bg-info';
         levelBadge.textContent = prod.level || 'N/A';
@@ -1114,7 +1136,6 @@
           <span class="text-success"><strong>&check;</strong> Added</span>
           <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
         `;
-        // Remove button inside
         const removeBtn = addedControls.querySelector('button');
         removeBtn.addEventListener('click', () => {
           removeProductFromCart(prod);
@@ -1133,7 +1154,6 @@
     }
 
     function updateProgramCardState(cardDiv, prod) {
-      // Check if item is in cart
       const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
       if (inCart) {
         cardDiv.classList.add('added');
@@ -1146,11 +1166,7 @@
      * 9) CART LOGIC
      ************************************************************/
     function addProductToCart(product) {
-      // We rely on selectedSession, etc.
-      const sessionLabel = `${selectedSession.location} - ${selectedSession.season} (${selectedSession.date})`;
       const sessionId = selectedSession.spreadsheetId;
-
-      // Check if it's already in cart
       const existing = cartItems.find(ci => ci.program === product.program && ci.sessionId === sessionId);
       if (existing) return;
 
@@ -1158,7 +1174,7 @@
         sessionId,
         program: product.program,
         price: product.price,
-        sessionLabel
+        sessionLabel: `${selectedSession.location} - ${selectedSession.season} (${selectedSession.date})`
       });
       updateCartTable();
     }
@@ -1194,7 +1210,6 @@
 
       cartItems.forEach((item, idx) => {
         const tr = document.createElement('tr');
-
         let tdProg = document.createElement('td');
         tdProg.textContent = item.program;
         tr.appendChild(tdProg);
@@ -1229,7 +1244,6 @@
       amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
       breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
 
-      // update pill
       updateCartSummaryPill();
       // refresh program card states
       renderProgramCards();
@@ -1715,8 +1729,9 @@
       // Optionally display a toast or alert in the UI
     }
 
+
     /************************************************************
-     * [ADDED] TOGGLE CALENDAR VIEW & 7-DAY LIST
+     * [MODIFIED] TOGGLE CALENDAR VIEW & 7-DAY LIST
      ************************************************************/
 
     // Show/hide the "Toggle Calendar View" button after session is chosen
@@ -1732,27 +1747,32 @@
       updateRegisterViewMode();
     });
 
-    // Switch between "filter view" vs. "7-day list" view
+    // [MODIFIED] updateRegisterViewMode() => show/hide filters or list
     function updateRegisterViewMode() {
-      const filterSection = document.getElementById('filter-section');
+      const filterSection         = document.getElementById('filter-section');
       const programCardsContainer = document.getElementById('program-cards-container');
-      const listViewContainer = document.getElementById('list-view-container');
+      const listViewContainer     = document.getElementById('list-view-container');
 
       if (isListView) {
-        // Hide filter approach
-        filterSection.style.display = 'none';
+        // Hide filters & program cards
+        showFilterStep(0);
         programCardsContainer.style.display = 'none';
-        // Show 7-day list
+        // Show list container
         listViewContainer.style.display = 'block';
-        // Render or refresh the list
-        renderProgramListForRange();
-      } else {
-        // Show original filter approach
-        filterSection.style.display = 'block';
-        if (selectedDayTime) {
-          programCardsContainer.style.display = 'flex';
+        // If we have a selected session, rebuild the list
+        if (selectedSession) {
+          renderProgramListForRange();
         }
-        // Hide the 7-day list
+      } else {
+        // Show filters normally (if session is chosen)
+        if (selectedSession) {
+          // If day/time is chosen, show product cards
+          if (selectedDayTime) {
+            showFilterStep(4);
+          } else {
+            showFilterStep(1);
+          }
+        }
         listViewContainer.style.display = 'none';
       }
     }
@@ -1787,16 +1807,13 @@
     // parse "Monday 12/23 | 7:00pm - 8:00pm (2.0 - 3.0)" => returns just the Date portion
     function parseProgramDate(programStr) {
       if (!programStr.includes('|')) return null;
-      // left side: "Monday 12/23"
-      const leftSide = programStr.split('|')[0].trim(); // e.g. "Monday 12/23"
+      const leftSide = programStr.split('|')[0].trim();
       const parts = leftSide.split(' ');
       if (parts.length < 2) return null;
-      // The last chunk should be "12/23"
-      const mmdd = parts[parts.length - 1];
+      const mmdd = parts[parts.length - 1]; // e.g. "12/23"
       const [mm, dd] = mmdd.split('/').map(Number);
       if (!mm || !dd) return null;
 
-      // Basic approach: assume current year
       const now = new Date();
       let yyyy = now.getFullYear();
       const dateObj = new Date(yyyy, mm - 1, dd);
@@ -1816,9 +1833,8 @@
 
       const rangeStart = startOfDay(listViewStartDate);
       const rangeEnd   = new Date(rangeStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 6); // 7-day window
+      rangeEnd.setDate(rangeEnd.getDate() + 6);
 
-      // Filter session products that fall within this range, ignoring "Package"
       let filtered = (selectedSession.products || []).filter(prod => {
         if (!prod.program) return false;
         if (prod.program.toLowerCase().includes('package')) return false;
@@ -1827,14 +1843,12 @@
         return dt >= rangeStart && dt <= rangeEnd;
       });
 
-      // Sort by date ascending
       filtered.sort((a, b) => {
         const dA = parseProgramDate(a.program);
         const dB = parseProgramDate(b.program);
         return dA - dB;
       });
 
-      // Group by date => { '2025-01-03': [products], ... }
       const groups = {};
       filtered.forEach(prod => {
         const dt = parseProgramDate(prod.program);
@@ -1850,79 +1864,80 @@
 
       Object.keys(groups).sort().forEach(dateKey => {
         const dt = new Date(dateKey + 'T00:00:00');
-        const dateLabel = dt.toLocaleDateString(undefined, {
+        const dateHeader = document.createElement('h5');
+        dateHeader.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
+        dateHeader.textContent = dt.toLocaleDateString(undefined, {
           weekday: 'long', month: 'short', day: 'numeric'
         });
-
-        const dateHeader = document.createElement('h6');
-        dateHeader.textContent = dateLabel;
         container.appendChild(dateHeader);
 
         groups[dateKey].forEach(prod => {
           const itemDiv = document.createElement('div');
-          itemDiv.className = 'mb-2 p-2 border rounded d-flex justify-content-between align-items-center';
+          itemDiv.className = 'calendar-list-item mb-2 p-2 border rounded position-relative';
 
-          // Left side => show the program string + badges
-          const leftDiv = document.createElement('div');
+          const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+          if (inCart) {
+            itemDiv.classList.add('added');
+          }
 
-          const nameEl = document.createElement('div');
-          nameEl.textContent = prod.program;
+          // "Category Level: Program"
+          const categoryLevel = `${prod.category || 'N/A'} ${prod.level || ''}`.trim();
+          const labelEl = document.createElement('div');
+          labelEl.textContent = `${categoryLevel}: ${prod.program}`;
           if (prod.soldOut) {
-            nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+            labelEl.innerHTML = `<s>${categoryLevel}: ${prod.program}</s> (Sold Out)`;
           }
-          leftDiv.appendChild(nameEl);
+          itemDiv.appendChild(labelEl);
 
-          const badgesDiv = document.createElement('div');
-          if (prod.category) {
-            const catBadge = document.createElement('span');
-            catBadge.className = 'badge bg-primary me-2';
-            catBadge.textContent = prod.category;
-            badgesDiv.appendChild(catBadge);
+          if (prod.price) {
+            const priceEl = document.createElement('div');
+            priceEl.className = 'small text-muted';
+            priceEl.textContent = `Price: $${prod.price}`;
+            itemDiv.appendChild(priceEl);
           }
-          if (prod.level) {
-            const lvlBadge = document.createElement('span');
-            lvlBadge.className = 'badge bg-info';
-            lvlBadge.textContent = prod.level;
-            badgesDiv.appendChild(lvlBadge);
-          }
-          leftDiv.appendChild(badgesDiv);
 
-          itemDiv.appendChild(leftDiv);
+          const addBtn = document.createElement('button');
+          addBtn.className = 'btn btn-sm btn-success btn-add me-2';
+          addBtn.textContent = 'Add';
+          if (prod.soldOut) addBtn.disabled = true;
 
-          // Right side => "Add"/"Remove" or "Sold Out"
-          const rightDiv = document.createElement('div');
-          if (prod.soldOut) {
-            rightDiv.textContent = 'Sold Out';
+          const addedControls = document.createElement('div');
+          addedControls.className = 'added-controls mt-2';
+          addedControls.innerHTML = `
+            <span class="text-success"><strong>&check;</strong> Added</span>
+            <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
+          `;
+          const removeBtn = addedControls.querySelector('button');
+
+          // Hide or show depending on cart
+          if (inCart) {
+            addBtn.style.display = 'none';
           } else {
-            const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
-            if (inCart) {
-              const removeBtn = document.createElement('button');
-              removeBtn.className = 'btn btn-sm btn-danger';
-              removeBtn.textContent = 'Remove';
-              removeBtn.onclick = () => {
-                removeProductFromCart(prod);
-                renderProgramListForRange();
-              };
-              rightDiv.appendChild(removeBtn);
-            } else {
-              const addBtn = document.createElement('button');
-              addBtn.className = 'btn btn-sm btn-success';
-              addBtn.textContent = 'Add';
-              addBtn.onclick = () => {
-                addProductToCart(prod);
-                renderProgramListForRange();
-              };
-              rightDiv.appendChild(addBtn);
-            }
+            addedControls.style.display = 'none';
           }
-          itemDiv.appendChild(rightDiv);
+
+          addBtn.addEventListener('click', () => {
+            addProductToCart(prod);
+            itemDiv.classList.add('added');
+            addBtn.style.display = 'none';
+            addedControls.style.display = 'block';
+          });
+          removeBtn.addEventListener('click', () => {
+            removeProductFromCart(prod);
+            itemDiv.classList.remove('added');
+            addBtn.style.display = 'inline-block';
+            addedControls.style.display = 'none';
+          });
+
+          itemDiv.appendChild(addBtn);
+          itemDiv.appendChild(addedControls);
 
           container.appendChild(itemDiv);
         });
       });
     }
 
-    // Buttons for prev/next 7-day window
+    // Prev/Next 7-day window
     document.getElementById('btn-list-prev').addEventListener('click', () => {
       if (!listViewStartDate || !minProgramDate) return;
       const newStart = new Date(listViewStartDate);
@@ -1945,6 +1960,8 @@
       renderProgramListForRange();
     });
 </script>
+
+
 
 </body>
 </html>
