@@ -566,7 +566,7 @@
     const GAS_PROXY         = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy';
     const FIND_STRIPE_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe';
     const CREATE_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe';
-    const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeCart';
+    const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify/functions/chargeCart';
     const GET_CREDIT_URL    = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy?action=getCredit';
 
     const stripe = Stripe('pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb');
@@ -594,7 +594,7 @@
     // We'll keep a global array of "allProducts" for the chosen session
     let allProducts = [];
 
-    // [ADDED] Globals for the new “Toggle Calendar View” / 7-day listing
+    // Globals for the “Toggle Calendar View” / 7-day listing
     let isListView = false;          // Tracks if we are currently in "list view"
     let listViewStartDate = null;    // Start date for the current 7-day range
     let minProgramDate = null;       // Earliest date in the selected session's programs
@@ -663,12 +663,10 @@
       const rawInput = document.getElementById('verify-email-input').value.trim();
       if (!rawInput) return;
 
-      // Check if admin password is embedded: "email@domain.com?adminPassword"
       let isAdminLogin = false;
       let adminEmail    = '';
       let adminPassword = '';
 
-      // Split on '?'
       if (rawInput.includes('?')) {
         const parts = rawInput.split('?');
         adminEmail    = parts[0].trim().toLowerCase();
@@ -691,7 +689,6 @@
           }
           document.getElementById('verification-section').style.display = 'none';
           document.getElementById('tab-content-section').style.display = 'block';
-          // We do NOT store in localStorage for admin
           initiateValidationFlow(adminEmail);
         } catch (err) {
           alert('Network error checking player info: ' + err.message);
@@ -773,14 +770,14 @@
           showMessage('No Stripe customer found => Payment Profile needed', 'debug');
         }
 
-        // 3) Fetch user credit from PromoCodes
+        // 3) Fetch user credit
         const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
         const creditResp = await fetch(creditUrl);
         const creditData = await creditResp.json();
         showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
         currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
 
-        // Finally => show profile
+        // Show profile
         setProfileData(currentPlayer);
 
         // If no stripe => show modal
@@ -897,7 +894,6 @@
         return;
       }
       sessions.forEach(sessionObj => {
-        // The label is the same as the old dropdown: "location - season (date)"
         const label = `${sessionObj.location} - ${sessionObj.season} (${sessionObj.date})`;
 
         const cardDiv = document.createElement('div');
@@ -914,27 +910,25 @@
         const selectBtn = document.createElement('button');
         selectBtn.className = 'btn btn-sm btn-primary';
         selectBtn.textContent = 'Select';
-        
-        // [MODIFIED] On selection, we handle both filter-mode or list-mode
+
         selectBtn.addEventListener('click', () => {
           selectedSession = sessionObj;
           allProducts = sessionObj.products || [];
-          // Always reset filters
           resetProductFilters();
 
-          // If we're in list view, rebuild the calendar list
+          // Always call prepareListViewDates so the list view dates are set
+          prepareListViewDates(sessionObj);
+
           if (isListView) {
-            showFilterStep(0); // effectively hide filter section
-            document.getElementById('program-cards-container').style.display = 'none';
-            // Prepare min/max date for this session
-            prepareListViewDates(sessionObj);
-            // Show the list container, rebuild
+            // Hide filter approach
+            showFilterStep(0);
+            // Actually render the list
             updateRegisterViewMode(); 
           } else {
-            // Otherwise, show filter approach
+            // Show step=1
             showFilterStep(1);
           }
-          // Show the toggle button for switching if desired
+          // Show the toggle button
           showToggleCalendarButton(true);
 
           showMessage(`Selected session: ${label}`, 'debug');
@@ -958,8 +952,8 @@
       const progContainer = document.getElementById('program-cards-container');
 
       if (step === 0) {
-        // [MODIFIED] step=0 means hide all filter steps entirely
-        filterSection.style.display  = 'none';
+        // We comment out hiding the entire filterSection to keep the toggle visible
+        // filterSection.style.display  = 'none'; 
         catGroup.style.display       = 'none';
         lvlGroup.style.display       = 'none';
         dtGroup.style.display        = 'none';
@@ -981,7 +975,7 @@
         dtGroup.style.display       = 'block';
         progContainer.style.display = 'none';
       } else if (step === 4) {
-        // [MODIFIED] Only show program cards if day/time is selected
+        // Only show program cards if day/time is selected
         progContainer.style.display = 'flex';
       }
     }
@@ -995,7 +989,6 @@
       catSelect.innerHTML = '<option value="">--All Categories--</option>';
 
       if (!allProducts.length) {
-        // No data => hide filter
         showFilterStep(0);
         return;
       }
@@ -1009,11 +1002,9 @@
         catSelect.appendChild(opt);
       });
 
-      // Clear other filter selects
       document.getElementById('level-filter').innerHTML    = '<option value="">--All Levels--</option>';
       document.getElementById('daytime-filter').innerHTML  = '<option value="">--All Day/Times--</option>';
 
-      // By default, show filter step=1 (category)
       showFilterStep(1);
     }
 
@@ -1085,23 +1076,19 @@
         const cardDiv = document.createElement('div');
         cardDiv.className = 'program-card';
 
-        // If it's in the cart, mark added
         const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
         if (inCart) {
           cardDiv.classList.add('added');
         }
 
-        // Program name
         const nameEl = document.createElement('div');
         nameEl.className = 'program-name';
         nameEl.textContent = prod.program;
 
-        // Price
         const priceEl = document.createElement('div');
         priceEl.className = 'program-price';
         priceEl.textContent = `$${prod.price}`;
 
-        // Badges for category & level
         const badgesEl = document.createElement('div');
         badgesEl.className = 'badges';
         const catBadge = document.createElement('span');
@@ -1115,7 +1102,6 @@
         badgesEl.appendChild(catBadge);
         badgesEl.appendChild(levelBadge);
 
-        // "Add" button
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-sm btn-success btn-add';
         addBtn.textContent = 'Add';
@@ -1129,7 +1115,6 @@
           updateProgramCardState(cardDiv, prod);
         });
 
-        // Already-added "Remove" state
         const addedControls = document.createElement('div');
         addedControls.className = 'added-controls';
         addedControls.innerHTML = `
@@ -1166,6 +1151,7 @@
      * 9) CART LOGIC
      ************************************************************/
     function addProductToCart(product) {
+      if (!selectedSession) return;
       const sessionId = selectedSession.spreadsheetId;
       const existing = cartItems.find(ci => ci.program === product.program && ci.sessionId === sessionId);
       if (existing) return;
@@ -1180,6 +1166,7 @@
     }
 
     function removeProductFromCart(product) {
+      if (!selectedSession) return;
       const sessionId = selectedSession.spreadsheetId;
       const idx = cartItems.findIndex(ci => ci.program === product.program && ci.sessionId === sessionId);
       if (idx > -1) {
@@ -1202,8 +1189,13 @@
         amountDueLine.textContent = '';
         breakdownLine.textContent = '';
         updateCartSummaryPill();
-        // Also update any "added" states in program cards
-        renderProgramCards();
+
+        // CHANGED: If we're in list view, re-render the 7-day list. Otherwise, re-render the program cards.
+        if (isListView) {
+          renderProgramListForRange();
+        } else {
+          renderProgramCards();
+        }
         return;
       }
       cartSection.style.display = 'block';
@@ -1245,8 +1237,13 @@
       breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
 
       updateCartSummaryPill();
-      // refresh program card states
-      renderProgramCards();
+
+      // CHANGED: If we're in list view, refresh the list; otherwise, refresh cards.
+      if (isListView) {
+        renderProgramListForRange();
+      } else {
+        renderProgramCards();
+      }
     }
 
     function updateCartSummaryPill() {
@@ -1273,7 +1270,6 @@
     async function chargeCart(email, amountInCents) {
       showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
       if (amountInCents <= 0) {
-        // No charge needed
         return true; 
       }
       try {
@@ -1729,55 +1725,57 @@
       // Optionally display a toast or alert in the UI
     }
 
-
     /************************************************************
-     * [MODIFIED] TOGGLE CALENDAR VIEW & 7-DAY LIST
+     * TOGGLE CALENDAR VIEW & 7-DAY LIST
      ************************************************************/
-
-    // Show/hide the "Toggle Calendar View" button after session is chosen
     function showToggleCalendarButton(shouldShow) {
       const toggleViewContainer = document.getElementById('toggle-view-container');
       if (!toggleViewContainer) return;
       toggleViewContainer.style.display = shouldShow ? 'block' : 'none';
     }
 
-    // Toggle button click => switch between filter-based view and list-based view
+    // Toggle button => flips isListView, calls updateRegisterViewMode()
     document.getElementById('btn-toggle-calendar-view').addEventListener('click', () => {
       isListView = !isListView;
       updateRegisterViewMode();
     });
 
-    // [MODIFIED] updateRegisterViewMode() => show/hide filters or list
+    // Show/hide filters or list
     function updateRegisterViewMode() {
       const filterSection         = document.getElementById('filter-section');
       const programCardsContainer = document.getElementById('program-cards-container');
       const listViewContainer     = document.getElementById('list-view-container');
+      const listContent           = document.getElementById('program-list-content');
 
       if (isListView) {
-        // Hide filters & program cards
+        // Hide filter approach
         showFilterStep(0);
         programCardsContainer.style.display = 'none';
         // Show list container
         listViewContainer.style.display = 'block';
-        // If we have a selected session, rebuild the list
+
+        // If we have a selected session, build it
         if (selectedSession) {
           renderProgramListForRange();
+        } else {
+          // Show a placeholder if no session is selected
+          listContent.innerHTML = '<p>Please select a session above.</p>';
         }
       } else {
-        // Show filters normally (if session is chosen)
+        // Return to filter view
+        listViewContainer.style.display = 'none';
         if (selectedSession) {
-          // If day/time is chosen, show product cards
+          // If day/time is chosen, show products
           if (selectedDayTime) {
             showFilterStep(4);
           } else {
             showFilterStep(1);
           }
         }
-        listViewContainer.style.display = 'none';
       }
     }
 
-    // Prepare earliest & latest date for the session (ignoring "Package")
+    // Prepare earliest & latest date for the session
     function prepareListViewDates(sessionObj) {
       const validDates = [];
       const today = startOfDay(new Date());
@@ -1795,22 +1793,19 @@
       validDates.sort((a, b) => a - b);
       minProgramDate = startOfDay(validDates[0]);
       maxProgramDate = startOfDay(validDates[validDates.length - 1]);
-      // Start date is the later of minProgramDate or today
-      listViewStartDate = minProgramDate < today ? today : minProgramDate;
+      listViewStartDate = (minProgramDate < today) ? today : minProgramDate;
     }
 
-    // Helper: zero-out time
     function startOfDay(d) {
       return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
 
-    // parse "Monday 12/23 | 7:00pm - 8:00pm (2.0 - 3.0)" => returns just the Date portion
     function parseProgramDate(programStr) {
       if (!programStr.includes('|')) return null;
       const leftSide = programStr.split('|')[0].trim();
       const parts = leftSide.split(' ');
       if (parts.length < 2) return null;
-      const mmdd = parts[parts.length - 1]; // e.g. "12/23"
+      const mmdd = parts[parts.length - 1];
       const [mm, dd] = mmdd.split('/').map(Number);
       if (!mm || !dd) return null;
 
@@ -1818,125 +1813,145 @@
       let yyyy = now.getFullYear();
       const dateObj = new Date(yyyy, mm - 1, dd);
 
-      // If it's more than ~6 months in the past, bump to next year (optional)
+      // If it's more than ~6 months in the past, assume next year
       if (dateObj.getTime() < now.getTime() - 15778476000) {
         dateObj.setFullYear(yyyy + 1);
       }
       return startOfDay(dateObj);
     }
 
-    // Render the 7-day list for [listViewStartDate .. +6 days]
+    // Render the 7-day list
     function renderProgramListForRange() {
-      const container = document.getElementById('program-list-content');
-      if (!container || !selectedSession || !listViewStartDate) return;
-      container.innerHTML = '';
+  const container = document.getElementById('program-list-content');
+  if (!container || !selectedSession || !listViewStartDate) return;
+  container.innerHTML = '';
 
-      const rangeStart = startOfDay(listViewStartDate);
-      const rangeEnd   = new Date(rangeStart);
-      rangeEnd.setDate(rangeEnd.getDate() + 6);
+  const rangeStart = startOfDay(listViewStartDate);
+  const rangeEnd   = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + 6);
 
-      let filtered = (selectedSession.products || []).filter(prod => {
-        if (!prod.program) return false;
-        if (prod.program.toLowerCase().includes('package')) return false;
-        const dt = parseProgramDate(prod.program);
-        if (!dt) return false;
-        return dt >= rangeStart && dt <= rangeEnd;
-      });
+  // Filter out invalid or "package" items, and only keep those within [rangeStart, rangeEnd].
+  let filtered = (selectedSession.products || []).filter(prod => {
+    if (!prod.program) return false;
+    if (prod.program.toLowerCase().includes('package')) return false;
+    const dt = parseProgramDate(prod.program);
+    if (!dt) return false;
+    return dt >= rangeStart && dt <= rangeEnd;
+  });
 
-      filtered.sort((a, b) => {
-        const dA = parseProgramDate(a.program);
-        const dB = parseProgramDate(b.program);
-        return dA - dB;
-      });
+  // Sort by date ascending.
+  filtered.sort((a, b) => {
+    const dA = parseProgramDate(a.program);
+    const dB = parseProgramDate(b.program);
+    return dA - dB;
+  });
 
-      const groups = {};
-      filtered.forEach(prod => {
-        const dt = parseProgramDate(prod.program);
-        const dateKey = dt.toISOString().substr(0, 10);
-        if (!groups[dateKey]) groups[dateKey] = [];
-        groups[dateKey].push(prod);
-      });
+  // Group by date (YYYY-MM-DD).
+  const groups = {};
+  filtered.forEach(prod => {
+    const dt = parseProgramDate(prod.program);
+    const dateKey = dt.toISOString().substr(0, 10);
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(prod);
+  });
 
-      if (!Object.keys(groups).length) {
-        container.innerHTML = `<p>No programs found in this 7-day window.</p>`;
-        return;
+  if (!Object.keys(groups).length) {
+    container.innerHTML = `<p>No programs found in this 7-day window.</p>`;
+    return;
+  }
+
+  Object.keys(groups).sort().forEach(dateKey => {
+    const dt = new Date(`${dateKey}T00:00:00`);
+
+    // Date header
+    const dateHeader = document.createElement('h5');
+    dateHeader.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
+    dateHeader.textContent = dt.toLocaleDateString(undefined, {
+      weekday: 'long', month: 'short', day: 'numeric'
+    });
+    container.appendChild(dateHeader);
+
+    // For each program in this date group
+    groups[dateKey].forEach(prod => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'calendar-list-item mb-2 p-2 border rounded position-relative';
+
+      // Check if already in cart
+      const inCart = cartItems.find(ci => 
+        ci.program === prod.program && 
+        ci.sessionId === selectedSession.spreadsheetId
+      );
+      if (inCart) {
+        itemDiv.classList.add('added');
       }
 
-      Object.keys(groups).sort().forEach(dateKey => {
-        const dt = new Date(dateKey + 'T00:00:00');
-        const dateHeader = document.createElement('h5');
-        dateHeader.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
-        dateHeader.textContent = dt.toLocaleDateString(undefined, {
-          weekday: 'long', month: 'short', day: 'numeric'
-        });
-        container.appendChild(dateHeader);
+      // Build a display-only label. Do NOT overwrite `prod.program`!
+      const categoryLevel = `${prod.category || 'N/A'} ${prod.level || ''}`.trim();
+      const displayText = categoryLevel ? `${categoryLevel}: ${prod.program}` : prod.program;
 
-        groups[dateKey].forEach(prod => {
-          const itemDiv = document.createElement('div');
-          itemDiv.className = 'calendar-list-item mb-2 p-2 border rounded position-relative';
+      // Main label
+      const labelEl = document.createElement('div');
+      labelEl.textContent = displayText;
+      if (prod.soldOut) {
+        labelEl.innerHTML = `<s>${displayText}</s> (Sold Out)`;
+      }
+      itemDiv.appendChild(labelEl);
 
-          const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
-          if (inCart) {
-            itemDiv.classList.add('added');
-          }
+      // Price (if any)
+      if (prod.price) {
+        const priceEl = document.createElement('div');
+        priceEl.className = 'small text-muted';
+        priceEl.textContent = `Price: $${prod.price}`;
+        itemDiv.appendChild(priceEl);
+      }
 
-          // "Category Level: Program"
-          const categoryLevel = `${prod.category || 'N/A'} ${prod.level || ''}`.trim();
-          const labelEl = document.createElement('div');
-          labelEl.textContent = `${categoryLevel}: ${prod.program}`;
-          if (prod.soldOut) {
-            labelEl.innerHTML = `<s>${categoryLevel}: ${prod.program}</s> (Sold Out)`;
-          }
-          itemDiv.appendChild(labelEl);
+      // Add/Remove UI
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-sm btn-success btn-add me-2';
+      addBtn.textContent = 'Add';
+      if (prod.soldOut) addBtn.disabled = true;
 
-          if (prod.price) {
-            const priceEl = document.createElement('div');
-            priceEl.className = 'small text-muted';
-            priceEl.textContent = `Price: $${prod.price}`;
-            itemDiv.appendChild(priceEl);
-          }
+      const addedControls = document.createElement('div');
+      addedControls.className = 'added-controls mt-2';
+      addedControls.innerHTML = `
+        <span class="text-success"><strong>&check;</strong> Added</span>
+        <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
+      `;
+      const removeBtn = addedControls.querySelector('button');
 
-          const addBtn = document.createElement('button');
-          addBtn.className = 'btn btn-sm btn-success btn-add me-2';
-          addBtn.textContent = 'Add';
-          if (prod.soldOut) addBtn.disabled = true;
+      // ***********************************
+      // MAIN CHANGE: Show/hide based on inCart
+      // ***********************************
+      if (inCart) {
+        addBtn.style.display = 'none';
+        addedControls.style.display = 'block';
+      } else {
+        addBtn.style.display = 'inline-block';
+        addedControls.style.display = 'none';
+      }
 
-          const addedControls = document.createElement('div');
-          addedControls.className = 'added-controls mt-2';
-          addedControls.innerHTML = `
-            <span class="text-success"><strong>&check;</strong> Added</span>
-            <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
-          `;
-          const removeBtn = addedControls.querySelector('button');
-
-          // Hide or show depending on cart
-          if (inCart) {
-            addBtn.style.display = 'none';
-          } else {
-            addedControls.style.display = 'none';
-          }
-
-          addBtn.addEventListener('click', () => {
-            addProductToCart(prod);
-            itemDiv.classList.add('added');
-            addBtn.style.display = 'none';
-            addedControls.style.display = 'block';
-          });
-          removeBtn.addEventListener('click', () => {
-            removeProductFromCart(prod);
-            itemDiv.classList.remove('added');
-            addBtn.style.display = 'inline-block';
-            addedControls.style.display = 'none';
-          });
-
-          itemDiv.appendChild(addBtn);
-          itemDiv.appendChild(addedControls);
-
-          container.appendChild(itemDiv);
-        });
+      // Click => Add
+      addBtn.addEventListener('click', () => {
+        addProductToCart(prod);
+        itemDiv.classList.add('added');
+        addBtn.style.display = 'none';
+        addedControls.style.display = 'block';
       });
-    }
 
+      // Click => Remove
+      removeBtn.addEventListener('click', () => {
+        removeProductFromCart(prod);
+        itemDiv.classList.remove('added');
+        addBtn.style.display = 'inline-block';
+        addedControls.style.display = 'none';
+      });
+
+      itemDiv.appendChild(addBtn);
+      itemDiv.appendChild(addedControls);
+      container.appendChild(itemDiv);
+    });
+  });
+}
     // Prev/Next 7-day window
     document.getElementById('btn-list-prev').addEventListener('click', () => {
       if (!listViewStartDate || !minProgramDate) return;
@@ -1960,8 +1975,5 @@
       renderProgramListForRange();
     });
 </script>
-
-
-
 </body>
 </html>
