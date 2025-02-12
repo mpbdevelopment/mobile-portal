@@ -121,6 +121,12 @@
       display: none; 
     }
 
+    .session-card.selected-session {
+    border: 2px solid green; 
+    background-color: #e6f7e8; /* a light greenish background to match your existing style */
+    }
+
+
     /* Register tab container with a spinner overlay */
     #register-container {
       position: relative; 
@@ -432,7 +438,7 @@
           </div>
 
           <!-- [CHANGED] 3) Program Cards Container -->
-          <div id="program-cards-container" class="d-flex"></div>
+          <div id="program-cards-container"></div>
 
           <!-- The old cart-section is still in code, but hidden. We'll keep the logic for payment. -->
           <hr/>
@@ -887,59 +893,80 @@
     }
 
     function displaySessionCards(sessions) {
-      const container = document.getElementById('session-cards');
-      container.innerHTML = '';
-      if (!sessions.length) {
-        container.innerHTML = '<p>No sessions found.</p>';
-        return;
-      }
-      sessions.forEach(sessionObj => {
-        const label = `${sessionObj.location} - ${sessionObj.season} (${sessionObj.date})`;
+  const container = document.getElementById('session-cards');
+  container.innerHTML = '';
 
-        const cardDiv = document.createElement('div');
-        cardDiv.className = 'card session-card p-2';
-        
-        const cardBody = document.createElement('div');
-        cardBody.className = 'card-body';
+  if (!sessions.length) {
+    container.innerHTML = '<p>No sessions found.</p>';
+    return;
+  }
 
-        const titleEl = document.createElement('h6');
-        titleEl.className = 'card-title mb-2';
-        titleEl.textContent = label;
+  sessions.forEach(sessionObj => {
+    const label = `${sessionObj.location} - ${sessionObj.season} (${sessionObj.date})`;
 
-        // "Select Session" button
-        const selectBtn = document.createElement('button');
-        selectBtn.className = 'btn btn-sm btn-primary';
-        selectBtn.textContent = 'Select';
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'card session-card p-2';
+    
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body';
 
-        selectBtn.addEventListener('click', () => {
-          selectedSession = sessionObj;
-          allProducts = sessionObj.products || [];
-          resetProductFilters();
+    const titleEl = document.createElement('h6');
+    titleEl.className = 'card-title mb-2';
+    titleEl.textContent = label;
 
-          // Always call prepareListViewDates so the list view dates are set
-          prepareListViewDates(sessionObj);
+    // "Select Session" button
+    const selectBtn = document.createElement('button');
+    // Add an extra class to reference it easily
+    selectBtn.className = 'btn btn-sm btn-primary session-select-btn';
+    selectBtn.textContent = 'Select';
 
-          if (isListView) {
-            // Hide filter approach
-            showFilterStep(0);
-            // Actually render the list
-            updateRegisterViewMode(); 
-          } else {
-            // Show step=1
-            showFilterStep(1);
-          }
-          // Show the toggle button
-          showToggleCalendarButton(true);
-
-          showMessage(`Selected session: ${label}`, 'debug');
-        });
-
-        cardBody.appendChild(titleEl);
-        cardBody.appendChild(selectBtn);
-        cardDiv.appendChild(cardBody);
-        container.appendChild(cardDiv);
+    selectBtn.addEventListener('click', () => {
+      // 1) Revert ALL other session buttons to "Select"
+      document.querySelectorAll('.session-select-btn').forEach(btn => {
+        btn.textContent = 'Select';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
       });
-    }
+
+      // 2) Remove any "selected-session" class from other cards
+      document.querySelectorAll('.session-card').forEach(sc => {
+        sc.classList.remove('selected-session');
+      });
+
+      // 3) Highlight the clicked session
+      selectedSession = sessionObj;
+      allProducts     = sessionObj.products || [];
+      cardDiv.classList.add('selected-session');
+
+      // 4) Change THIS button to "Selected"
+      selectBtn.textContent = 'Selected';
+      selectBtn.classList.remove('btn-primary');
+      selectBtn.classList.add('btn-success');
+
+      // 5) Continue your logic (filters, etc.)
+      resetProductFilters();
+      prepareListViewDates(sessionObj);
+
+      const progContainer = document.getElementById('program-cards-container');
+      progContainer.style.display = 'none';
+
+      if (isListView) {
+        showFilterStep(0);
+        updateRegisterViewMode();
+      } else {
+        showFilterStep(1);
+      }
+      showToggleCalendarButton(true);
+    });
+
+    cardBody.appendChild(titleEl);
+    cardBody.appendChild(selectBtn);
+    cardDiv.appendChild(cardBody);
+    container.appendChild(cardDiv);
+  });
+}
+
+
 
     /************************************************************
      * 8) FILTERS => PROGRESSIVE
@@ -1472,196 +1499,282 @@
       }
     }
 
-    /************************************************************
-     * 10) MY REGISTRATIONS
-     ************************************************************/
-    document.querySelector('a[data-bs-target="#tab-registrations"]')
-      .addEventListener('shown.bs.tab', loadUserRegistrations);
+/************************************************************
+ * 10) MY REGISTRATIONS
+ ************************************************************/
 
-    async function loadUserRegistrations() {
-      if (!currentPlayer || !currentPlayer.email) {
-        showMessage('No user data found for registrations.', 'error');
-        return;
-      }
-      showMessage('Loading user registrations from getUserRegistrations', 'debug');
-      showRegistrationsSpinner(true);
+// 1. Listen for the "My Registrations" tab to be shown, then load the data.
+document.querySelector('a[data-bs-target="#tab-registrations"]')
+  .addEventListener('shown.bs.tab', loadUserRegistrations);
 
-      const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
-      try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
+async function loadUserRegistrations() {
+  if (!currentPlayer || !currentPlayer.email) {
+    showMessage('No user data found for registrations.', 'error');
+    return;
+  }
+  showMessage('Loading user registrations from getUserRegistrations', 'debug');
+  showRegistrationsSpinner(true);
 
-        if (!data.success) {
-          showMessage('Error loading registrations: ' + (data.error || ''), 'error');
-          return;
-        }
-        renderFullCalendar(data.upcoming || []);
-      } catch (err) {
-        showMessage('Load registrations error: ' + err.message, 'error');
-      } finally {
-        showRegistrationsSpinner(false);
-      }
+  const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
+
+    if (!data.success) {
+      showMessage('Error loading registrations: ' + (data.error || ''), 'error');
+      return;
     }
 
-    function renderFullCalendar(sessionsArray) {
-      const events = [];
-      sessionsArray.forEach(sessionObj => {
-        sessionObj.programs.forEach(programStr => {
-          const parsedEvents = parseProgramString(programStr, sessionObj);
-          if (Array.isArray(parsedEvents)) {
-            events.push(...parsedEvents);
-          }
-        });
-      });
-      const calendarEl = document.getElementById('calendar');
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,listWeek'
-        },
-        events: events,
-      });
-      calendar.render();
-    }
+    // Instead of renderFullCalendar, we call our new list-based rendering:
+    renderRegistrationsList(data.upcoming || []);
 
-    function parseProgramString(programStr, sessionObj) {
-      const fallbackYear = new Date().getFullYear();
-      if (programStr.includes(';')) {
-        // e.g. (12/2 - 1/6; 1:00pm - 2:00pm)
-        const dayMatch = programStr.match(/\b(Monday|Mondays|Tuesday|Tuesdays|Wednesday|Wednesdays|Thursday|Thursdays|Friday|Fridays|Saturday|Saturdays|Sunday|Sundays)\b/i);
-        let dayName = 'Monday';
-        if (dayMatch) {
-          dayName = dayMatch[1];
-        }
-        const dayOfWeek = mapDayNameToNumber(dayName);
+  } catch (err) {
+    showMessage('Load registrations error: ' + err.message, 'error');
+  } finally {
+    showRegistrationsSpinner(false);
+  }
+}
 
-        const parenMatch = programStr.match(/\(([^)]+)\)/);
-        if (!parenMatch) return [];
-        const inside = parenMatch[1].trim(); 
-        const [datesPart, timesPart] = inside.split(';').map(s => s.trim());
-        const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
-        const startDate = parseMMDD(startDateStr, fallbackYear);
-        const endDate   = parseMMDD(endDateStr, fallbackYear);
+/**
+ * Renders registrations as a date-grouped list, rather than a calendar.
+ * We still rely on parseProgramString() and its helpers for date/time parsing.
+ */
+function renderRegistrationsList(sessionsArray) {
+  const container = document.getElementById('registrations-content');
+  container.innerHTML = '';
 
-        const [startTimeStr, endTimeStr] = timesPart.split('-').map(s => s.trim());
-        const startTime = parseTime(startTimeStr);
-        const endTime   = parseTime(endTimeStr);
-
-        return createWeeklyEventsInRange({
-          title: formatEventTitleWithCategory(programStr),
-          dayOfWeek,
-          startDate,
-          endDate,
-          startTime,
-          endTime
-        });
-      } else {
-        // e.g. "Monday 1/6 | 1:00pm - 2:00pm (2.0 - 3.0)"
-        const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|\s*([\d:apm\s]+-\s*[\d:apm\s]+)/);
-        if (!match) return [];
-        const dateStr   = match[1];
-        const timesStr  = match[2];
-        const singleDate = parseMMDD(dateStr, fallbackYear);
-        const [startTimeStr, endTimeStr] = timesStr.split('-').map(s => s.trim());
-        const startTime = parseTime(startTimeStr);
-        const endTime   = parseTime(endTimeStr);
-
-        const startDateTime = combineDateTime(singleDate, startTime);
-        const endDateTime   = combineDateTime(singleDate, endTime);
-
-        return [{
-          title: formatEventTitleWithCategory(programStr),
-          start: startDateTime.toISOString(),
-          end: endDateTime.toISOString()
-        }];
-      }
-    }
-
-    function formatEventTitleWithCategory(rawString) {
-      const matchParen = rawString.match(/\s*\(([^)]+)\)$/);
-      if (!matchParen) {
-        return rawString;
-      }
-      const locationName = matchParen[1].trim();  
-      const trimmedProgram = rawString.replace(/\s*\([^)]*\)$/, '');
-      const sessionObj = allSessions.find(s => {
-        return s.location && s.location.includes(locationName);
-      });
-      if (!sessionObj) {
-        return rawString;
-      }
-      const product = sessionObj.products.find(p => p.program === trimmedProgram);
-      if (!product) {
-        return rawString;
-      }
-      const cat = product.category || 'Unknown Category';
-      const lvl = product.level || 'Unknown Level';
-      return `${cat} ${lvl} (${locationName})`;
-    }
-
-    function mapDayNameToNumber(dayName) {
-      const dn = dayName.toLowerCase();
-      if (dn.startsWith('sun')) return 0;
-      if (dn.startsWith('mon')) return 1;
-      if (dn.startsWith('tue')) return 2;
-      if (dn.startsWith('wed')) return 3;
-      if (dn.startsWith('thu')) return 4;
-      if (dn.startsWith('fri')) return 5;
-      if (dn.startsWith('sat')) return 6;
-      return 1;
-    }
-
-    function createWeeklyEventsInRange({ title, dayOfWeek, startDate, endDate, startTime, endTime }) {
-      const events = [];
-      const current = new Date(startDate);
-      while (current <= endDate) {
-        if (current.getDay() === dayOfWeek) {
-          const startDateTime = combineDateTime(current, startTime);
-          const endDateTime   = combineDateTime(current, endTime);
+  // Collect all "event" objects from your parseProgramString function
+  const events = [];
+  sessionsArray.forEach(sessionObj => {
+    sessionObj.programs.forEach(programStr => {
+      // parseProgramString returns an array of objects like:
+      // [ { title: '...', start: ISOString, end: ISOString }, ... ]
+      const parsedList = parseProgramString(programStr, sessionObj);
+      if (Array.isArray(parsedList)) {
+        parsedList.forEach(ev => {
+          // Convert ISO timestamps to Date objects for easier sorting
+          const startDate = new Date(ev.start);
+          const endDate   = new Date(ev.end);
           events.push({
-            title,
-            start: startDateTime.toISOString(),
-            end:   endDateTime.toISOString()
+            title: ev.title,
+            startDate,
+            endDate
           });
-        }
-        current.setDate(current.getDate() + 1);
+        });
       }
-      return events;
+    });
+  });
+
+  if (!events.length) {
+    container.innerHTML = '<p>No upcoming registrations found.</p>';
+    return;
+  }
+
+  // Sort events by start date/time ascending
+  events.sort((a, b) => a.startDate - b.startDate);
+
+  // Group by date (YYYY-MM-DD)
+  const grouped = {};
+  events.forEach(ev => {
+    const dateKey = ev.startDate.toISOString().split('T')[0]; 
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push(ev);
+  });
+
+  // For each dateKey, render a heading and list the events
+  Object.keys(grouped).sort().forEach(dateKey => {
+    const dateObj = new Date(dateKey);
+    const dateHeading = document.createElement('h5');
+    dateHeading.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
+    dateHeading.textContent = dateObj.toLocaleDateString(undefined, {
+      weekday: 'long', month: 'short', day: 'numeric'
+    });
+    container.appendChild(dateHeading);
+
+    grouped[dateKey].forEach(ev => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'mb-2 p-2 border rounded';
+
+      // Event title
+      const titleEl = document.createElement('div');
+      titleEl.textContent = ev.title;
+      itemDiv.appendChild(titleEl);
+
+      // Time range, e.g. "1:00 PM - 2:00 PM"
+      const timeEl = document.createElement('div');
+      timeEl.className = 'small text-muted';
+      const startTimeStr = ev.startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const endTimeStr   = ev.endDate.toLocaleTimeString([],   { hour: 'numeric', minute: '2-digit' });
+      timeEl.textContent = `${startTimeStr} - ${endTimeStr}`;
+      itemDiv.appendChild(timeEl);
+
+      container.appendChild(itemDiv);
+    });
+  });
+}
+
+/**
+ * parseProgramString(programStr, sessionObj)
+ * (Unchanged from your existing code, except we've removed references to FullCalendar.)
+ */
+function parseProgramString(programStr, sessionObj) {
+  const fallbackYear = new Date().getFullYear();
+
+  if (programStr.includes(';')) {
+    // e.g. (12/2 - 1/6; 1:00pm - 2:00pm)
+    const dayMatch = programStr.match(/\b(Monday|Mondays|Tuesday|Tuesdays|Wednesday|Wednesdays|Thursday|Thursdays|Friday|Fridays|Saturday|Saturdays|Sunday|Sundays)\b/i);
+    let dayName = 'Monday';
+    if (dayMatch) {
+      dayName = dayMatch[1];
     }
+    const dayOfWeek = mapDayNameToNumber(dayName);
 
-    function parseMMDD(mmdd, year) {
-      const [m, d] = mmdd.split('/').map(Number);
-      return new Date(year, m - 1, d);
+    const parenMatch = programStr.match(/\(([^)]+)\)/);
+    if (!parenMatch) return [];
+    const inside = parenMatch[1].trim(); 
+    const [datesPart, timesPart] = inside.split(';').map(s => s.trim());
+    const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
+    const startDate = parseMMDD(startDateStr, fallbackYear);
+    const endDate   = parseMMDD(endDateStr, fallbackYear);
+
+    const [startTimeStr, endTimeStr] = timesPart.split('-').map(s => s.trim());
+    const startTime = parseTime(startTimeStr);
+    const endTime   = parseTime(endTimeStr);
+
+    return createWeeklyEventsInRange({
+      title: formatEventTitleWithCategory(programStr),
+      dayOfWeek,
+      startDate,
+      endDate,
+      startTime,
+      endTime
+    });
+
+  } else {
+    // e.g. "Monday 1/6 | 1:00pm - 2:00pm (2.0 - 3.0)"
+    const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|\s*([\d:apm\s]+-\s*[\d:apm\s]+)/);
+    if (!match) return [];
+    const dateStr   = match[1];
+    const timesStr  = match[2];
+    const singleDate = parseMMDD(dateStr, fallbackYear);
+    const [startTimeStr, endTimeStr] = timesStr.split('-').map(s => s.trim());
+    const startTime = parseTime(startTimeStr);
+    const endTime   = parseTime(endTimeStr);
+
+    const startDateTime = combineDateTime(singleDate, startTime);
+    const endDateTime   = combineDateTime(singleDate, endTime);
+
+    return [{
+      title: formatEventTitleWithCategory(programStr),
+      start: startDateTime.toISOString(),
+      end: endDateTime.toISOString()
+    }];
+  }
+}
+
+/**
+ * formatEventTitleWithCategory(rawString)
+ * (Same logic you had before to embed category/level in the event title.)
+ */
+function formatEventTitleWithCategory(rawString) {
+  const matchParen = rawString.match(/\s*\(([^)]+)\)$/);
+  if (!matchParen) {
+    return rawString;
+  }
+  const locationName = matchParen[1].trim();  
+  const trimmedProgram = rawString.replace(/\s*\([^)]*\)$/, '');
+  const sessionObj = allSessions.find(s => {
+    return s.location && s.location.includes(locationName);
+  });
+  if (!sessionObj) {
+    return rawString;
+  }
+  const product = sessionObj.products.find(p => p.program === trimmedProgram);
+  if (!product) {
+    return rawString;
+  }
+  const cat = product.category || 'Unknown Category';
+  const lvl = product.level || 'Unknown Level';
+  return `${cat} ${lvl} (${locationName})`;
+}
+
+/**
+ * mapDayNameToNumber(dayName)
+ */
+function mapDayNameToNumber(dayName) {
+  const dn = dayName.toLowerCase();
+  if (dn.startsWith('sun')) return 0;
+  if (dn.startsWith('mon')) return 1;
+  if (dn.startsWith('tue')) return 2;
+  if (dn.startsWith('wed')) return 3;
+  if (dn.startsWith('thu')) return 4;
+  if (dn.startsWith('fri')) return 5;
+  if (dn.startsWith('sat')) return 6;
+  return 1;
+}
+
+/**
+ * createWeeklyEventsInRange({ title, dayOfWeek, startDate, endDate, startTime, endTime })
+ */
+function createWeeklyEventsInRange({ title, dayOfWeek, startDate, endDate, startTime, endTime }) {
+  const events = [];
+  const current = new Date(startDate);
+  while (current <= endDate) {
+    if (current.getDay() === dayOfWeek) {
+      const startDateTime = combineDateTime(current, startTime);
+      const endDateTime   = combineDateTime(current, endTime);
+      events.push({
+        title,
+        start: startDateTime.toISOString(),
+        end:   endDateTime.toISOString()
+      });
     }
+    current.setDate(current.getDate() + 1);
+  }
+  return events;
+}
 
-    function parseTime(timestr) {
-      timestr = timestr.toLowerCase().replace(/\s+/g, '');
-      const ampm = timestr.endsWith('am') ? 'am' : 'pm';
-      timestr = timestr.replace(/am|pm/, '');
+/**
+ * parseMMDD(mmdd, year)
+ */
+function parseMMDD(mmdd, year) {
+  const [m, d] = mmdd.split('/').map(Number);
+  return new Date(year, m - 1, d);
+}
 
-      const [hh, mm] = timestr.split(':').map(Number);
-      let hour = hh;
-      let minute = mm || 0;
+/**
+ * parseTime(timestr)
+ */
+function parseTime(timestr) {
+  timestr = timestr.toLowerCase().replace(/\s+/g, '');
+  const ampm = timestr.endsWith('am') ? 'am' : 'pm';
+  timestr = timestr.replace(/am|pm/, '');
 
-      if (ampm === 'pm' && hour < 12) hour += 12;
-      if (ampm === 'am' && hour === 12) hour = 0;
+  const [hh, mm] = timestr.split(':').map(Number);
+  let hour = hh;
+  let minute = mm || 0;
 
-      return { hour, minute };
-    }
+  if (ampm === 'pm' && hour < 12) hour += 12;
+  if (ampm === 'am' && hour === 12) hour = 0;
 
-    function combineDateTime(dateObj, timeObj) {
-      return new Date(
-        dateObj.getFullYear(),
-        dateObj.getMonth(),
-        dateObj.getDate(),
-        timeObj.hour,
-        timeObj.minute,
-        0
-      );
-    }
+  return { hour, minute };
+}
+
+/**
+ * combineDateTime(dateObj, timeObj)
+ */
+function combineDateTime(dateObj, timeObj) {
+  return new Date(
+    dateObj.getFullYear(),
+    dateObj.getMonth(),
+    dateObj.getDate(),
+    timeObj.hour,
+    timeObj.minute,
+    0
+  );
+}
+
 
     /************************************************************
      * 11) PROFILE & LOGOUT
@@ -1738,42 +1851,61 @@
     document.getElementById('btn-toggle-calendar-view').addEventListener('click', () => {
       isListView = !isListView;
       updateRegisterViewMode();
+      const programCardsContainer = document.getElementById('program-cards-container');
     });
 
     // Show/hide filters or list
     function updateRegisterViewMode() {
-      const filterSection         = document.getElementById('filter-section');
-      const programCardsContainer = document.getElementById('program-cards-container');
-      const listViewContainer     = document.getElementById('list-view-container');
-      const listContent           = document.getElementById('program-list-content');
+  const filterSection         = document.getElementById('filter-section');
+  const programCardsContainer = document.getElementById('program-cards-container');
+  const listViewContainer     = document.getElementById('list-view-container');
+  const listContent           = document.getElementById('program-list-content');
 
-      if (isListView) {
-        // Hide filter approach
-        showFilterStep(0);
-        programCardsContainer.style.display = 'none';
-        // Show list container
-        listViewContainer.style.display = 'block';
+  // If we are switching *to* list view
+  if (isListView) {
+    // 1) Hide all filter UI and program cards
+    showFilterStep(0); // sets everything to display: none
+    programCardsContainer.style.display = 'none';
 
-        // If we have a selected session, build it
-        if (selectedSession) {
-          renderProgramListForRange();
-        } else {
-          // Show a placeholder if no session is selected
-          listContent.innerHTML = '<p>Please select a session above.</p>';
-        }
-      } else {
-        // Return to filter view
-        listViewContainer.style.display = 'none';
-        if (selectedSession) {
-          // If day/time is chosen, show products
-          if (selectedDayTime) {
-            showFilterStep(4);
-          } else {
-            showFilterStep(1);
-          }
-        }
-      }
+    // 2) Show the 7-day list container
+    listViewContainer.style.display = 'block';
+
+    // 3) If a session is selected, render that 7-day list
+    if (selectedSession) {
+      renderProgramListForRange();
+    } else {
+      // If no session is selected yet, give a prompt
+      listContent.innerHTML = '<p>Please select a session above.</p>';
     }
+
+  // Otherwise, we're switching *back* to the "filters/cards" view
+  } else {
+    // 1) Hide the 7-day list
+    listViewContainer.style.display = 'none';
+
+    // 2) If a session is selected, show the correct filter step
+    if (selectedSession) {
+      // If user has *already* chosen day/time, we might go straight to step 4
+      // Otherwise, we show step 1 (or 2/3 if partial filters are filled in).
+      if (selectedDayTime) {
+        showFilterStep(4); // reveals the program cards
+      } else {
+        showFilterStep(1); // or 2/3, depending on your filter logic
+      }
+    } else {
+      // If no session is selected, just leave everything hidden (step 0)
+      showFilterStep(0);
+    }
+  }
+
+  // Finally, if we *remain* in list view, re-hide program cards in case
+  // something else called showFilterStep(4) behind the scenes:
+  if (isListView) {
+    programCardsContainer.style.display = 'none';
+  }
+}
+
+
 
     // Prepare earliest & latest date for the session
     function prepareListViewDates(sessionObj) {
