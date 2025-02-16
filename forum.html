@@ -1,30 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>My Simple Forum (Bootstrap + Brand Color)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pickleball Chat</title>
 
   <!-- Bootstrap 5 CSS (CDN) -->
-  <link 
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     rel="stylesheet"
   />
 
   <style>
-    /* Override body background to a light grey for contrast */
+    /* 
+      Basic reset to ensure full mobile responsiveness 
+      and zero default margin/padding.
+    */
+    html,
     body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #f5f5f5;
     }
-    /* The container holding the chat messages */
-    #messageList {
-      background-color: #fff;
-      border: 1px solid #ccc;
-      padding: 10px;
-      max-height: 60vh; /* let the chat area occupy up to 60% of viewport height */
-      overflow-y: auto;
-      margin-bottom: 1rem;
+
+    /* 
+      The outer container that spans the full viewport height. 
+      We make this a flex container to easily position
+      header, body (messages), and footer (input area).
+    */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden; /* Hide any accidental overflow from child elements. */
     }
-    /* Base styling for each chat bubble */
+
+    /* 
+      A simple top header bar with brand color. 
+      Could also house a back button or club name, etc.
+    */
+    .chat-header {
+      background-color: #0e2f7b; /* brand color */
+      color: #fff;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    /* 
+      The main chat message area. 
+      Make it scrollable and fill all leftover space.
+    */
+    .chat-body {
+      flex: 1;
+      overflow-y: auto; /* Let chat messages scroll if they exceed the viewport. */
+      padding: 1rem;
+      background-color: #f5f5f5;
+    }
+
+    /* 
+      Sticky footer for the message input area. 
+      Stays pinned to the bottom of the screen.
+    */
+    .chat-footer {
+      background-color: #fff;
+      border-top: 1px solid #ccc;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* 
+      Message input text area. 
+      We remove the default resize handle and round corners for a nicer feel.
+    */
+    #messageInput {
+      flex: 1; /* Occupy all available horizontal space except the send button */
+      resize: none;
+      border-radius: 1rem;
+      border: 1px solid #ccc;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    /* 
+      Brand button styling for Send. 
+      Slight hover effect for better UX.
+    */
+    .btn-brand {
+      background-color: #0e2f7b;
+      color: #fff;
+      border: none;
+      border-radius: 1.5rem;
+      padding: 0.5rem 1rem;
+      transition: background-color 0.2s ease-in-out;
+    }
+
+    .btn-brand:hover {
+      background-color: #0c2562; /* slightly darker shade */
+      color: #fff;
+    }
+
+    /**************
+      Chat Bubbles
+    ***************/
     .messageItem {
       display: inline-block;
       clear: both; /* ensures each message starts on a new line */
@@ -34,8 +117,10 @@
       padding: 10px 15px;
       border-radius: 20px;
       word-wrap: break-word;
-      color: #000; /* default text color */
+      font-size: 0.95rem;
+      line-height: 1.3rem;
     }
+
     /* Current user's message bubble */
     .myMessage {
       float: right;
@@ -53,7 +138,8 @@
       border: 10px solid transparent;
       border-left-color: #0e2f7b; /* brand color */
     }
-    /* Other users' message bubble */
+
+    /* Other user's message bubble */
     .otherMessage {
       float: left;
       background-color: #fff;
@@ -69,6 +155,7 @@
       border: 10px solid transparent;
       border-right-color: #fff;
     }
+
     /* Sender name styling within the bubble */
     .senderName {
       font-size: 0.8em;
@@ -76,50 +163,39 @@
       margin-bottom: 5px;
       display: block;
     }
-    /* Message text styling */
+
+    /* Actual message text */
     .messageText {
-      font-size: 1em;
       white-space: pre-wrap; /* preserve line breaks */
-    }
-    /* Make textarea stretch horizontally in a responsive manner */
-    #messageInput {
-      resize: none;
-      border-radius: 0.5rem;
-      border: 1px solid #ccc;
-      margin-bottom: 0.5rem;
-    }
-    /* Override the Bootstrap primary button to use brand color */
-    .btn-brand {
-      background-color: #0e2f7b;
-      color: #fff;
-      border: none;
-    }
-    .btn-brand:hover {
-      background-color: #0c2562; /* slightly darker shade */
-      color: #fff;
+      font-size: 1em;
     }
   </style>
 </head>
+
 <body>
+  <!-- Main Chat Container -->
+  <div class="chat-container">
+    
+    <!-- Header / Title Bar -->
+    <div class="chat-header">
+      <h5 class="m-0">Pickleball Club Chat</h5>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div id="messageList" class="chat-body">
+      <!-- Dynamically populated by Firebase -->
+    </div>
 
-  <!-- Main container for responsive layout -->
-  <div class="container py-4">
-    <h1 class="text-center mb-4">My Simple Forum</h1>
-
-    <!-- Chat messages container -->
-    <div id="messageList"></div>
-
-    <!-- Input area for sending new messages -->
-    <div class="d-flex flex-column">
-      <textarea 
-        id="messageInput" 
-        rows="3" 
-        class="form-control mb-2" 
-        placeholder="Type your message here..."
+    <!-- Input Area (Sticky Footer) -->
+    <div class="chat-footer">
+      <textarea
+        id="messageInput"
+        rows="1"
+        placeholder="Type your message..."
       ></textarea>
       <button 
-        id="sendButton" 
-        class="btn btn-brand align-self-end"
+        id="sendButton"
+        class="btn btn-brand"
       >
         Send
       </button>
@@ -189,10 +265,9 @@
       wrapper.classList.add("messageItem");
       wrapper.classList.add(isMyMessage ? "myMessage" : "otherMessage");
 
-      // Show the sender's full name (or "You" if you prefer)
-      let displayName = senderFullName;
-      // If you want your own messages to say "You", do:
+      // (Optional) If you want your own messages to say "You" instead of your name:
       // let displayName = isMyMessage ? "You" : senderFullName;
+      let displayName = senderFullName;
 
       // Create sender name div
       const nameDiv = document.createElement("div");
@@ -208,6 +283,8 @@
 
       // Append to the message list
       messageList.appendChild(wrapper);
+
+      // Auto-scroll to the newest message
       messageList.scrollTop = messageList.scrollHeight;
     }
 
@@ -228,8 +305,8 @@
 
       // Clear the input
       messageInput.value = "";
+      messageInput.focus();
     });
   </script>
 </body>
 </html>
-
