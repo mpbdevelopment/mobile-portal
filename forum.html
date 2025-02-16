@@ -188,12 +188,16 @@
         <h5 class="header-title">Pickleball Club Chat</h5>
         
         <!-- Room Selector -->
+        <!-- 
+          Use sanitized path values to avoid disallowed characters:
+          - Replaced "." with "_" in the value attributes.
+        -->
         <select id="roomSelect" class="form-select form-select-sm w-auto">
           <option value="Beginner">Beginner</option>
-          <option value="Advanced_Beginner_2.0-3.0">Advanced Beginner/Intermediate (2.0-3.0)</option>
-          <option value="High_Intermediate_3.0-3.5">High Intermediate (3.0-3.5)</option>
-          <option value="Advanced_3.5-4.0">Advanced (3.5-4.0)</option>
-          <option value="Expert_4.0plus">Expert (4.0+)</option>
+          <option value="Advanced_Beginner_2_0-3_0">Advanced Beginner/Intermediate (2.0-3.0)</option>
+          <option value="High_Intermediate_3_0-3_5">High Intermediate (3.0-3.5)</option>
+          <option value="Advanced_3_5-4_0">Advanced (3.5-4.0)</option>
+          <option value="Expert_4_0plus">Expert (4.0+)</option>
         </select>
       </div>
     </div>
@@ -317,7 +321,7 @@
       wrapper.classList.add("messageItem");
       wrapper.classList.add(isMyMessage ? "myMessage" : "otherMessage");
 
-      // If you want your own messages to say "You," uncomment:
+      // If you want your own messages to say "You," you can do:
       // let displayName = isMyMessage ? "You" : senderFullName;
       let displayName = senderFullName;
 
@@ -368,3 +372,4 @@
   </script>
 </body>
 </html>
+
