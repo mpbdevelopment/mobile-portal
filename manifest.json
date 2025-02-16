@@ -1,6 +1,6 @@
 {
-  "name": "My PWA",
-  "short_name": "PWA",
+  "name": "Montclair Pickleball Player Portal",
+  "short_name": "Montclair Pickleball",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0e2f7b",
