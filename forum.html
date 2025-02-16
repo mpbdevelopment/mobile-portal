@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>My Simple Forum</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    #messageList {
+      border: 1px solid #ccc;
+      padding: 10px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+    .messageItem {
+      margin-bottom: 10px;
+      border-bottom: 1px dashed #ccc;
+      padding-bottom: 5px;
+    }
+    .senderEmail {
+      font-weight: bold;
+    }
+    .messageText {
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>My Simple Forum</h1>
+
+  <!-- Container to display messages -->
+  <div id="messageList"></div>
+
+  <!-- Input area for sending new messages -->
+  <div>
+    <textarea id="messageInput" rows="3" cols="50" placeholder="Type your message here..."></textarea><br>
+    <button id="sendButton">Send</button>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <!-- (1) Firebase App -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+  <!-- (2) Firebase Realtime Database (compat version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
+
+  <script>
+    // 1. Insert your Firebase config object:
+    const firebaseConfig = {
+      apiKey: "AIzaSyAtp6T37Mpb0n5PljcxtWBFsS7AbRGcZz4",
+      authDomain: "mp-forum.firebaseapp.com",
+      projectId: "mp-forum",
+      storageBucket: "mp-forum.firebasestorage.app",
+      messagingSenderId: "331366400336",
+      appId: "1:331366400336:web:0897f612740510001cac55",
+      measurementId: "G-3QMKRX9T5H"
+    };
+
+    // 2. Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // 3. Reference the Realtime Database
+    const db = firebase.database();
+    // Create a reference for our forum messages:
+    const messagesRef = db.ref("forumMessages"); 
+    // The path "forumMessages" is arbitrary; you can name it how you like
+
+    // 4. Get user email from localStorage (already stored by your PWA)
+    let userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      // Fallback if no email is found
+      userEmail = "anonymous@example.com";
+    }
+
+    // 5. DOM elements
+    const messageList = document.getElementById("messageList");
+    const messageInput = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+
+    // 6. Real-time listener for incoming messages
+    // child_added: triggers for each existing message and for new messages
+    messagesRef.on("child_added", (snapshot) => {
+      const data = snapshot.val();
+      addMessageToUI(data.email, data.text);
+    });
+
+    // 7. Function to append message to the UI
+    function addMessageToUI(email, text) {
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("messageItem");
+      wrapper.innerHTML = `
+        <div class="senderEmail">${email}</div>
+        <div class="messageText">${text}</div>
+      `;
+      messageList.appendChild(wrapper);
+      messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    // 8. Sending a message
+    sendButton.addEventListener("click", () => {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      // Push a new record to Realtime Database
+      messagesRef.push({
+        email: userEmail,
+        text: text,
+        timestamp: Date.now()
+      });
+
+      // Clear the input
+      messageInput.value = "";
+    });
+  </script>
+</body>
+</html>
