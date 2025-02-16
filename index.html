@@ -943,50 +943,35 @@ function displaySessionCards(sessions) {
     return;
   }
 
-  // If there's a currently selected session, reorder so that
-  // all *other* sessions go first, and the selected one is last.
-  let reordered = [...sessions];
-  if (selectedSession) {
-    const index = reordered.findIndex(s => s.spreadsheetId === selectedSession.spreadsheetId);
-    if (index !== -1) {
-      // Remove the selected session
-      const [sel] = reordered.splice(index, 1);
-      // Push it to the end
-      reordered.push(sel);
-    }
-  }
-
-  // Now render the reordered list using Bootstrap grid columns
-  reordered.forEach(sessionObj => {
+  // Simply loop through sessions in their original order
+  sessions.forEach(sessionObj => {
     const label = `${sessionObj.location} - ${sessionObj.season}`;
 
-    // Create a column for each session card
+    // Create a column for each session
     const colDiv = document.createElement('div');
     // Adjust col sizes to your preference
     colDiv.classList.add('col-12','col-sm-6','col-md-4','col-lg-3','mb-3');
 
     // Card wrapper
     const cardDiv = document.createElement('div');
-    cardDiv.className = 'card session-card h-100'; // "h-100" helps cards align uniformly
-
-    // Apply selected/non-selected classes for styling
+    cardDiv.className = 'card session-card h-100'; 
+    // If it's the currently selected session, highlight it
     if (selectedSession && sessionObj.spreadsheetId === selectedSession.spreadsheetId) {
       cardDiv.classList.add('selected-session');
-    } else if (selectedSession) {
-      cardDiv.classList.add('non-selected-session');
     }
 
     // Card body
     const cardBody = document.createElement('div');
     cardBody.className = 'card-body';
 
+    // Title
     const titleEl = document.createElement('h6');
     titleEl.classList.add('card-title','mb-2');
     titleEl.textContent = label;
 
-    // "Select" or "Selected" button
+    // Button
     const selectBtn = document.createElement('button');
-    selectBtn.className = 'btn btn-sm session-select-btn';
+    selectBtn.classList.add('btn','btn-sm');
     if (selectedSession && sessionObj.spreadsheetId === selectedSession.spreadsheetId) {
       selectBtn.textContent = 'Selected';
       selectBtn.classList.add('btn-success');
@@ -995,13 +980,12 @@ function displaySessionCards(sessions) {
       selectBtn.classList.add('btn-primary');
     }
 
-    // Click => Make this session the selected one
+    // Handle click => set selectedSession, then re-display
     selectBtn.addEventListener('click', () => {
       selectedSession = sessionObj;
-      allProducts = sessionObj.products || [];
+      allProducts     = sessionObj.products || [];
 
-      // Re-render so the selected session moves to the bottom
-      // and the others become smaller
+      // Re-render the session cards so we highlight the new selection
       displaySessionCards(sessions);
 
       // Continue your existing logic
