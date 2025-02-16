@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8" name="theme-color" content="#0e2f7b" />
   <title>Registration with Email Verification & Payment</title>
   <!-- Bootstrap 5 CSS -->
   <link
@@ -229,6 +229,13 @@
       flex-wrap: wrap;
     }
 
+    .badges .badge {
+    margin-bottom: 0.25rem;  /* small spacing between badges */
+    margin-right: 0.25rem
+
+    }
+
+
     .program-card {
       width: 100%;
       max-width: 300px;
@@ -269,7 +276,7 @@
     /* [CHANGED] Floating Cart Pill */
     #cart-summary-pill {
       position: fixed;
-      bottom: 60px; /* just above the nav */
+      bottom: 80px; /* just above the nav */
       right: 15px;
       z-index: 9999;
       background: #0e2f7b;
@@ -405,6 +412,12 @@
   
   <!-- [ADDED] List View Container (7-day list) -->
   <div id="list-view-container" style="display: none;">
+    <div id="standardized-level-filter-group" style="display: none;">
+        <label class="form-label"><strong>Select Standardized Level</strong></label>
+        <select id="standardized-level-filter" class="form-select mb-3">
+          <option value="">--All Standardized Levels--</option>
+        </select>
+      </div>      
     <div class="d-flex justify-content-between align-items-center mb-2">
       <button id="btn-list-prev" class="btn btn-sm btn-secondary">&laquo; Previous 7 Days</button>
       <button id="btn-list-next" class="btn btn-sm btn-secondary">Next 7 Days &raquo;</button>
@@ -597,6 +610,8 @@
     let selectedCategory = null;
     let selectedLevel = null;
     let selectedDayTime = null;
+    let selectedStandardizedLevel = null;
+
 
     // We'll keep a global array of "allProducts" for the chosen session
     let allProducts = [];
@@ -606,6 +621,14 @@
     let listViewStartDate = null;    // Start date for the current 7-day range
     let minProgramDate = null;       // Earliest date in the selected session's programs
     let maxProgramDate = null;       // Latest date in the selected session's programs
+
+    document.getElementById('cart-summary-pill').addEventListener('click', () => {
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth'
+    });
+    });
+
 
     /************************************************************
      * 2) ON PAGE LOAD
@@ -903,7 +926,7 @@
   }
 
   sessions.forEach(sessionObj => {
-    const label = `${sessionObj.location} - ${sessionObj.season} (${sessionObj.date})`;
+    const label = `${sessionObj.location} - ${sessionObj.season}`;
 
     const cardDiv = document.createElement('div');
     cardDiv.className = 'card session-card p-2';
@@ -947,6 +970,7 @@
       // 5) Continue your logic (filters, etc.)
       resetProductFilters();
       prepareListViewDates(sessionObj);
+      populateStandardizedLevelDropdown();
 
       const progContainer = document.getElementById('program-cards-container');
       progContainer.style.display = 'none';
@@ -1012,6 +1036,8 @@
       selectedCategory = null;
       selectedLevel    = null;
       selectedDayTime  = null;
+      selectedStandardizedLevel = null;
+
 
       const catSelect = document.getElementById('category-filter');
       catSelect.innerHTML = '<option value="">--All Categories--</option>';
@@ -1126,6 +1152,13 @@
         const levelBadge = document.createElement('span');
         levelBadge.className = 'badge bg-info';
         levelBadge.textContent = prod.level || 'N/A';
+
+        if (prod.indoorOutdoor) {
+            const ioBadge = document.createElement('span');
+            ioBadge.className = 'badge bg-secondary';
+            ioBadge.textContent = prod.indoorOutdoor;
+            badgesEl.appendChild(ioBadge);
+            }
 
         badgesEl.appendChild(catBadge);
         badgesEl.appendChild(levelBadge);
@@ -1284,7 +1317,7 @@
         return;
       }
       pill.style.display = 'block';
-      pill.textContent = `${cartItems.length} item(s) - $${total}`;
+      pill.textContent = `🛒 ${cartItems.length} item(s) - $${total}`;
     }
 
     function calculateCartTotalCents() {
@@ -1848,12 +1881,46 @@ function combineDateTime(dateObj, timeObj) {
       toggleViewContainer.style.display = shouldShow ? 'block' : 'none';
     }
 
+    document.getElementById('standardized-level-filter').addEventListener('change', () => {
+  selectedStandardizedLevel = document.getElementById('standardized-level-filter').value.trim();
+  // Refresh whichever view is relevant:
+  if (isListView) {
+    renderProgramListForRange();
+  } else {
+    renderProgramCards();
+  }
+});
+
     // Toggle button => flips isListView, calls updateRegisterViewMode()
     document.getElementById('btn-toggle-calendar-view').addEventListener('click', () => {
       isListView = !isListView;
       updateRegisterViewMode();
       const programCardsContainer = document.getElementById('program-cards-container');
     });
+
+    function populateStandardizedLevelDropdown() {
+  const sLevelSelect = document.getElementById('standardized-level-filter');
+  sLevelSelect.innerHTML = '<option value="">--All Standardized Levels--</option>';
+
+  const sLevelsSet = new Set();  
+  allProducts.forEach(prod => {
+    (prod.standardizedLevelList || []).forEach(lvl => {
+      sLevelsSet.add(lvl);
+    });
+  });
+
+  const sLevelsArray = Array.from(sLevelsSet).sort();  // convert to array, optionally sort
+  sLevelsArray.forEach(sl => {
+    const opt = document.createElement('option');
+    opt.value = sl;
+    opt.textContent = sl;
+    sLevelSelect.appendChild(opt);
+  });
+
+  document.getElementById('standardized-level-filter-group').style.display = 'block';
+}
+
+
 
     // Show/hide filters or list
     function updateRegisterViewMode() {
@@ -1963,6 +2030,19 @@ function combineDateTime(dateObj, timeObj) {
   const rangeEnd   = new Date(rangeStart);
   rangeEnd.setDate(rangeEnd.getDate() + 6);
 
+  // Format the dates however you like:
+    const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    const startStr = rangeStart.toLocaleDateString(undefined, options);
+    const endStr   = rangeEnd.toLocaleDateString(undefined, options);
+
+    // Build a heading or paragraph
+    const rangeLabel = document.createElement('div');
+    rangeLabel.className = 'fs-3 mb-2 d-flex justify-content-center align-items-center';  // example classes for styling
+    rangeLabel.textContent = `${startStr} – ${endStr}`;
+
+    // Insert it into the container at the top
+    container.appendChild(rangeLabel);
+
   // Filter out invalid or "package" items, and only keep those within [rangeStart, rangeEnd].
   let filtered = (selectedSession.products || []).filter(prod => {
     if (!prod.program) return false;
@@ -1971,6 +2051,13 @@ function combineDateTime(dateObj, timeObj) {
     if (!dt) return false;
     return dt >= rangeStart && dt <= rangeEnd;
   });
+
+    //If the user has chosen a Standardized Level, filter on that too
+    if (selectedStandardizedLevel) {
+  filtered = filtered.filter(p => 
+    p.standardizedLevelList.includes(selectedStandardizedLevel)
+  );
+}
 
   // Sort by date ascending.
   filtered.sort((a, b) => {
@@ -2019,8 +2106,8 @@ function combineDateTime(dateObj, timeObj) {
       }
 
       // Build a display-only label. Do NOT overwrite `prod.program`!
-      const categoryLevel = `${prod.category || 'N/A'} ${prod.level || ''}`.trim();
-      const displayText = categoryLevel ? `${categoryLevel}: ${prod.program}` : prod.program;
+      const categoryLevel = `${prod.category || 'N/A'}`;
+      const displayText = `${prod.category}: ${prod.program}`;
 
       // Main label
       const labelEl = document.createElement('div');
@@ -2038,9 +2125,24 @@ function combineDateTime(dateObj, timeObj) {
         itemDiv.appendChild(priceEl);
       }
 
+      if (prod.program) {
+        const prgmBadge = document.createElement('span');
+        prgmBadge.className = 'badge bg-primary me-2 mt-2';
+        prgmBadge.textContent = prod.level;
+        itemDiv.appendChild(prgmBadge);
+        }
+
+      if (prod.indoorOutdoor) {
+        const ioBadge = document.createElement('span');
+        ioBadge.className = 'badge bg-secondary me-2 mt-2';
+        ioBadge.textContent = prod.indoorOutdoor;
+        itemDiv.appendChild(ioBadge);
+        itemDiv.appendChild(document.createElement('br'));
+        }
+
       // Add/Remove UI
       const addBtn = document.createElement('button');
-      addBtn.className = 'btn btn-sm btn-success btn-add me-2';
+      addBtn.className = 'btn btn-sm btn-success btn-add me-2 mt-2';
       addBtn.textContent = 'Add';
       if (prod.soldOut) addBtn.disabled = true;
 
