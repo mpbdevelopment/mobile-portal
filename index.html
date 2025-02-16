@@ -216,6 +216,16 @@
       max-width: 300px;
     }
 
+    @media (max-width: 576px) {
+  .session-card .card-body {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+  .session-card h6 {
+    font-size: 1rem;
+  }
+}
+
     /* [CHANGED] Hide filters initially (progressive) */
     #filter-section {
       display: none;
@@ -397,7 +407,7 @@
           <h5>Register for a Program</h5>
 
           <!-- [CHANGED] 1) Session Cards Container -->
-          <div id="session-cards" class="row">
+          <div id="session-cards" class="row g-2">
             <!-- Dynamically populated in loadSessions() -->
           </div>
 
