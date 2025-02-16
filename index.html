@@ -1842,6 +1842,9 @@ function combineDateTime(dateObj, timeObj) {
       document.getElementById('profile-phone').textContent = player.phoneNumber || '';
       document.getElementById('profile-email').textContent = player.email || '';
 
+      const fullName = `${player.firstName} ${player.lastName}`.trim();
+      localStorage.setItem('playerFullName', fullName);
+
       const cardSpan   = document.getElementById('profile-card-last4');
       const cardButton = document.getElementById('profile-card-button');
 
