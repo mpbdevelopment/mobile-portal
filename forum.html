@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Mobile-friendly viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pickleball Club Chat</title>
+  <title>Pickleball Chat</title>
 
   <!-- Bootstrap 5 CSS (CDN) -->
   <link
@@ -13,6 +12,10 @@
   />
 
   <style>
+    /* 
+      Basic reset to ensure full mobile responsiveness 
+      and zero default margin/padding.
+    */
     html,
     body {
       margin: 0;
@@ -22,50 +25,45 @@
       background-color: #f5f5f5;
     }
 
+    /* 
+      The outer container that spans the full viewport height. 
+      We make this a flex container to easily position
+      header, body (messages), and footer (input area).
+    */
     .chat-container {
       display: flex;
       flex-direction: column;
       height: 100vh;
       max-height: 100vh;
-      overflow: hidden; /* Hide any accidental overflow from child elements */
+      overflow: hidden; /* Hide any accidental overflow from child elements. */
     }
 
     /* 
-      A header bar with brand color.  
-      Now it contains a row with: 
-      - Title 
-      - Chat room selector (dropdown)
+      A simple top header bar with brand color. 
+      Could also house a back button or club name, etc.
     */
     .chat-header {
-      background-color: #0e2f7b;
+      background-color: #0e2f7b; /* brand color */
       color: #fff;
       padding: 0.75rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .chat-header h5 {
-      margin: 0;
-      font-size: 1.1rem;
+      text-align: center;
     }
 
-    .room-select {
-      background-color: #fff;
-      color: #000;
-      border: none;
-      border-radius: 4px;
-      padding: 0.25rem 0.5rem;
-      font-size: 0.9rem;
-      outline: none;
-    }
-
+    /* 
+      The main chat message area. 
+      Make it scrollable and fill all leftover space.
+    */
     .chat-body {
       flex: 1;
-      overflow-y: auto; /* Let chat messages scroll */
+      overflow-y: auto; /* Let chat messages scroll if they exceed the viewport. */
       padding: 1rem;
       background-color: #f5f5f5;
     }
 
+    /* 
+      Sticky footer for the message input area. 
+      Stays pinned to the bottom of the screen.
+    */
     .chat-footer {
       background-color: #fff;
       border-top: 1px solid #ccc;
@@ -75,8 +73,12 @@
       gap: 0.5rem;
     }
 
+    /* 
+      Message input text area. 
+      We remove the default resize handle and round corners for a nicer feel.
+    */
     #messageInput {
-      flex: 1;
+      flex: 1; /* Occupy all available horizontal space except the send button */
       resize: none;
       border-radius: 1rem;
       border: 1px solid #ccc;
@@ -85,6 +87,10 @@
       outline: none;
     }
 
+    /* 
+      Brand button styling for Send. 
+      Slight hover effect for better UX.
+    */
     .btn-brand {
       background-color: #0e2f7b;
       color: #fff;
@@ -104,7 +110,7 @@
     ***************/
     .messageItem {
       display: inline-block;
-      clear: both;
+      clear: both; /* ensures each message starts on a new line */
       margin-bottom: 10px;
       max-width: 70%;
       position: relative;
@@ -115,10 +121,11 @@
       line-height: 1.3rem;
     }
 
+    /* Current user's message bubble */
     .myMessage {
       float: right;
-      background-color: #0e2f7b;
-      color: #fff;
+      background-color: #0e2f7b; /* brand color */
+      color: #fff; /* ensure text is readable */
       text-align: left;
     }
     .myMessage::after {
@@ -129,9 +136,10 @@
       width: 0;
       height: 0;
       border: 10px solid transparent;
-      border-left-color: #0e2f7b;
+      border-left-color: #0e2f7b; /* brand color */
     }
 
+    /* Other user's message bubble */
     .otherMessage {
       float: left;
       background-color: #fff;
@@ -148,6 +156,7 @@
       border-right-color: #fff;
     }
 
+    /* Sender name styling within the bubble */
     .senderName {
       font-size: 0.8em;
       font-weight: bold;
@@ -155,6 +164,7 @@
       display: block;
     }
 
+    /* Actual message text */
     .messageText {
       white-space: pre-wrap; /* preserve line breaks */
       font-size: 1em;
@@ -165,18 +175,16 @@
 <body>
   <!-- Main Chat Container -->
   <div class="chat-container">
-
-    <!-- Header with Title and Room Select -->
+    
+    <!-- Header / Title Bar -->
     <div class="chat-header">
       <h5 class="m-0">Pickleball Club Chat</h5>
-      <select id="chatRoomSelect" class="room-select">
-        <!-- We'll populate these in JS or you can hard-code them:
-             Values must be Firebase-friendly (no periods, etc). -->
-      </select>
     </div>
-
-    <!-- Chat Messages (updates dynamically) -->
-    <div id="messageList" class="chat-body"></div>
+    
+    <!-- Chat Messages -->
+    <div id="messageList" class="chat-body">
+      <!-- Dynamically populated by Firebase -->
+    </div>
 
     <!-- Input Area (Sticky Footer) -->
     <div class="chat-footer">
@@ -185,7 +193,12 @@
         rows="1"
         placeholder="Type your message..."
       ></textarea>
-      <button id="sendButton" class="btn btn-brand">Send</button>
+      <button 
+        id="sendButton"
+        class="btn btn-brand"
+      >
+        Send
+      </button>
     </div>
   </div>
 
@@ -200,7 +213,7 @@
 
   <script>
     /************************************************
-     * 1. Your Firebase Project Config
+     * 1. Insert Your Real Firebase Project Config *
      ************************************************/
     const firebaseConfig = {
       apiKey: "AIzaSyAtp6T37Mpb0n5PljcxtWBFsS7AbRGcZz4",
@@ -212,113 +225,57 @@
       measurementId: "G-3QMKRX9T5H"
     };
 
+    /********************************************
+     * 2. Initialize Firebase and Database Ref  *
+     ********************************************/
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const messagesRef = db.ref("forumMessages");
 
     /*********************************************************
-     * 2. Map Our Chat Rooms to Firebase-Safe Keys
-     *********************************************************/
-    // Because Firebase doesn't allow '.' in the DB keys,
-    // we replace them (and other odd chars) with underscores or similar.
-    // The keys here will be used as child paths in the DB.
-    const chatRoomsMapping = {
-      "Beginner": "Beginner",
-      "Advanced Beginner/Intermediate (2.0-3.0)": "AdvancedBeginnerIntermediate_2_0_3_0",
-      "High Intermediate (3.0-3.5)": "HighIntermediate_3_0_3_5",
-      "Advanced (3.5-4.0)": "Advanced_3_5_4_0",
-      "Expert (4.0+)": "Expert_4_0plus"
-    };
-
-    // We also want to keep track of the user’s selected room in localStorage
-    // so that if they refresh, they stay in the same room.
-    const defaultRoomKey = "Beginner"; // Fallback if none is saved
-    let currentRoomKey = localStorage.getItem('selectedRoomKey') || defaultRoomKey;
-
-    // Pre-fill the <select> with these rooms
-    const chatRoomSelect = document.getElementById("chatRoomSelect");
-    for (const [label, dbKey] of Object.entries(chatRoomsMapping)) {
-      const option = document.createElement("option");
-      option.value = dbKey;
-      option.textContent = label;
-      chatRoomSelect.appendChild(option);
-    }
-    // Set the dropdown to the saved currentRoomKey
-    chatRoomSelect.value = currentRoomKey;
-
-    /*********************************************************
-     * 3. Get User Info from localStorage (Full Name & Email)
+     * 3. Get User Info from localStorage (Full Name & Email)*
      *********************************************************/
     const userEmail = localStorage.getItem('playerEmail') || 'anonymous@example.com';
     const userFullName = localStorage.getItem('playerFullName') || 'Anonymous';
 
-    /*********************************************************
-     * 4. DOM References
-     *********************************************************/
+    /**********************
+     * 4. DOM References  *
+     **********************/
     const messageList = document.getElementById("messageList");
     const messageInput = document.getElementById("messageInput");
     const sendButton = document.getElementById("sendButton");
 
-    /*********************************************************
-     * 5. Real-Time Message Listening
-     *********************************************************/
-    // We'll store the current messagesRef so we can switch rooms easily
-    let messagesRef = null;
-    let listenerAttached = false;
-
-    // Function to attach the "child_added" listener for the specified room
-    function attachMessagesListener(roomKey) {
-      // Clean up any existing listener first
-      if (messagesRef && listenerAttached) {
-        messagesRef.off("child_added");
-        listenerAttached = false;
-      }
-
-      // Construct path: "forumMessages/ROOM_KEY"
-      messagesRef = db.ref(`forumMessages/${roomKey}`);
-
-      // Clear out the UI so old room’s messages don’t linger
-      messageList.innerHTML = "";
-
-      // Attach new "child_added" listener
-      messagesRef.on("child_added", (snapshot) => {
-        const data = snapshot.val();
-        addMessageToUI(data.email, data.fullName, data.text);
-      });
-      listenerAttached = true;
-    }
-
-    // Initially attach listener to the "currentRoomKey"
-    attachMessagesListener(currentRoomKey);
-
-    // When the user switches the dropdown, switch the chat room
-    chatRoomSelect.addEventListener("change", (e) => {
-      const newRoomKey = e.target.value;
-      localStorage.setItem('selectedRoomKey', newRoomKey);
-      currentRoomKey = newRoomKey;
-      attachMessagesListener(currentRoomKey);
+    /********************************************************
+     * 5. Listen for New Messages (child_added) in Real-Time*
+     ********************************************************/
+    messagesRef.on("child_added", (snapshot) => {
+      const data = snapshot.val();
+      addMessageToUI(data.email, data.fullName, data.text);
     });
 
-    /*********************************************************
-     * 6. Render a Message Bubble in the UI
-     *********************************************************/
+    /**************************************************************
+     * 6. Add a Message Bubble to the UI (Shows Full Name Instead)*
+     **************************************************************/
     function addMessageToUI(senderEmail, senderFullName, text) {
+      // Determine if it's the current user's message
       const isMyMessage = (senderEmail === userEmail);
 
-      // Bubble wrapper
+      // Create the bubble wrapper
       const wrapper = document.createElement("div");
-      wrapper.classList.add("messageItem", isMyMessage ? "myMessage" : "otherMessage");
+      wrapper.classList.add("messageItem");
+      wrapper.classList.add(isMyMessage ? "myMessage" : "otherMessage");
 
-      // If you want your own messages to say "You", uncomment next line:
+      // (Optional) If you want your own messages to say "You" instead of your name:
       // let displayName = isMyMessage ? "You" : senderFullName;
       let displayName = senderFullName;
 
-      // Sender name
+      // Create sender name div
       const nameDiv = document.createElement("div");
       nameDiv.classList.add("senderName");
       nameDiv.textContent = displayName;
       wrapper.appendChild(nameDiv);
 
-      // Message text
+      // Create message text div
       const textDiv = document.createElement("div");
       textDiv.classList.add("messageText");
       textDiv.textContent = text;
@@ -326,28 +283,19 @@
 
       // Append to the message list
       messageList.appendChild(wrapper);
-      // Auto-scroll to the latest
+
+      // Auto-scroll to the newest message
       messageList.scrollTop = messageList.scrollHeight;
     }
 
-    /*********************************************************
-     * 7. Send a New Message to Firebase on "Send" Click
-     *********************************************************/
-    sendButton.addEventListener("click", sendMessage);
-
-    // (Optional) Send message on Enter key press
-    messageInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    function sendMessage() {
+    /**************************************************
+     * 7. Send a New Message to Firebase on Click     *
+     **************************************************/
+    sendButton.addEventListener("click", () => {
       const text = messageInput.value.trim();
-      if (!text) return; // Don't send empty messages
+      if (!text) return; // don't send empty messages
 
-      // Push to "forumMessages/currentRoomKey"
+      // Push message to Realtime Database
       messagesRef.push({
         email: userEmail,
         fullName: userFullName,
@@ -358,7 +306,7 @@
       // Clear the input
       messageInput.value = "";
       messageInput.focus();
-    }
+    });
   </script>
 </body>
 </html>
