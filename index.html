@@ -2320,8 +2320,16 @@ function combineDateTime(dateObj, timeObj) {
 
   // 4) Create or update FullCalendar
   if (!registerCalendar) {
+    let defaultView = 'timeGridWeek';
+        if (window.innerWidth < 768) {
+        defaultView = 'listWeek';
+        viewOptions = 'listWeek';
+        } else {
+            defaultView = 'timeGridWeek';
+            viewOptions = 'timeGridWeek,listWeek';
+        }
     registerCalendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'timeGridWeek',
+      initialView: defaultView,
       dayHeaderFormat: { weekday: 'short' }, 
       slotMinTime: '05:00:00',
       slotMaxTime: '23:00:00',
@@ -2332,19 +2340,10 @@ function combineDateTime(dateObj, timeObj) {
       headerToolbar: {
         left:'',
       center: 'title',
-      right: 'timeGridWeek,listWeek' 
+      right: viewOptions,
       // => user sees two buttons on the right
     },
 
-    windowResize: function(arg) {
-    if (window.innerWidth < 768) {
-      // Switch to list view on narrower screens
-      arg.view.calendar.changeView('listWeek');
-    } else {
-      // Switch back to timeGridWeek on wider screens
-      arg.view.calendar.changeView('timeGridWeek');
-    }
-  },
 
     eventDidMount: function(info) {
         const product = info.event.extendedProps.product;
