@@ -69,6 +69,8 @@
       border-top: 1px solid #ddd;
       z-index: 999;
       display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .nav-bottom .nav-link {
       flex: 1;
@@ -498,7 +500,9 @@
     </div>
   
     <!-- The new FullCalendar container -->
+    <div style="overflow-x: auto; max-width: 100%;">
     <div id="register-calendar"></div>
+    </div>
     
   </div>
   
@@ -2318,6 +2322,7 @@ function combineDateTime(dateObj, timeObj) {
   if (!registerCalendar) {
     registerCalendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'timeGridWeek',
+      dayHeaderFormat: { weekday: 'short' }, 
       slotMinTime: '05:00:00',
       slotMaxTime: '23:00:00',
       initialDate: rangeStart,
@@ -2330,6 +2335,16 @@ function combineDateTime(dateObj, timeObj) {
       right: 'timeGridWeek,listWeek' 
       // => user sees two buttons on the right
     },
+
+    windowResize: function(arg) {
+    if (window.innerWidth < 768) {
+      // Switch to list view on narrower screens
+      arg.view.calendar.changeView('listWeek');
+    } else {
+      // Switch back to timeGridWeek on wider screens
+      arg.view.calendar.changeView('timeGridWeek');
+    }
+  },
 
     eventDidMount: function(info) {
         const product = info.event.extendedProps.product;
