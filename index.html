@@ -384,12 +384,28 @@
         <div id="home-content">
           <h5>Home</h5>
           <p>Welcome! Here are some quick links:</p>
-          <ul>
-            <li><a href="#tab-profile" data-bs-toggle="tab">View Profile</a></li>
-            <li><a href="#tab-register" data-bs-toggle="tab">Register for a Program</a></li>
-            <li><a href="#tab-registrations" data-bs-toggle="tab">My Registrations</a></li>
-            <!-- Add as many links as you like -->
-          </ul>
+          <div class="list-group">
+            <a href="#tab-profile" 
+               id="home-link-profile" 
+               class="list-group-item list-group-item-action">
+              View Profile
+            </a>
+            <a href="#tab-register" 
+               id="home-link-register" 
+               class="list-group-item list-group-item-action">
+              Register for a Program
+            </a>
+            <a href="#tab-registrations" 
+               id="home-link-registrations" 
+               class="list-group-item list-group-item-action">
+              My Registrations
+            </a>
+            <a href="forum.html" 
+                id="home-link-registrations" 
+                class="list-group-item list-group-item-action">
+                Montclair PickleChat
+            </a>
+          </div>
         </div>
         </div>
       </div>
@@ -625,6 +641,13 @@
               <div id="otpf-card-element" class="form-control"></div>
               <div id="otpf-card-errors" class="card-errors text-danger mt-1"></div>
             </div>
+            <!-- [NEW] Save Card Checkbox Container -->
+            <div id="save-card-checkbox-container" class="form-check mb-3" style="display: none;">
+                <input type="checkbox" class="form-check-input" id="save-card-checkbox" />
+                <label class="form-check-label" for="save-card-checkbox">
+                Save this card on file for future use
+                </label>
+            </div>
             <button type="submit" class="btn btn-primary w-100">Pay Now</button>
           </form>
         </div>
@@ -687,6 +710,39 @@
         behavior: 'smooth'
     });
     });
+
+    //HOME SCREEN LINKS TO TABS
+
+    document.querySelector('#home-content a[href="#tab-profile"]').addEventListener('click', function (e) {
+  e.preventDefault();
+  // Programmatically show the Profile tab
+  const profileTrigger = document.querySelector('[data-bs-target="#tab-profile"]');
+  if (profileTrigger) {
+    const tabObj = new bootstrap.Tab(profileTrigger);
+    tabObj.show();
+  }
+});
+
+document.querySelector('#home-content a[href="#tab-register"]').addEventListener('click', function (e) {
+  e.preventDefault();
+  // Programmatically show the Profile tab
+  const profileTrigger = document.querySelector('[data-bs-target="#tab-register"]');
+  if (profileTrigger) {
+    const tabObj = new bootstrap.Tab(profileTrigger);
+    tabObj.show();
+  }
+});
+
+document.querySelector('#home-content a[href="#tab-registrations"]').addEventListener('click', function (e) {
+  e.preventDefault();
+  // Programmatically show the Profile tab
+  const profileTrigger = document.querySelector('[data-bs-target="#tab-registrations"]');
+  if (profileTrigger) {
+    const tabObj = new bootstrap.Tab(profileTrigger);
+    tabObj.show();
+  }
+});
+
 
 
     /************************************************************
@@ -1477,83 +1533,146 @@ function displaySessionCards(sessions) {
     });
 
     document.getElementById('one-time-payment-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      document.getElementById('otpf-card-errors').textContent = '';
+  e.preventDefault();
+  document.getElementById('otpf-card-errors').textContent = '';
 
-      const nameOnCard = document.getElementById('otpf-name').value.trim();
-      if (!nameOnCard) {
-        document.getElementById('otpf-card-errors').textContent = 'Name is required.';
-        return;
-      }
+  const nameOnCard = document.getElementById('otpf-name').value.trim();
+  if (!nameOnCard) {
+    document.getElementById('otpf-card-errors').textContent = 'Name is required.';
+    return;
+  }
 
-      // Create PaymentMethod
-      const { paymentMethod, error } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: oneTimeCard,
-        billing_details: {
-          name: nameOnCard,
-          email: currentPlayer?.email || ''
-        }
-      });
-      if (error) {
-        document.getElementById('otpf-card-errors').textContent = error.message;
-        return;
-      }
-      showPaymentSpinner(true);
+  // Create PaymentMethod
+  const { paymentMethod, error } = await stripe.createPaymentMethod({
+    type: 'card',
+    card: oneTimeCard,
+    billing_details: {
+      name: nameOnCard,
+      email: currentPlayer?.email || ''
+    }
+  });
+  if (error) {
+    document.getElementById('otpf-card-errors').textContent = error.message;
+    return;
+  }
+  showPaymentSpinner(true);
 
-      const totalCents   = calculateCartTotalCents();
-      const programTotal = totalCents / 100;
-      const credit       = currentPlayer?.credit || 0;
-      let creditUsed     = (credit >= programTotal) ? programTotal : credit; 
-      let amountDue      = programTotal - creditUsed;
-      let amountDueCents = Math.round(amountDue * 100);
+  const totalCents   = calculateCartTotalCents();
+  const programTotal = totalCents / 100;
+  const credit       = currentPlayer?.credit || 0;
+  let creditUsed     = (credit >= programTotal) ? programTotal : credit; 
+  let amountDue      = programTotal - creditUsed;
+  let amountDueCents = Math.round(amountDue * 100);
 
-      if (amountDueCents <= 0) {
-        await registerAndCleanup(creditUsed);
-        return;
-      }
+  // If there's nothing to charge, skip Stripe PaymentIntent
+  if (amountDueCents <= 0) {
+    // Register user in Sheets, update credit, etc.
+    await registerAndCleanup(creditUsed);
 
-      // Call one-time function
-      const payload = {
-        amount: amountDueCents,
-        paymentMethodId: paymentMethod.id
-      };
-      let clientSecret;
+    // Check if user wants to save this card on file
+    const saveCardCheckbox = document.getElementById('save-card-checkbox');
+    if (saveCardCheckbox && saveCardCheckbox.checked) {
       try {
-        const resp = await fetch('https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTime', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await resp.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to create PaymentIntent.');
-        }
-        clientSecret = data.clientSecret;
+        await attachPaymentMethodToUser(paymentMethod.id);
       } catch (err) {
-        showPaymentSpinner(false);
-        document.getElementById('otpf-card-errors').textContent = err.message;
-        return;
+        console.error('Error saving card on file (zero due):', err);
       }
+    }
 
-      try {
-        const confirmResult = await stripe.confirmCardPayment(clientSecret);
-        if (confirmResult.error) {
-          showPaymentSpinner(false);
-          document.getElementById('otpf-card-errors').textContent = confirmResult.error.message;
-          return;
-        }
-        if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
-          await registerAndCleanup(creditUsed);
-        } else {
-          showPaymentSpinner(false);
-          document.getElementById('otpf-card-errors').textContent = 'Payment not completed.';
-        }
-      } catch (err) {
-        showPaymentSpinner(false);
-        document.getElementById('otpf-card-errors').textContent = err.message;
-      }
+    showPaymentSpinner(false);
+    return;
+  }
+
+  // Call one-time function to create PaymentIntent
+  const payload = {
+    amount: amountDueCents,
+    paymentMethodId: paymentMethod.id
+  };
+  let clientSecret;
+  try {
+    const resp = await fetch('https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTime', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
+    const data = await resp.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to create PaymentIntent.');
+    }
+    clientSecret = data.clientSecret;
+  } catch (err) {
+    showPaymentSpinner(false);
+    document.getElementById('otpf-card-errors').textContent = err.message;
+    return;
+  }
+
+  try {
+    // Confirm the PaymentIntent on the frontend
+    const confirmResult = await stripe.confirmCardPayment(clientSecret);
+    if (confirmResult.error) {
+      showPaymentSpinner(false);
+      document.getElementById('otpf-card-errors').textContent = confirmResult.error.message;
+      return;
+    }
+    if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
+      // Registration flow, minus credit used
+      await registerAndCleanup(creditUsed);
+
+      // If user wants to save card on file
+      const saveCardCheckbox = document.getElementById('save-card-checkbox');
+      if (saveCardCheckbox && saveCardCheckbox.checked) {
+        try {
+          await attachPaymentMethodToUser(paymentMethod.id);
+        } catch (err) {
+          console.error('Error saving card on file:', err);
+        }
+      }
+      showPaymentSpinner(false);
+    } else {
+      showPaymentSpinner(false);
+      document.getElementById('otpf-card-errors').textContent = 'Payment not completed.';
+    }
+  } catch (err) {
+    showPaymentSpinner(false);
+    document.getElementById('otpf-card-errors').textContent = err.message;
+  }
+});
+
+/**
+ * Attaches the given PaymentMethod to the current user's Stripe Customer.
+ * Reuses your 'createStripe' logic or similar endpoint that handles "find or create" logic.
+ */
+async function attachPaymentMethodToUser(paymentMethodId) {
+  if (!currentPlayer || !currentPlayer.email) {
+    console.error('Cannot attach PaymentMethod; no currentPlayer or email available.');
+    return;
+  }
+
+  const payload = {
+    email: currentPlayer.email,
+    paymentMethodId: paymentMethodId,
+    name: (currentPlayer.firstName || '') + ' ' + (currentPlayer.lastName || '')
+  };
+
+  try {
+    const resp = await fetch(CREATE_STRIPE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      console.error('Error attaching PaymentMethod to user:', data.error);
+    } else {
+      console.log('Successfully attached card to user’s Stripe account');
+      // Update local data so we know they have a card on file
+      currentPlayer.cardLast4 = data.cardLast4 || '****';
+    }
+  } catch (err) {
+    console.error('Network error in attachPaymentMethodToUser:', err);
+  }
+}
+
 
     async function registerAndCleanup(creditUsed) {
       await submitCartToSpreadsheet(creditUsed);
@@ -1907,6 +2026,17 @@ function combineDateTime(dateObj, timeObj) {
           modalEl.show();
         };
       }
+
+      const saveCardContainer = document.getElementById('save-card-checkbox-container');
+        if (saveCardContainer) {
+            if (player.cardLast4) {
+            // user ALREADY has a card => hide the checkbox
+            saveCardContainer.style.display = 'none';
+            } else {
+            // user has NO card => show the checkbox
+            saveCardContainer.style.display = 'block';
+            }
+        }
 
       updateCreditDisplay();
     }
