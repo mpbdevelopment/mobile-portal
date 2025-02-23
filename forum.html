@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8" name="theme-color" content="#0e2f7b" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pickleball Chat</title>
 
@@ -23,6 +23,51 @@
       height: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #f5f5f5;
+    }
+
+      /* 
+      Bottom navigation bar
+    */
+
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 56px;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0e2f7b; /* Bootstrap primary color */
+      color: #fff;              /* White text for contrast */
+      font-weight: 500;
+    }
+
+    .nav-bottom .nav-profile {
+    flex: 0 0 auto;       /* let it shrink to fit icon content */
+    width: 50px;          /* pick a smaller width */
+    text-align: center;
+    padding: 6px 0;       /* less vertical padding */
+    font-size: 1.1rem;    /* adjust icon size as you like */
+    }
+
+    .nav-bottom .nav-forum {
+    flex: 0 0 auto;
+    width: 50px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 1.2rem;
     }
 
     /* 
@@ -65,12 +110,17 @@
       Stays pinned to the bottom of the screen.
     */
     .chat-footer {
-      background-color: #fff;
-      border-top: 1px solid #ccc;
-      padding: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    position: fixed;
+    bottom: 56px; /* Adjust based on your nav-bottom height */
+    left: 0;
+    right: 0;
+    z-index: 1000; /* Ensure it stays above other content */
+    background-color: #fff;
+    border-top: 1px solid #ccc;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     }
 
     /* 
@@ -178,7 +228,7 @@
     
     <!-- Header / Title Bar -->
     <div class="chat-header">
-      <h5 class="m-0">Pickleball Club Chat</h5>
+      <h5 class="m-0">Montclair PickleChat</h5>
     </div>
     
     <!-- Chat Messages -->
@@ -202,6 +252,13 @@
     </div>
   </div>
 
+    <!-- FIXED BOTTOM NAV -->
+    <nav class="nav nav-bottom d-flex justify-content-around">
+        <a class="nav-link" href="#" onclick="goBack()" role="button">
+            <span class="d-block">Back to Main Portal</span>
+        </a>
+    </nav>
+
   <!-- Bootstrap 5 JS (Optional for some components) -->
   <script 
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
@@ -212,6 +269,19 @@
   <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
 
   <script>
+
+//Nav bar back to portal 
+    function goBack() {
+        // Check if there's history to go back to
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            // Fallback to main portal if no history
+            window.location.href = "index.html";
+        }
+        return false; // Prevent default link behavior
+    }
+
     /************************************************
      * 1. Insert Your Real Firebase Project Config *
      ************************************************/
@@ -307,7 +377,7 @@
       messageInput.value = "";
       messageInput.focus();
     });
+
   </script>
 </body>
 </html>
-
