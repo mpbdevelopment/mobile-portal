@@ -17,6 +17,9 @@
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js"></script>
 
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
   <!-- Stripe.js -->
   <script src="https://js.stripe.com/v3/"></script>
 
@@ -57,6 +60,13 @@
     .btn-primary:active {
       background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
       border-color: #0c2563 !important;
+    }
+
+    .btn-xs {
+      padding: 0.2rem 0.4rem;  /* Adjust as needed */
+      font-size: 0.65rem;      /* Smaller font size */
+      line-height: 1;
+      border-radius: 0.2rem;   /* Optional: adjust to match your badge style */
     }
 
     /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
@@ -156,7 +166,7 @@
     }
     /* Spinner overlay for Payment Processing */
     #payment-spinner {
-      position: absolute;
+      position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
@@ -167,6 +177,26 @@
       display: none;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
+
+    .overlay {
+      background: transparent; 
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9998;
+      display: none;
+      pointer-events: all;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+
     /* Spinner overlay for Session Loading */
     #session-spinner {
       display: none;
@@ -332,16 +362,25 @@
   background-color: #c3e6cb !important; /* a pale green */
 }
 
+/* fullCalendar turn off hover effect */
+.fc-list-table:hover,
+.fc-list-table:hover td {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
   </style>
 </head>
 <body class="bg-light">
+
+  <div id="overlay" class="overlay"></div>
 
   <!-- HEADER -->
   <header 
     class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
     style="background-color: #0e2f7b;"
   >
-    <h4 class="mb-0">MP Player Portal</h4>
+    <h4 class="mb-0">Montclair Pickleball Player Portal</h4>
     <img 
       src="icons/banner-logo.png" 
       alt="Logo" 
@@ -408,10 +447,15 @@
               My Registrations
             </a>
             <a href="forum.html" 
-                id="home-link-registrations" 
+                id="home-link-forum" 
                 class="list-group-item list-group-item-action">
                 Montclair PickleChat
             </a>
+            <a href="subscription.html" 
+            id="home-link-memberships" 
+            class="list-group-item list-group-item-action">
+            Purchase or Manage Membership
+          </a>
           </div>
         </div>
         </div>
@@ -481,16 +525,21 @@
             <!-- We still use the same 3 filters, but they appear one at a time. -->
 
             <!-- [ADDED] Toggle Calendar/List Button & List-View Container (initially hidden) -->
-<div class="d-flex justify-content-end mb-3" id="toggle-view-container" style="display: none;">
-    <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm">Toggle Calendar View</button>
-  </div>
+            <div id="toggle-view-container" style="display: none;">
+                <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm">
+                  Toggle Calendar View
+                </button>
+                <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
+                <a id="extndMsg" href="subscription.html" class="text-center mb-0" style="display:none;">You can extend your membership here.</a>
+              
+            </div>
   
 <!-- [ADJUSTED] List View Container -->
 <div id="list-view-container" style="display: none;">
     <div id="standardized-level-filter-group" style="display: none;">
         <label class="form-label"><strong>Filter By Your Level</strong></label>
         <select id="standardized-level-filter" class="form-select mb-3">
-          <option value="">--All Levels--</option>
+          <option value="">--Select Your Level--</option>
         </select>
     </div>
 
@@ -717,16 +766,16 @@
 
     const CATEGORY_COLORS = {
     "Adult Clinics": "#FF851B",         // example: bright orange
-    "Open Play": "#2ECC40",             // example: green
-    "Guided Open Play": "#3D9970",      // darker green
+    "Open Play": "#F1C40F",             // example: yellow
+    "Guided Open Play": "#9B59B6",      // darker green
     "Coach Guided Drilling": "#0074D9", // example: blue
     };
 
     const CATEGORY_DARK_COLORS = {
-    "Adult Clinics": "#cc6a14",         // ~ darkened version of #FF851B
-    "Open Play": "#25a135",             // ~ darkened #2ECC40
-    "Guided Open Play": "#337c63",      // ~ darkened #3D9970
-    "Coach Guided Drilling": "#0063a8", // ~ darkened #0074D9
+    "Adult Clinics": "#2ECC40",         // ~ darkened version of #FF851B
+    "Open Play": "#2ECC40",             // ~ darkened #2ECC40
+    "Guided Open Play": "#2ECC40",      // ~ darkened #3D9970
+    "Coach Guided Drilling": "#2ECC40", // ~ darkened #0074D9
     };
 
 
@@ -768,7 +817,39 @@ document.querySelector('#home-content a[href="#tab-registrations"]').addEventLis
     tabObj.show();
   }
 });
+    /************************************************************
+     * 1b) FIREBASE AND MEMBERSHIP CONFIGURATION
+     ************************************************************/
 
+     const firebaseConfig = {
+      apiKey: "AIzaSyDP2YjuFB8SiSJTsMH7yqGdyrMpiK05AEo",
+      authDomain: "mp-subscriptions.firebaseapp.com",
+      databaseURL: "https://mp-subscriptions-default-rtdb.firebaseio.com",
+      projectId: "mp-subscriptions",
+      storageBucket: "mp-subscriptions.firebasestorage.app",
+      messagingSenderId: "228607825379",
+      appId: "1:228607825379:web:02cddb56b0465cca603cd6",
+      measurementId: "G-8NXV5DBFZB"
+    };
+
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // We'll use this discount map (Option B: each category has membership-tier-specific discount factors)
+    const discountMap = {
+      "Open Play": {
+        Gold: 1.0,
+        Silver: 1.0
+        // add more tiers if needed
+      },
+      "Adult Clinics": {
+        Gold: 0.2,
+        Silver: 0.2
+        // add more tiers if needed
+      },
+      // Add more categories/tiers as needed...
+    };
 
 
     /************************************************************
@@ -789,23 +870,43 @@ document.querySelector('#home-content a[href="#tab-registrations"]').addEventLis
     /************************************************************
      * 3) SPINNER LOGIC
      ************************************************************/
-    function showProfileSpinner(shouldShow) {
-      const spinner = document.getElementById('login-spinner');
-      const homeContent = document.getElementById('home-content');
-      const profileContent = document.getElementById('profile-content');
-      if (!spinner || !profileContent) return;
-      spinner.style.display = shouldShow ? 'block' : 'none';
-      profileContent.style.display = shouldShow ? 'none' : 'block';
-      homeContent.style.display = shouldShow ? 'none' : 'block';
-    }
+     let activeSpinners = 0; // Track active spinners
 
-    function showPaymentSpinner(shouldShow) {
-      const spinner = document.getElementById('payment-spinner');
-      const successBox = document.getElementById('payment-success');
-      if (!spinner || !successBox) return;
-      spinner.style.display = shouldShow ? 'block' : 'none';
-      if (shouldShow) successBox.style.display = 'none';
-    }
+      function toggleScrollAndClicks(enable) {
+        if (enable) {
+          activeSpinners++;
+          document.body.classList.add('modal-open');
+          document.getElementById('overlay').style.display = 'block';
+        } else {
+          activeSpinners = Math.max(0, activeSpinners - 1);
+          if (activeSpinners === 0) {
+            document.body.classList.remove('modal-open');
+            document.getElementById('overlay').style.display = 'none';
+          }
+        }
+      }
+
+      function showProfileSpinner(shouldShow) {
+        const spinner = document.getElementById('login-spinner');
+        const homeContent = document.getElementById('home-content');
+        const profileContent = document.getElementById('profile-content');
+        if (!spinner || !profileContent) return;
+
+        toggleScrollAndClicks(shouldShow);
+        spinner.style.display = shouldShow ? 'block' : 'none';
+        profileContent.style.display = shouldShow ? 'none' : 'block';
+        homeContent.style.display = shouldShow ? 'none' : 'block';
+      }
+
+      function showPaymentSpinner(shouldShow) {
+        const spinner = document.getElementById('payment-spinner');
+        const successBox = document.getElementById('payment-success');
+        if (!spinner || !successBox) return;
+
+        toggleScrollAndClicks(shouldShow);
+        spinner.style.display = shouldShow ? 'block' : 'none';
+        if (shouldShow) successBox.style.display = 'none';
+      }
 
     function showSessionSpinner(shouldShow) {
       const spinner = document.getElementById('session-spinner');
@@ -908,69 +1009,104 @@ document.querySelector('#home-content a[href="#tab-registrations"]').addEventLis
     /************************************************************
      * 5) INITIATE VALIDATION FLOW (Players + Stripe + Credit)
      ************************************************************/
-    async function initiateValidationFlow(email) {
-      showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
-      showProfileSpinner(true);
+     async function initiateValidationFlow(email) {
+  showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+  showProfileSpinner(true);
 
-      try {
-        // 1) getPlayerInfo
-        const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
-        const playerResp = await fetch(playerUrl);
-        const playerData = await playerResp.json();
-        showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+  try {
+    // 1) getPlayerInfo from GAS
+    const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
+    const playerResp = await fetch(playerUrl);
+    const playerData = await playerResp.json();
+    showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
 
-        if (!playerData.success || !playerData.player) {
-          showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
-          showProfileSpinner(false);
-          return;
-        }
-        currentPlayer = playerData.player;
-
-        // 2) Check Stripe
-        const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
-        const stripeResp = await fetch(stripeUrl);
-        const stripeData = await stripeResp.json();
-        showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
-
-        if (!stripeData.success) {
-          showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
-          showProfileSpinner(false);
-          return;
-        }
-        if (stripeData.exists) {
-          currentPlayer.cardLast4 = stripeData.cardLast4 || null;
-        } else {
-          showMessage('No Stripe customer found => Payment Profile needed', 'debug');
-        }
-
-        // 3) Fetch user credit
-        const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
-        const creditResp = await fetch(creditUrl);
-        const creditData = await creditResp.json();
-        showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
-        currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
-
-        // Show profile
-        setProfileData(currentPlayer);
-
-        // If no stripe => show modal
-        if (!stripeData.exists) {
-          const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
-          modalEl.show();
-        } else {
-          // Load sessions
-          showSessionSpinner(true);
-          await loadSessions();
-          showSessionSpinner(false);
-        }
-
-        showProfileSpinner(false);
-      } catch (err) {
-        showMessage('initiateValidationFlow error: ' + err.message, 'error');
-        showProfileSpinner(false);
-        showSessionSpinner(false);
-      }
+    if (!playerData.success || !playerData.player) {
+      showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+      showProfileSpinner(false);
+      return;
     }
+    currentPlayer = playerData.player;
+
+    // 2) Check Stripe
+    const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+    const stripeResp = await fetch(stripeUrl);
+    const stripeData = await stripeResp.json();
+    showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+
+    if (!stripeData.success) {
+      showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+      showProfileSpinner(false);
+      return;
+    }
+    if (stripeData.exists) {
+      currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+    } else {
+      showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+    }
+
+    // 3) Fetch user credit
+    const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
+    const creditResp = await fetch(creditUrl);
+    const creditData = await creditResp.json();
+    showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
+    currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
+
+    // 4) Fetch membership from Firebase Realtime Database
+    try {
+      const dbRef = firebase.database().ref('subscriptions');
+      // We'll read ALL subscriptions and find the one that matches currentPlayer.email
+      const snapshot = await dbRef.once('value');
+      const subsData = snapshot.val() || {};
+      let membershipType = null;
+      let membershipEnd = null;
+
+      // We search for a record with .email === currentPlayer.email
+      Object.keys(subsData).forEach(key => {
+        const sub = subsData[key];
+        if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
+          // Found a match
+          if (sub.active) {
+            membershipType = sub.membershipType || null;
+            membershipEnd  = sub.endDate || null;
+          }
+        }
+      });
+
+      // Store the membership info
+      currentPlayer.membershipType    = membershipType;
+      currentPlayer.membershipEndDate = membershipEnd;
+
+      showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
+    } catch (firebaseErr) {
+      showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
+      currentPlayer.membershipType = null;
+      currentPlayer.membershipEndDate = null;
+    }
+
+    // Show profile
+    setProfileData(currentPlayer);
+
+    updateMembershipMessage();
+
+    // If no stripe => show modal
+    if (!stripeData.exists) {
+      const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+      modalEl.show();
+    } else {
+      // Load sessions
+      showSessionSpinner(true);
+      await loadSessions();
+      showSessionSpinner(false);
+    }
+
+    showProfileSpinner(false);
+  } catch (err) {
+    showMessage('initiateValidationFlow error: ' + err.message, 'error');
+    showProfileSpinner(false);
+    showSessionSpinner(false);
+  }
+}
+
 
     /************************************************************
      * 6) PAYMENT PROFILE FORM
@@ -1058,6 +1194,63 @@ document.querySelector('#home-content a[href="#tab-registrations"]').addEventLis
         products: data.products || []
       };
     }
+
+    function getDiscountedPrice(product, membershipType, membershipEndDate) {
+  // 1) Base price from the product
+  const basePrice = product.price || 0;
+
+  // 2) If no membership, or membershipEndDate is past, return full price
+  if (!membershipType || !membershipEndDate) {
+    return basePrice;
+  }
+  const endDate = new Date(membershipEndDate);
+  const now = new Date();
+  if (endDate < now) {
+    // membership is expired
+    return basePrice;
+  }
+
+  // 3) Determine discount factor from your global discountMap
+  //    If category not found or membership tier not found => 0 discount
+  const catMap = discountMap[product.category] || {};
+  const discountFactor = catMap[membershipType] || 0; // e.g. 1.0 => 100% discount, 0.2 => 20% discount
+
+  // If discountFactor is 0 => no discount
+  if (discountFactor <= 0) {
+    return basePrice;
+  }
+
+  // 4) Parse all the dates this product covers
+  const allDates = parseAllDates(product.program);
+  if (!allDates.length) {
+    return basePrice; // fallback if no parse
+  }
+
+  // 5) For multi-date items (like a 6-week package), we treat each date as an equal slice
+  //    e.g. if basePrice=120, 6 dates => each date's cost is 120/6 = 20
+  const slicePrice = basePrice / allDates.length;
+  let total = 0;
+
+  allDates.forEach(dateObj => {
+    if (dateObj <= endDate) {
+      // membership covers this date => apply discount
+      const discountedSlice = slicePrice * (1 - discountFactor);
+      total += discountedSlice;
+    } else {
+      // membership does not cover => full slice
+      total += slicePrice;
+    }
+  });
+
+  // 6) Round down in favor of the customer => e.g. 45.998 => 45.99
+  // The easiest approach: multiply by 100, floor, then /100
+  let finalPriceCents = Math.floor(total * 100); 
+  let finalPrice = finalPriceCents / 100; 
+
+  return finalPrice;
+}
+
+
 
 function displaySessionCards(sessions) {
   const container = document.getElementById('session-cards');
@@ -1261,91 +1454,123 @@ function displaySessionCards(sessions) {
     });
 
     function renderProgramCards() {
-      const container = document.getElementById('program-cards-container');
-      container.innerHTML = '';
+  const container = document.getElementById('program-cards-container');
+  container.innerHTML = '';
 
-      let filtered = allProducts;
-      if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
-      if (selectedLevel)    filtered = filtered.filter(p => p.level === selectedLevel);
-      if (selectedDayTime)  filtered = filtered.filter(p => p.dayTime === selectedDayTime);
+  let filtered = allProducts;
+  if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
+  if (selectedLevel)    filtered = filtered.filter(p => p.level === selectedLevel);
+  if (selectedDayTime)  filtered = filtered.filter(p => p.dayTime === selectedDayTime);
 
-      if (!filtered.length) {
-        container.innerHTML = '<p>No programs match these filters.</p>';
-        return;
+  if (!filtered.length) {
+    container.innerHTML = '<p>No programs match these filters.</p>';
+    return;
+  }
+
+  filtered.forEach(prod => {
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'program-card';
+
+    const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+    if (inCart) {
+      cardDiv.classList.add('added');
+    }
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'program-name';
+    nameEl.textContent = prod.program;
+
+    const priceEl = document.createElement('div');
+    priceEl.className = 'program-price';
+
+    // === START MEMBERSHIP PRICE LOGIC ===
+    const memberPrice = getDiscountedPrice(
+      prod,
+      currentPlayer?.membershipType,
+      currentPlayer?.membershipEndDate
+    );
+
+    // Round to 2 decimals
+    const basePrice   = prod.price || 0;
+    let label = `$${memberPrice.toFixed(2)}`;
+    if (memberPrice < basePrice) {
+      // A discount was applied
+      const catMap = discountMap[prod.category] || {};
+      const discountFactor = catMap[currentPlayer?.membershipType] || 0;
+      const pct = Math.round(discountFactor * 100);
+      label += ` (${pct}% discount)`;
+    } 
+    priceEl.textContent = label;
+
+    // === END MEMBERSHIP PRICE LOGIC ===
+
+    const badgesEl = document.createElement('div');
+    badgesEl.className = 'badges';
+    const catBadge = document.createElement('span');
+    catBadge.className = 'badge bg-primary me-2';
+    catBadge.textContent = prod.category || 'N/A';
+
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'badge bg-info';
+    levelBadge.textContent = prod.level || 'N/A';
+
+    if (prod.indoorOutdoor) {
+      const ioBadge = document.createElement('span');
+      ioBadge.className = 'badge bg-secondary';
+      ioBadge.textContent = prod.indoorOutdoor;
+      badgesEl.appendChild(ioBadge);
+    }
+
+    badgesEl.appendChild(catBadge);
+    badgesEl.appendChild(levelBadge);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-sm btn-success btn-add';
+    addBtn.textContent = 'Add';
+    if (prod.soldOut) {
+      addBtn.disabled = true;
+      nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+    }
+    addBtn.addEventListener('click', () => {
+      addProductToCart(prod);
+      cardDiv.classList.add('added');
+      updateProgramCardState(cardDiv, prod);
+    });
+
+    const addedControls = document.createElement('div');
+    addedControls.className = 'added-controls';
+    addedControls.innerHTML = `
+      <span class="text-success"><strong>&check;</strong> Added</span>
+      <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
+    `;
+    const removeBtn = addedControls.querySelector('button');
+    removeBtn.addEventListener('click', () => {
+      removeProductFromCart(prod);
+      cardDiv.classList.remove('added');
+      updateProgramCardState(cardDiv, prod);
+    });
+
+    cardDiv.appendChild(nameEl);
+    cardDiv.appendChild(priceEl);
+    cardDiv.appendChild(badgesEl);
+    cardDiv.appendChild(addBtn);
+    cardDiv.appendChild(addedControls);
+    
+    if (memberPrice == basePrice && currentPlayer?.membershipType) {
+      const extndBtn = document.createElement('button');
+    extndBtn.className = 'btn btn-xs btn-danger btn-add';
+    extndBtn.textContent = 'Pre-Extend Your Membership';
+    extndBtn.addEventListener('click', () => {
+      window.location.href = 'subscription.html';
+    });
+    priceEl.insertAdjacentElement('afterend', extndBtn);
       }
 
-      filtered.forEach(prod => {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = 'program-card';
 
-        const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
-        if (inCart) {
-          cardDiv.classList.add('added');
-        }
+    container.appendChild(cardDiv);
+  });
+}
 
-        const nameEl = document.createElement('div');
-        nameEl.className = 'program-name';
-        nameEl.textContent = prod.program;
-
-        const priceEl = document.createElement('div');
-        priceEl.className = 'program-price';
-        priceEl.textContent = `$${prod.price}`;
-
-        const badgesEl = document.createElement('div');
-        badgesEl.className = 'badges';
-        const catBadge = document.createElement('span');
-        catBadge.className = 'badge bg-primary me-2';
-        catBadge.textContent = prod.category || 'N/A';
-
-        const levelBadge = document.createElement('span');
-        levelBadge.className = 'badge bg-info';
-        levelBadge.textContent = prod.level || 'N/A';
-
-        if (prod.indoorOutdoor) {
-            const ioBadge = document.createElement('span');
-            ioBadge.className = 'badge bg-secondary';
-            ioBadge.textContent = prod.indoorOutdoor;
-            badgesEl.appendChild(ioBadge);
-            }
-
-        badgesEl.appendChild(catBadge);
-        badgesEl.appendChild(levelBadge);
-
-        const addBtn = document.createElement('button');
-        addBtn.className = 'btn btn-sm btn-success btn-add';
-        addBtn.textContent = 'Add';
-        if (prod.soldOut) {
-          addBtn.disabled = true;
-          nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
-        }
-        addBtn.addEventListener('click', () => {
-          addProductToCart(prod);
-          cardDiv.classList.add('added');
-          updateProgramCardState(cardDiv, prod);
-        });
-
-        const addedControls = document.createElement('div');
-        addedControls.className = 'added-controls';
-        addedControls.innerHTML = `
-          <span class="text-success"><strong>&check;</strong> Added</span>
-          <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
-        `;
-        const removeBtn = addedControls.querySelector('button');
-        removeBtn.addEventListener('click', () => {
-          removeProductFromCart(prod);
-          cardDiv.classList.remove('added');
-          updateProgramCardState(cardDiv, prod);
-        });
-
-        cardDiv.appendChild(nameEl);
-        cardDiv.appendChild(priceEl);
-        cardDiv.appendChild(badgesEl);
-        cardDiv.appendChild(addBtn);
-        cardDiv.appendChild(addedControls);
-
-        container.appendChild(cardDiv);
-      });
-    }
 
     function updateProgramCardState(cardDiv, prod) {
       const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
@@ -1359,20 +1584,31 @@ function displaySessionCards(sessions) {
     /************************************************************
      * 9) CART LOGIC
      ************************************************************/
-    function addProductToCart(product) {
-      if (!selectedSession) return;
-      const sessionId = selectedSession.spreadsheetId;
-      const existing = cartItems.find(ci => ci.program === product.program && ci.sessionId === sessionId);
-      if (existing) return;
+     function addProductToCart(product) {
+  if (!selectedSession) return;
+  const sessionId = selectedSession.spreadsheetId;
 
-      cartItems.push({
-        sessionId,
-        program: product.program,
-        price: product.price,
-        sessionLabel: `${selectedSession.location} - ${selectedSession.season} (${selectedSession.date})`
-      });
-      updateCartTable();
-    }
+  const existing = cartItems.find(ci => ci.program === product.program && ci.sessionId === sessionId);
+  if (existing) return;
+
+  // Calculate membership discount once, right here:
+  const discountedPrice = getDiscountedPrice(
+    product,
+    currentPlayer?.membershipType,
+    currentPlayer?.membershipEndDate
+  );
+
+  cartItems.push({
+    sessionId,
+    program: product.program,
+    // Store discounted price
+    price: discountedPrice,
+    sessionLabel: `${selectedSession.location} - ${selectedSession.season}`
+  });
+
+  updateCartTable();
+}
+
 
     function removeProductFromCart(product) {
       if (!selectedSession) return;
@@ -1516,6 +1752,7 @@ function displaySessionCards(sessions) {
       const totalCents = calculateCartTotalCents();
       const programTotal = totalCents / 100;
       const credit = currentPlayer?.credit || 0;
+      let creditRemaining = credit - programTotal;
       let creditUsed = (credit >= programTotal) ? programTotal : credit;
       let amountDue  = programTotal - creditUsed;
       let amountDueCents = Math.round(amountDue * 100);
@@ -1537,13 +1774,18 @@ function displaySessionCards(sessions) {
       showPaymentSpinner(false);
       showPaymentSuccess(true);
 
-      const leftoverCredit = Math.max(0, (currentPlayer?.credit || 0) - creditUsed);
+      if (creditRemaining > 0) {
+        creditRemaining = creditRemaining;
+      } else {
+        creditRemaining = 0;
+      }
+
       if (creditUsed > 0) {
         const paySuccessBox = document.getElementById('payment-success');
         if (paySuccessBox) {
           paySuccessBox.innerHTML = `
             Payment processed successfully! Your registration has been submitted.<br/>
-            You have $${leftoverCredit.toFixed(2)} credit left.
+            You have $${creditRemaining.toFixed(2)} credit left.
           `;
         }
       }
@@ -1586,6 +1828,7 @@ function displaySessionCards(sessions) {
   const totalCents   = calculateCartTotalCents();
   const programTotal = totalCents / 100;
   const credit       = currentPlayer?.credit || 0;
+  let creditRemaining = programTotal - credit;
   let creditUsed     = (credit >= programTotal) ? programTotal : credit; 
   let amountDue      = programTotal - creditUsed;
   let amountDueCents = Math.round(amountDue * 100);
@@ -1918,6 +2161,8 @@ function parseProgramString(programStr, sessionObj) {
   }
 }
 
+
+
 /**
  * formatEventTitleWithCategory(rawString)
  * (Same logic you had before to embed category/level in the event title.)
@@ -1943,6 +2188,76 @@ function formatEventTitleWithCategory(rawString) {
   const lvl = product.level || 'Unknown Level';
   return `${cat} ${lvl} (${locationName})`;
 }
+
+
+function createWeeklyDatesInRange(dayOfWeek, startDate, endDate) {
+  const results = [];
+  const current = new Date(startDate);
+  while (current <= endDate) {
+    if (current.getDay() === dayOfWeek) {
+      results.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return results;
+}
+
+function parseAllDates(programStr) {
+  const fallbackYear = new Date().getFullYear();
+
+  // 1) Check for multi-week pattern => look for a semicolon inside parentheses
+  //    e.g. "(2/24 - 3/31; 2:00pm - 4:00pm)"
+  if (programStr.includes(';')) {
+    // Attempt to find a day name, like "Mondays" or "Tuesday"
+    const dayMatch = programStr.match(
+      /\b(Monday|Mondays|Tuesday|Tuesdays|Wednesday|Wednesdays|Thursday|Thursdays|Friday|Fridays|Saturday|Saturdays|Sunday|Sundays)\b/i
+    );
+    let dayName = 'Monday';
+    if (dayMatch) {
+      dayName = dayMatch[1];
+    }
+    const dayOfWeek = mapDayNameToNumber(dayName);
+
+    // Extract the portion inside parentheses (e.g. "2/24 - 3/31; 2:00pm - 4:00pm")
+    const parenMatch = programStr.match(/\(([^)]+)\)/);
+    if (!parenMatch) {
+      // If parsing fails, return today's date as fallback
+      return [new Date()];
+    }
+
+    const inside = parenMatch[1].trim(); 
+    // inside might be "2/24 - 3/31; 2:00pm - 4:00pm"
+    const [datesPart, /* timesPart */] = inside.split(';').map(s => s.trim());
+    const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
+
+    // Parse the start/end of the date range
+    const startDate = parseMMDD(startDateStr, fallbackYear);
+    const endDate   = parseMMDD(endDateStr, fallbackYear);
+
+    // createWeeklyDatesInRange => e.g. returns an array [Date(2/24), Date(3/2), Date(3/9), ...]
+    const weeklyDates = createWeeklyDatesInRange(dayOfWeek, startDate, endDate);
+    return weeklyDates;
+
+  } else {
+    // 2) Single-date pattern => e.g. "Monday 2/24 | 2:00pm - 4:00pm"
+    //    We'll look for the mm/dd => (\d{1,2}/\d{1,2})
+    const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|\s*([\d:apm\s]+-\s*[\d:apm\s]+)/);
+    if (!match) {
+      // Fallback to a single "today" date if we can't parse
+      return [new Date()];
+    }
+
+    const dateStr  = match[1];  // e.g. "2/24"
+    // We could parse timesStr if needed, but for day-level discount logic, it's not strictly necessary.
+    // const timesStr = match[2]; // e.g. "2:00pm - 4:00pm"
+
+    // Convert "2/24" => Date(YYYY, 1, 24)
+    const singleDate = parseMMDD(dateStr, fallbackYear);
+
+    return [singleDate];
+  }
+}
+
 
 /**
  * mapDayNameToNumber(dayName)
@@ -2125,7 +2440,7 @@ function combineDateTime(dateObj, timeObj) {
 
     function populateStandardizedLevelDropdown() {
   const sLevelSelect = document.getElementById('standardized-level-filter');
-  sLevelSelect.innerHTML = '<option value="">--All Levels--</option>';
+  sLevelSelect.innerHTML = '<option value="">--Select Your Level--</option>';
 
   const sLevelsSet = new Set();  
   allProducts.forEach(prod => {
@@ -2255,11 +2570,11 @@ function combineDateTime(dateObj, timeObj) {
       registerCalendar.destroy();
       registerCalendar = null;
     }
-    calendarEl.innerHTML = `
-      <div class="alert alert-info mb-2">
+    calendarEl.innerHTML = 
+      `<div class="alert alert-info mb-2">
         Please select your level.
-      </div>
-    `;
+      </div>`
+    ;
     return;
   }
 
@@ -2269,7 +2584,7 @@ function combineDateTime(dateObj, timeObj) {
   // 2) Compute 7-day window
   const rangeStart = startOfDay(listViewStartDate);
   const rangeEnd = new Date(rangeStart);
-  rangeEnd.setDate(rangeStart.getDate() + 6);
+  rangeEnd.setDate(rangeStart.getDate() + 7);
 
   // 3) Build an array of events
   let events = [];
@@ -2298,20 +2613,43 @@ function combineDateTime(dateObj, timeObj) {
         // Pick color based on category, soldOut, and inCart
         const { backgroundColor, borderColor } = getEventColors(prod, inCart);
 
-        // If sold out => append "(SOLD OUT)" to title
-        let eventTitle = `${prod.category}: ${prod.level}`;
-        if (prod.soldOut) {
-          eventTitle += " (SOLD OUT)";
-        }
+        
+
+      // === MEMBERSHIP PRICE LOGIC ===
+      const memberPrice = getDiscountedPrice(
+      prod,
+      currentPlayer?.membershipType,
+      currentPlayer?.membershipEndDate
+    );
+    const basePrice = prod.price || 0;
+    let priceLabel = `$${memberPrice.toFixed(2)}`;
+
+    if (memberPrice < basePrice) {
+      const catMap = discountMap[prod.category] || {};
+      const discountFactor = catMap[currentPlayer?.membershipType] || 0;
+      const pct = Math.round(discountFactor * 100);
+    }
+
+    // Construct the event title
+    let baseTitle = `${prod.category}: ${prod.level}`;
+    if (prod.soldOut) {
+      baseTitle += " (SOLD OUT)";
+    }
+    let displayedTitle = `${baseTitle} — ${priceLabel}`;
+    if (inCart) {
+      displayedTitle += " ✅ Added to Cart";
+    }
+    // === END MEMBERSHIP PRICE LOGIC ===
 
         events.push({
-          title: eventTitle,
+          title: displayedTitle,
           start: ev.start,
           end: ev.end,
           backgroundColor: backgroundColor,
           borderColor: borderColor,
           extendedProps: {
-            product: prod
+            product: prod,
+            baseTitle: baseTitle
           }
         });
       }
@@ -2346,27 +2684,42 @@ function combineDateTime(dateObj, timeObj) {
 
 
     eventDidMount: function(info) {
-        const product = info.event.extendedProps.product;
-        if (!product) return;
+  // Only add a tooltip in the timeGridWeek view
+  if (info.view.type === 'timeGridWeek') {
+    // Set the native title attribute
+    info.el.setAttribute('title', info.event.title);
+    // Initialize the Bootstrap tooltip on this element
+    new bootstrap.Tooltip(info.el, {
+      container: 'body'
+    });
+  }
 
-        // If sold out => let's also tint the row red in listWeek
-        // (timeGrid is handled by backgroundColor, but the "row" in listWeek is also .fc-list-event
-        if (product.soldOut) {
-          info.el.style.backgroundColor = "#f8d7da";
-          return; // no further styling
-        }
+  const product = info.event.extendedProps.product;
+  if (!product) return;
 
-        // If it's in cart, and we're in listWeek, highlight row green
-        const isInCart = cartItems.some(
-          (ci) => ci.program === product.program && ci.sessionId === selectedSession.spreadsheetId
-        );
-        if (isInCart && info.view.type.startsWith('list')) {
-          info.el.classList.add('selected-list-event');
-        }
-      },
+  // If sold out => tint the row red in listWeek view
+  if (product.soldOut) {
+    info.el.style.backgroundColor = "#f8d7da";
+    return; // no further styling
+  }
+
+  // If it's in cart and we're in listWeek, highlight row green
+  const isInCart = cartItems.some(
+    (ci) =>
+      ci.program === product.program && ci.sessionId === selectedSession.spreadsheetId
+  );
+  if (isInCart && info.view.type.startsWith('list')) {
+    info.el.classList.add('selected-list-event');
+  }
+},
 
       // 5) eventClick => skip if sold out, else toggle cart and recalc color
       eventClick: function(info) {
+          // Dispose of the tooltip if it exists
+          const tooltip = bootstrap.Tooltip.getInstance(info.el);
+          if (tooltip) {
+            tooltip.dispose();
+          }
         const product = info.event.extendedProps.product;
         if (!product) return;
 
@@ -2409,7 +2762,11 @@ function combineDateTime(dateObj, timeObj) {
     registerCalendar.gotoDate(rangeStart);
     registerCalendar.addEventSource(events);
   }
+  console.log("Found", events.length, "events for this range.");
+  console.log("Next 7 days invoked, new range =", listViewStartDate);
 }
+
+
 
 function getEventColors(prod, inCart) {
   if (prod.soldOut) {
@@ -2453,28 +2810,102 @@ function getTimeGridColors(prod, inCart) {
 
 
 
-    // Prev/Next 7-day window
-    document.getElementById('btn-list-prev').addEventListener('click', () => {
+// Helper functions to get the next or previous Sunday relative to a given date.
+function getNextSunday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  // If already Sunday, jump forward 7 days; otherwise, add enough days to reach Sunday.
+  const offset = day === 0 ? 7 : (7 - day);
+  d.setDate(d.getDate() + offset);
+  return d;
+}
+
+function getPreviousSunday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  // If already Sunday, jump back 7 days; otherwise, subtract the day number to reach Sunday.
+  const offset = day === 0 ? 7 : day;
+  d.setDate(d.getDate() - offset);
+  return d;
+}
+
+document.getElementById('btn-list-prev').addEventListener('click', () => {
   if (!listViewStartDate || !minProgramDate) return;
-  const newStart = new Date(listViewStartDate);
-  newStart.setDate(newStart.getDate() - 7);
-  if (newStart < minProgramDate) {
-    newStart.setTime(minProgramDate.getTime());
+
+  // Normalize "today" (set hours to zero so comparisons work correctly)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Compute the previous Sunday based on the current listViewStartDate.
+  let computedPrevious = getPreviousSunday(listViewStartDate);
+  let newStart;
+  
+  // If the current view is in the future (listViewStartDate > today) and the computed previous Sunday
+  // falls before today, then jump directly to today (even if today isn't a Sunday).
+  if (listViewStartDate > today && computedPrevious < today) {
+    newStart = today;
+  } else {
+    newStart = computedPrevious;
   }
+  
+  // Clamp to minProgramDate.
+  if (newStart < minProgramDate) {
+    newStart = new Date(minProgramDate);
+    // Only adjust to Sunday if the clamped date isn’t already today.
+    if (newStart.getDay() !== 0 && newStart.getTime() !== today.getTime()) {
+      newStart = getNextSunday(newStart);
+    }
+  }
+  
   listViewStartDate = newStart;
   renderProgramListForRange(); // re-render calendar
 });
 
 document.getElementById('btn-list-next').addEventListener('click', () => {
   if (!listViewStartDate || !maxProgramDate) return;
-  const newStart = new Date(listViewStartDate);
-  newStart.setDate(newStart.getDate() + 7);
+  
+  // Compute the next Sunday from the current listViewStartDate.
+  let newStart = getNextSunday(listViewStartDate);
+  
+  // Clamp to maxProgramDate.
   if (newStart > maxProgramDate) {
-    newStart.setTime(maxProgramDate.getTime());
+    newStart = new Date(maxProgramDate);
+    if (newStart.getDay() !== 0) {
+      newStart = getPreviousSunday(newStart);
+    }
   }
+  
   listViewStartDate = newStart;
   renderProgramListForRange(); // re-render calendar
 });
+
+
+function updateMembershipMessage() {
+  const msgEl = document.getElementById('membership-message');
+  const extndMsg = document.getElementById('extndMsg');
+  if (!msgEl) return; // If the element doesn’t exist, just bail.
+
+  // If the user has an active membership
+  if (currentPlayer?.membershipType && currentPlayer?.membershipEndDate) {
+    // Convert the membershipEndDate string into a nicely formatted date
+    const endDate = new Date(currentPlayer.membershipEndDate);
+    // For example, format as "Apr 1, 2025"
+    const endDateStr = endDate.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    msgEl.textContent = `Your ${currentPlayer.membershipType} membership benefits are automatically applied through ${endDateStr}.`;
+    msgEl.style.display = 'block';
+    extndMsg.style.display = 'block';
+  } else {
+    // Hide message if no membership
+    msgEl.style.display = 'none';
+  }
+}
+
+
 
 </script>
 </body>
