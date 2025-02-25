@@ -788,6 +788,18 @@
 <!-- PART 1/3 START -->
 <script>
 
+function forceRefreshIfFromSubscription() {
+    // Check if the referrer URL ends with or contains 'subscription.html'
+    if (document.referrer && document.referrer.includes('subscription.html')) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    }
+  }
+
+  // Example usage: run on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', forceRefreshIfFromSubscription);
+
   /************************************************************
    * 1) CONFIG & STRIPE SETUP
    ************************************************************/
@@ -1291,7 +1303,7 @@ try {
   updateMembershipMessage();
 
   // If no stripe => show modal
-  if (!stripeData.exists) {
+  if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
     const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
     modalEl.show();
   } else {
