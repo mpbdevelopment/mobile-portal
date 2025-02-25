@@ -390,8 +390,8 @@
 
   <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
   <section id="verification-section" class="shadow-sm">
-    <h5>Verify Your Email</h5>
-    <p>Enter your email to receive a 6-digit code.</p>
+    <h5>Verify Your Email to Login</h5>
+    <p>If you've ever played with Montclair Pickleball before, you already have a profile set up for you. If not, no worries! Enter your email and we'll help you get started.</p>
     <form id="verification-form">
       <div class="mb-3">
         <label for="verify-email-input" class="form-label">Email Address</label>
@@ -400,7 +400,7 @@
       <button id="verificationBtn" type="submit" class="btn btn-primary w-100 mb-2">
         Send Verification Code
       </button>
-      <a href="registration.html" class="btn btn-secondary">Register New User</a>
+      <a href="registration.html" class="btn btn-secondary" style="display:none">Register New User</a>
     </form>
 
     <div id="code-entry" style="display: none;">
@@ -433,7 +433,7 @@
               </div>
         <div id="home-content">
           <h5>Home</h5>
-          <p>Welcome! Here are some quick links:</p>
+          <p>Welcome to the Montclair Pickelball Player Portal! Here are some quick links:</p>
           <div class="list-group">
             <a href="#tab-profile" 
                id="home-link-profile" 
@@ -452,7 +452,8 @@
             </a>
             <a href="forum.html" 
                 id="home-link-forum" 
-                class="list-group-item list-group-item-action">
+                class="list-group-item list-group-item-action"
+                style = "display: none">
                 Montclair PickleChat
             </a>
             <a href="subscription.html" 
@@ -530,12 +531,11 @@
 
             <!-- [ADDED] Toggle Calendar/List Button & List-View Container (initially hidden) -->
             <div id="toggle-view-container" style="display: none;">
-                <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm">
-                  Toggle Calendar View
-                </button>
                 <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
-                <a id="extndMsg" href="subscription.html" class="text-center mb-0" style="display:none;">You can expand your membership dates here.</a>
-              
+                <a id="extndMsg" href="subscription.html" class="text-center mb-2" style="display:none;">You can expand your membership dates here.</a>
+                <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm mb-2 mt-2 mx-auto d-block">
+                  Switch to Calendar View
+                </button>
             </div>
   
 <!-- [ADJUSTED] List View Container -->
@@ -666,7 +666,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p>Please add a payment method to continue.</p>
+          <p>Add a card on file to make registration easier! This is not required, but it is recommended.</p>
           <form id="payment-form">
             <div class="mb-3">
               <label for="name-input" class="form-label">Name</label>
@@ -761,6 +761,25 @@
     </div>
   </div>  
 
+  <div class="modal fade" id="cartAlertModal" tabindex="-1" aria-labelledby="cartAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cartAlertModalLabel">Sold Out Program Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            A program has been removed from your cart because it became Sold Out before you completed your purchase.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- [CHANGED] Floating Cart Summary Pill -->
   <div id="cart-summary-pill" style="display: none;">0 items - $0.00</div>
 
@@ -768,6 +787,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- PART 1/3 START -->
 <script>
+
   /************************************************************
    * 1) CONFIG & STRIPE SETUP
    ************************************************************/
@@ -777,7 +797,7 @@
   const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify/functions/chargeCart';
   const GET_CREDIT_URL    = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy?action=getCredit';
 
-  const stripe = Stripe('pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb');
+  const stripe = Stripe('pk_test_51N9BzSHaWNal9rmeTOlLWPk9oQ4WJAxsdZ9aEXEYEKnnYCPNJRpyFTOtDP4oMrFWvKrExd2ri5Ug5nFubgq07Fgr00fhr9hXWi');
   const elements = stripe.elements();
   const cardElement = elements.create('card');
   cardElement.mount('#card-element');
@@ -811,6 +831,20 @@
   let minProgramDate = null;       // Earliest date in the selected session's programs
   let maxProgramDate = null;       // Latest date in the selected session's programs
   let registerCalendar = null;
+
+  let currentActiveTab = '#tab-home'; // or whatever your default is
+
+  document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tabLink => {
+    tabLink.addEventListener('shown.bs.tab', function (e) {
+      // e.target is the newly activated tab link
+      currentActiveTab = e.target.getAttribute('data-bs-target');
+      if (currentActiveTab != '#tab-register') {
+        document.getElementById('cart-summary-pill').style.display = 'none';
+      } else {
+        updateCartSummaryPill();
+      }
+    });
+  });
 
   const CATEGORY_COLORS = {
   "Adult Clinics": "#FF851B",         // example: bright orange
@@ -886,19 +920,97 @@ if (profileTrigger) {
 
   // We'll use this discount map (Option B: each category has membership-tier-specific discount factors)
   const discountMap = {
-    "Open Play": {
-      Gold: 1.0,
-      Silver: 1.0
-      // add more tiers if needed
-    },
-    "Adult Clinics": {
-      freeEligible: true,
-      Gold: 0.2,
-      Silver: 0.2
-      // add more tiers if needed
-    },
-    // Add more categories/tiers as needed...
-  };
+  "Play With Pro": {
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Guided Open Play": {
+    freeEligible: true,
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Adult Clinics": {
+    freeEligible: true,
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Guided Drilling": {
+    freeEligible: true,
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Open Play": {
+    Gold: 1.0,
+    Silver: 1.0,
+    TripleCrown: 1.0
+  },
+  "Open Drilling": {
+    Gold: 1.0,
+    Silver: 1.0,
+    TripleCrown: 1.0
+  }
+};
+
+// Step 1: Function to check cart items against the updated product data.
+function checkCartForSoldOut() {
+  if (!selectedSession) return; // Nothing to check if no session is selected.
+
+  const currentProducts = selectedSession.products || [];
+  let removedAny = false;
+
+  // Filter out any cart items that are now sold out.
+  cartItems = cartItems.filter(item => {
+    const product = currentProducts.find(prod => prod.program === item.program);
+    // If we find the product and it's sold out, remove this item.
+    if (product && product.soldOut) {
+      removedAny = true;
+      return false; // remove this item from the cart
+    }
+    return true; // keep this item
+  });
+
+  // Optionally notify the user.
+  if (removedAny) {
+    const cartAlertModalEl = new bootstrap.Modal(document.getElementById('cartAlertModal'));
+    cartAlertModalEl.show();
+  }
+  
+  updateCartTable(); // Update cart display accordingly.
+}
+
+// Step 2: Update your refresh function to call the sold-out check.
+function refreshData() {
+  loadSessions()
+    .then(() => {
+      // If a session was already selected, update it from the refreshed sessions.
+      if (selectedSession) {
+        const updatedSession = allSessions.find(s => s.spreadsheetId === selectedSession.spreadsheetId);
+        if (updatedSession) {
+          selectedSession = updatedSession;
+          allProducts = updatedSession.products || [];
+        }
+      }
+      
+      // Now check the cart to remove any sold-out items.
+      checkCartForSoldOut();
+
+      // Reapply current filters and update the UI.
+      if (isListView) {
+        renderProgramListForRange();
+      } else {
+        renderProgramCards();
+      }
+    })
+    .catch(err => console.error("Error refreshing sessions:", err));
+}
+
+// Finally, continue to refresh every 60 seconds.
+setInterval(refreshData, 60000);
+
 
 
   /************************************************************
@@ -1133,10 +1245,35 @@ try {
       }
     });
 
-    // Store the membership info
+    
     currentPlayer.membershipType    = membershipType;
     currentPlayer.membershipEndDate = membershipEnd;
     currentPlayer.membershipStartDate = membershipStart;
+
+    //Only members can use forum. This is anyone with an unexpired membership
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const endDate = new Date(membershipEnd);
+      
+      // Only show the forum link if membershipEnd is in the future
+      if (endDate > now) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+
+
+    /* Only Allow Active Members to Use Forum
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const startDate = new Date(membershipStart);
+      const endDate = new Date(membershipEnd);
+
+      // Only show the forum link if today is between the start and end dates (inclusive)
+      if (now >= startDate && now <= endDate) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+    */
 
     showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
   } catch (firebaseErr) {
@@ -1423,6 +1560,10 @@ if (!sessions || !sessions.length) {
 
 // Simply loop through sessions in their original order
 sessions.forEach(sessionObj => {
+    // Skip card if location contains "Galloway" or "Atlantic"
+    if (sessionObj.location.includes('Galloway') || sessionObj.location.includes('Atlantic')) {
+    return;
+  }
   const label = `${sessionObj.location} - ${sessionObj.season}`;
 
   // Create a column for each session
@@ -1711,8 +1852,8 @@ sessions.forEach(sessionObj => {
   cardDiv.classList.add('added');
   updateProgramCardState(cardDiv, prod);
 
-  // 2) If user is Gold and this product is a "Package," check for partial coverage
-  if (currentPlayer?.membershipType === 'Gold' && prod.program.includes('Package')) {
+  // 2) If user is a member and this product is a "Package," check for partial coverage
+  if (currentPlayer?.membershipType && prod.program.includes('Package')) {
     // 3) Parse all the program’s dates
     const allDates = parseAllDates(prod.program);
     if (!allDates.length) return; // Can't parse => do nothing
@@ -1740,7 +1881,7 @@ sessions.forEach(sessionObj => {
     `;
     const removeBtn = addedControls.querySelector('button');
     removeBtn.addEventListener('click', () => {
-      removeProductFromCart(prod);
+      removeProductFromCart(prod, selectedSession.spreadsheetId);
       cardDiv.classList.remove('added');
       updateProgramCardState(cardDiv, prod);
     });
@@ -1848,12 +1989,14 @@ function toYMDString(d) {
 
   // Add to cartItems array
   cartItems.push({
-    sessionId: sessionId,
-    program: product.program,
-    price: total,
-    sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
-    freeWeeksUsed: usedWeeks  // store which weeks we used
-  });
+  sessionId: sessionId,
+  program: product.program,
+  category: product.category,
+  level: product.level,
+  price: total,
+  sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
+  freeWeeksUsed: usedWeeks
+});
 
   // Update UI
   updateCartTable();
@@ -1866,29 +2009,23 @@ function toYMDString(d) {
  * 
  * Removes a product from the cart and "frees up" any weekly slots that had been used by it.
  */
- function removeProductFromCart(product) {
-  if (!selectedSession) return;
-  const sessionId = selectedSession.spreadsheetId;
-
+ function removeProductFromCart(product, sessionId) {
   const idx = cartItems.findIndex(
     (ci) => ci.program === product.program && ci.sessionId === sessionId
   );
   if (idx > -1) {
     const removedItem = cartItems[idx];
-
-    // For each used week in that item, set ephemeralFreeSlotMap back to false
+    // Free up any weeks used:
     if (removedItem.freeWeeksUsed && Array.isArray(removedItem.freeWeeksUsed)) {
       for (let weekKey of removedItem.freeWeeksUsed) {
         freeSlotUsageMap[weekKey] = false;
       }
     }
-
     cartItems.splice(idx, 1);
   }
-
-  // Update UI
   updateCartTable();
 }
+
 
 
   function updateCartTable() {
@@ -1916,10 +2053,17 @@ function toYMDString(d) {
     }
     cartSection.style.display = 'block';
 
+
     cartItems.forEach((item, idx) => {
       const tr = document.createElement('tr');
       let tdProg = document.createElement('td');
-      tdProg.textContent = item.program;
+      tdProg.innerHTML = `
+        <div>${item.program}</div>
+        <div class="mt-1">
+          <span class="badge bg-primary me-1">${item.category || 'N/A'}</span>
+          <span class="badge bg-secondary">${item.level || 'N/A'}</span>
+        </div>
+      `;
       tr.appendChild(tdProg);
 
       let tdSession = document.createElement('td');
@@ -1931,7 +2075,7 @@ function toYMDString(d) {
       btnRemove.className = 'btn btn-sm btn-danger';
       btnRemove.textContent = 'Remove';
       btnRemove.onclick = () => {
-        removeProductFromCart(cartItems[idx]); // let the function free up the slot
+        removeProductFromCart(cartItems[idx], cartItems[idx].sessionId); // let the function free up the slot
         updateCartTable();
       };
       tdRemove.appendChild(btnRemove);
@@ -1953,6 +2097,14 @@ function toYMDString(d) {
     breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
 
     updateCartSummaryPill();
+
+    if (totalCents == 0) {
+      document.getElementById('btn-charge-on-file').textContent = 'Submit Registration (No Charge)';
+      document.getElementById('btn-credit-debit').style.display = 'none';
+    } else {
+      document.getElementById('btn-charge-on-file').textContent = 'Charge Card On File';
+      document.getElementById('btn-credit-debit').style.display = 'block';
+    }
 
     // CHANGED: If we're in list view, refresh the list; otherwise, refresh cards.
     if (isListView) {
@@ -2376,83 +2528,141 @@ try {
 * Renders registrations as a date-grouped list, rather than a calendar.
 * We still rely on parseProgramString() and its helpers for date/time parsing.
 */
+// Helper function to generate a Google Calendar URL
+// Helper function to generate a Google Calendar URL
+function getGoogleCalendarUrl({ title, startDate, endDate, details = '', location = '' }) {
+  const formatDate = date => date.toISOString().replace(/-|:|\.\d{3}/g, '');
+  const start = formatDate(startDate);
+  const end = formatDate(endDate);
+  const baseUrl = 'https://www.google.com/calendar/render?action=TEMPLATE';
+  const url = `${baseUrl}&text=${encodeURIComponent(title)}&dates=${start}/${end}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
+  return url;
+}
+
+// Helper function to generate an Outlook Calendar URL
+function getOutlookCalendarUrl({ title, startDate, endDate, details = '', location = '' }) {
+  // Dates in ISO format work well with Outlook
+  const start = startDate.toISOString();
+  const end = endDate.toISOString();
+  const baseUrl = 'https://outlook.live.com/calendar/0/deeplink/compose';
+  const url = `${baseUrl}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(details)}&startdt=${encodeURIComponent(start)}&enddt=${encodeURIComponent(end)}&location=${encodeURIComponent(location)}`;
+  return url;
+}
+
 function renderRegistrationsList(sessionsArray) {
-const container = document.getElementById('registrations-content');
-container.innerHTML = '';
+  const container = document.getElementById('registrations-content');
+  container.innerHTML = '';
 
-// Collect all "event" objects from your parseProgramString function
-const events = [];
-sessionsArray.forEach(sessionObj => {
-  sessionObj.programs.forEach(programStr => {
-    // parseProgramString returns an array of objects like:
-    // [ { title: '...', start: ISOString, end: ISOString }, ... ]
-    const parsedList = parseProgramString(programStr, sessionObj);
-    if (Array.isArray(parsedList)) {
-      parsedList.forEach(ev => {
-        // Convert ISO timestamps to Date objects for easier sorting
-        const startDate = new Date(ev.start);
-        const endDate   = new Date(ev.end);
-        events.push({
-          title: ev.title,
-          startDate,
-          endDate
+  // Collect all events from sessionsArray
+  const events = [];
+  sessionsArray.forEach(sessionObj => {
+    sessionObj.programs.forEach(programStr => {
+      const parsedList = parseProgramString(programStr, sessionObj);
+      if (Array.isArray(parsedList)) {
+        parsedList.forEach(ev => {
+          const startDate = new Date(ev.start);
+          const endDate   = new Date(ev.end);
+          events.push({
+            title: ev.title,
+            startDate,
+            endDate
+          });
         });
+      }
+    });
+  });
+
+  // Define current date and the date six months from now
+  const now = new Date();
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+
+  // Filter events to only include those within the next 6 months
+  const filteredEvents = events.filter(ev => ev.startDate >= now && ev.startDate <= sixMonthsFromNow);
+
+  if (!filteredEvents.length) {
+    container.innerHTML = '<p>No upcoming registrations found.</p>';
+    return;
+  }
+
+  // Sort filtered events by start date/time ascending
+  filteredEvents.sort((a, b) => a.startDate - b.startDate);
+
+  // Group events by local date (YYYY-MM-DD)
+  const grouped = {};
+  filteredEvents.forEach(ev => {
+    const dateKey = `${ev.startDate.getFullYear()}-${(ev.startDate.getMonth() + 1)
+      .toString().padStart(2, '0')}-${ev.startDate.getDate().toString().padStart(2, '0')}`;
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push(ev);
+  });
+
+  // Render each group with a date heading and list of events
+  Object.keys(grouped).sort().forEach(dateKey => {
+    const [year, month, day] = dateKey.split('-');
+    const localDateObj = new Date(year, month - 1, day);
+    const dateHeading = document.createElement('h5');
+    dateHeading.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
+    dateHeading.textContent = localDateObj.toLocaleDateString(undefined, {
+      weekday: 'long', month: 'short', day: 'numeric'
+    });
+    container.appendChild(dateHeading);
+
+    grouped[dateKey].forEach(ev => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'mb-2 p-2 border rounded';
+
+      // Event title
+      const titleEl = document.createElement('div');
+      titleEl.textContent = ev.title;
+      itemDiv.appendChild(titleEl);
+
+      // Time range, e.g. "1:00 PM - 2:00 PM"
+      const timeEl = document.createElement('div');
+      timeEl.className = 'small text-muted';
+      const startTimeStr = ev.startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const endTimeStr   = ev.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      timeEl.textContent = `${startTimeStr} - ${endTimeStr}`;
+      itemDiv.appendChild(timeEl);
+
+      // Container for calendar links
+      const linksContainer = document.createElement('div');
+      linksContainer.className = 'mt-2';
+
+      // Add "Add to Google Calendar" link
+      const googleLink = document.createElement('a');
+      googleLink.className = 'btn btn-xs btn-outline-primary me-2';
+      googleLink.href = getGoogleCalendarUrl({
+        title: ev.title,
+        startDate: ev.startDate,
+        endDate: ev.endDate,
+        details: '',       // Optional: add event details here
+        location: ''       // Optional: add event location here
       });
-    }
-  });
-});
+      googleLink.target = '_blank';
+      googleLink.textContent = 'Add to Google Calendar';
+      linksContainer.appendChild(googleLink);
 
-if (!events.length) {
-  container.innerHTML = '<p>No upcoming registrations found.</p>';
-  return;
+      // Add "Add to Outlook Calendar" link
+      const outlookLink = document.createElement('a');
+      outlookLink.className = 'btn btn-xs btn-outline-secondary';
+      outlookLink.href = getOutlookCalendarUrl({
+        title: ev.title,
+        startDate: ev.startDate,
+        endDate: ev.endDate,
+        details: '',       // Optional: add event details here
+        location: ''       // Optional: add event location here
+      });
+      outlookLink.target = '_blank';
+      outlookLink.textContent = 'Add to Outlook Calendar';
+      linksContainer.appendChild(outlookLink);
+
+      itemDiv.appendChild(linksContainer);
+      container.appendChild(itemDiv);
+    });
+  });
 }
 
-// Sort events by start date/time ascending
-events.sort((a, b) => a.startDate - b.startDate);
-
-// Group by date (YYYY-MM-DD)
-// Group by local date (YYYY-MM-DD)
-const grouped = {};
-events.forEach(ev => {
-  // Use local date components to create the key
-  const dateKey = `${ev.startDate.getFullYear()}-${(ev.startDate.getMonth() + 1)
-    .toString().padStart(2, '0')}-${ev.startDate.getDate().toString().padStart(2, '0')}`;
-  if (!grouped[dateKey]) grouped[dateKey] = [];
-  grouped[dateKey].push(ev);
-});
-
-// For each dateKey, render a heading and list the events
-Object.keys(grouped).sort().forEach(dateKey => {
-  const [year, month, day] = dateKey.split('-');
-  const localDateObj = new Date(year, month - 1, day);
-  const dateHeading = document.createElement('h5');
-  dateHeading.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
-  dateHeading.textContent = localDateObj.toLocaleDateString(undefined, {
-    weekday: 'long', month: 'short', day: 'numeric'
-  });
-  container.appendChild(dateHeading);
-
-  grouped[dateKey].forEach(ev => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'mb-2 p-2 border rounded';
-
-    // Event title
-    const titleEl = document.createElement('div');
-    titleEl.textContent = ev.title;
-    itemDiv.appendChild(titleEl);
-
-    // Time range, e.g. "1:00 PM - 2:00 PM"
-    const timeEl = document.createElement('div');
-    timeEl.className = 'small text-muted';
-    const startTimeStr = ev.startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    const endTimeStr   = ev.endDate.toLocaleTimeString([],   { hour: 'numeric', minute: '2-digit' });
-    timeEl.textContent = `${startTimeStr} - ${endTimeStr}`;
-    itemDiv.appendChild(timeEl);
-
-    container.appendChild(itemDiv);
-  });
-});
-}
 
 /**
 * parseProgramString(programStr, sessionObj)
@@ -2789,6 +2999,15 @@ if (isListView) {
     isListView = !isListView;
     updateRegisterViewMode();
     const programCardsContainer = document.getElementById('program-cards-container');
+    const calendarBtn = document.getElementById('btn-toggle-calendar-view');
+    if(calendarBtn.textContent.includes('Calendar')) {
+      calendarBtn.textContent = "Switch to Program View";
+      document.getElementById('category-filter-group').style.display = 'none';
+      document.getElementById('category-filter').selectedIndex = 0;
+    } else {
+      calendarBtn.textContent = "Switch to Calendar View";
+    }
+    document.getElementById('program-cards-container').style.display = 'block';
   });
 
   function populateStandardizedLevelDropdown() {
@@ -3019,8 +3238,8 @@ if (!registerCalendar) {
       defaultView = 'listWeek';
       viewOptions = 'listWeek';
       } else {
-          defaultView = 'timeGridWeek';
-          viewOptions = 'timeGridWeek,listWeek';
+          defaultView = 'listWeek';
+          viewOptions = 'listWeek,timeGridWeek';
       }
   registerCalendar = new FullCalendar.Calendar(calendarEl, {
     initialView: defaultView,
