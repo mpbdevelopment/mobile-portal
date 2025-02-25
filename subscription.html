@@ -8,13 +8,50 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+  />
+
+  <!-- Viewport fit for iPhone safe-area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
   <style>
-        .nav-bottom {
+    /* 1) BODY & GLOBAL */
+    body {
+      margin: 0;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      background-color: #f9f9f9;
+    }
+    .btn-primary {
+      background-color: #0e2f7b !important;
+      border-color: #0e2f7b !important;
+    }
+    .btn-primary:hover,
+    .btn-primary:focus,
+    .btn-primary:active {
+      background-color: #0c2563 !important;
+      border-color: #0c2563 !important;
+    }
+
+    /* 2) HEADER */
+    header {
+      background-color: #0e2f7b;
+      color: #fff;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header img {
+      height: 40px;
+    }
+
+    /* 3) FIXED BOTTOM NAV (same style as main) */
+    .nav-bottom {
       position: fixed;
       bottom: 0;
       width: 100%;
-      height: 56px;
       padding-bottom: env(safe-area-inset-bottom);
       background-color: #fff;
       border-top: 1px solid #ddd;
@@ -30,675 +67,710 @@
       color: #000;
     }
     .nav-bottom .nav-link.active {
-      background-color: #0e2f7b; /* Bootstrap primary color */
-      color: #fff;              /* White text for contrast */
+      background-color: #0e2f7b; 
+      color: #fff;
       font-weight: 500;
     }
-
+    /* Optional narrower icons for profile or forum */
     .nav-bottom .nav-profile {
-    flex: 0 0 auto;       /* let it shrink to fit icon content */
-    width: 50px;          /* pick a smaller width */
-    text-align: center;
-    padding: 6px 0;       /* less vertical padding */
-    font-size: 1.1rem;    /* adjust icon size as you like */
+      flex: 0 0 auto;
+      width: 50px;
+      text-align: center;
+      padding: 6px 0;
+      font-size: 1.1rem;
+    }
+    .nav-bottom .nav-forum {
+      flex: 0 0 auto;
+      width: 50px;
+      text-align: center;
+      padding: 6px 0;
+      font-size: 1.2rem;
     }
 
-    .nav-bottom .nav-forum {
-    flex: 0 0 auto;
-    width: 50px;
-    text-align: center;
-    padding: 6px 0;
-    font-size: 1.2rem;
+    /* 4) CARDS & LAYOUT */
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #fff;
     }
+
   </style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container py-4">
-  <div class="row">
-    <div class="col-12 text-center">
-      <h1>Manage Your Membership</h1>
+  <!-- HEADER -->
+  <header>
+    <h5 class="mb-0">Montclair Pickleball</h5>
+    <img src="icons/banner-logo.png" alt="Montclair Pickleball Logo" />
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <div class="container py-4">
+    <div class="bg-white p-3 rounded shadow-sm mb-3">
+      <h3 class="text-center">Manage Your Membership</h3>
     </div>
-  </div>
 
-  <!-- Subscription Status Display -->
-  <div class="row justify-content-center mb-3">
-    <div class="col-md-8">
-      <div class="alert alert-info" id="subStatus" style="display: none;"></div>
-    </div>
-  </div>
-  
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-
-      <!-- 1) Plan Selection -->
-      <div class="card mb-3 p-3" id="planSelectionCard">
-        <h4>Select a Membership Plan</h4>
-        <div class="form-check mb-1">
-          <input class="form-check-input" type="radio" name="plan" id="planSilver" value="99" checked>
-          <label class="form-check-label" for="planSilver">
-            Silver - $99 / 30 days
-          </label>
-        </div>
-        <div class="form-check mb-1">
-          <input class="form-check-input" type="radio" name="plan" id="planGold" value="175">
-          <label class="form-check-label" for="planGold">
-            Gold - $175 / 30 days
-          </label>
-        </div>
-        <div class="form-check mb-1">
-          <input class="form-check-input" type="radio" name="plan" id="planTriple" value="499">
-          <label class="form-check-label" for="planTriple">
-            Triple Crown - $499 / 30 days
-          </label>
-        </div>
+    <!-- Subscription Status -->
+    <div class="row justify-content-center mb-3">
+      <div class="col-md-8">
+        <div class="alert alert-info" id="subStatus" style="display: none;"></div>
       </div>
+    </div>
 
-      <!-- 2) Months + Duration + End Date + Cost (for this purchase) -->
-      <div class="card mb-3 p-3">
-        <h4>Number of Months to Purchase/Extend</h4>
-        <div class="input-group mb-2">
-          <label class="input-group-text" for="monthsInput">Months</label>
-          <input 
-            type="number" 
-            class="form-control" 
-            id="monthsInput" 
-            value="1" 
-            min="1" 
-            max="8" 
-            step="1"
-          >
+    <!-- MAIN CARD FOR PLAN SELECTION / EXTENSION -->
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+
+        <!-- 1) Plan Selection -->
+        <div class="bg-white p-3 rounded shadow-sm mb-3" id="planSelectionCard">
+          <h5>Select a Membership Plan</h5>
+          <div class="form-check mb-1">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="plan"
+              id="planSilver"
+              value="99"
+              checked
+            />
+            <label class="form-check-label" for="planSilver">
+              Silver - $99 / 30 days
+            </label>
+          </div>
+          <div class="form-check mb-1">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="plan"
+              id="planGold"
+              value="175"
+            />
+            <label class="form-check-label" for="planGold">
+              Gold - $175 / 30 days
+            </label>
+          </div>
+          <div class="form-check mb-1">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="plan"
+              id="planTriple"
+              value="499"
+            />
+            <label class="form-check-label" for="planTriple">
+              Triple Crown - $499 / 30 days
+            </label>
+          </div>
         </div>
 
-        <!-- 2.5) Start Date Picker -->
-        <div class="card mb-3 p-3" id="startGroup">
-            <h4>Select Start Date</h4>
-            <div class="input-group mb-2">
-              <label class="input-group-text" for="startDateInput">Start Date</label>
-              <input 
-                  type="date" 
-                  class="form-control" 
-                  id="startDateInput" 
+        <!-- 2) Months + Duration + End Date + Cost -->
+        <div class="bg-white p-3 rounded shadow-sm mb-3">
+          <h5>Number of Months to Purchase/Extend</h5>
+          <div class="input-group mb-2">
+            <label class="input-group-text" for="monthsInput">Months</label>
+            <input
+              type="number"
+              class="form-control"
+              id="monthsInput"
+              value="1"
+              min="1"
+              max="8"
+              step="1"
+            />
+          </div>
+
+          <!-- Start Date Picker -->
+          <div class="bg-light p-2 mb-2 rounded" id="startGroup">
+            <h6>Select Start Date</h6>
+            <div class="input-group">
+              <label class="input-group-text" for="startDateInput">Start</label>
+              <input
+                type="date"
+                class="form-control"
+                id="startDateInput"
               />
             </div>
+          </div>
+
+          <p class="mb-1">
+            <strong>Pre-Booked Duration:</strong> <span id="durationDays">30</span> days
+          </p>
+          <p class="mb-1">
+            <strong>Renews On (Valid Through):</strong>
+            <span id="endDateDisplay">[calculated]</span>
+          </p>
+          <p class="mb-0">
+            <strong>Total Billed Now:</strong> $<span id="totalCost">99</span>
+          </p>
         </div>
-  
-        <p class="mb-1">
-          <strong>Pre-Booked Duration:</strong> <span id="durationDays">30</span> days
-        </p>
-        <p class="mb-1">
-          <strong>Renews On (Valid Through):</strong>
-          <span id="endDateDisplay">[calculated]</span>
-        </p>
-        <p class="mb-0">
-          <strong>Total Billed Now:</strong> $<span id="totalCost">99</span>
-        </p>
-      </div>
 
-      <!-- Subscription action buttons -->
-      <div class="mb-3">
-        <button id="purchaseBtn" class="btn btn-primary w-100 mb-2" disabled>Confirm Purchase</button>
-        <button id="addCardBtn" class="btn btn-outline-secondary w-100" style="display: none;">
-          <i class="bi bi-credit-card"></i> Add Card
-        </button>
-      </div>
-
-      <!-- Status / Error Message -->
-      <div class="alert alert-info" id="statusMessage">Loading...</div>
-    </div>
-  </div>
-</div>
-
-<!-- PAYMENT MODAL -->
-<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add Payment Profile</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Please add a payment method to continue.</p>
-        <form id="payment-form">
-          <div class="mb-3">
-            <label for="name-input" class="form-label">Name</label>
-            <input type="text" class="form-control" id="name-input" required />
-          </div>
-          <div class="mb-3">
-            <label for="card-element" class="form-label">Card</label>
-            <div id="card-element" class="form-control" style="height:auto;"></div>
-            <div id="card-errors" class="card-errors text-danger mt-1"></div>
-          </div>
-          <button type="submit" class="btn btn-primary w-100">
-            Add Payment Profile &amp; Purchase
+        <!-- Purchase Buttons -->
+        <div class="bg-white p-3 rounded shadow-sm mb-3">
+          <button id="purchaseBtn" class="btn btn-primary w-100 mb-2" disabled>
+            Confirm Purchase
           </button>
-        </form>
+          <button
+            id="addCardBtn"
+            class="btn btn-outline-secondary w-100"
+            style="display: none;"
+          >
+            <i class="bi bi-credit-card"></i> Add Card
+          </button>
+          <div
+            class="alert alert-info mt-2 mb-0"
+            id="statusMessage"
+          >
+            Loading...
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
-</div>
 
-<!-- SUCCESS MODAL -->
-<div 
-  class="modal fade" 
-  id="successModal" 
-  tabindex="-1" 
-  aria-hidden="true"
-  data-bs-backdrop="static" 
-  data-bs-keyboard="false"
->
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <!-- No close button -->
-        <h5 class="modal-title">Purchase Successful!</h5>
-      </div>
-      <div class="modal-body">
-        <p>Your subscription has been successfully updated!</p>
-      </div>
-      <div class="modal-footer">
-        <!-- Single OK button that redirects -->
-        <button type="button" class="btn btn-primary" id="successOkBtn">
-          OK
-        </button>
+  <!-- PAYMENT MODAL -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Payment Profile</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <p>Please add a payment method to continue.</p>
+          <form id="payment-form">
+            <div class="mb-3">
+              <label for="name-input" class="form-label">Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="name-input"
+                required
+              />
+            </div>
+            <div class="mb-3">
+              <label for="card-element" class="form-label">Card</label>
+              <div
+                id="card-element"
+                class="form-control"
+                style="height:auto;"
+              ></div>
+              <div
+                id="card-errors"
+                class="card-errors text-danger mt-1"
+              ></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+              Add Payment Profile &amp; Purchase
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<nav class="nav nav-bottom d-flex justify-content-around">
-  <a class="nav-link" href="#" onclick="goBack()" role="button">
+  <!-- SUCCESS MODAL -->
+  <div
+    class="modal fade"
+    id="successModal"
+    tabindex="-1"
+    aria-hidden="true"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+  >
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <!-- No close button -->
+          <h5 class="modal-title">Purchase Successful!</h5>
+        </div>
+        <div class="modal-body">
+          <p>Your subscription has been successfully updated!</p>
+        </div>
+        <div class="modal-footer">
+          <!-- Single OK button that redirects -->
+          <button
+            type="button"
+            class="btn btn-primary"
+            id="successOkBtn"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXED BOTTOM NAV -->
+  <nav class="nav nav-bottom d-flex justify-content-around">
+    <a class="nav-link" href="#" onclick="goBack()" role="button">
       <span class="d-block">Back to Main Portal</span>
-  </a>
-</nav>
+    </a>
+  </nav>
 
+  <!-- Bootstrap + Stripe + Firebase (compat) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-<!-- Bootstrap + Stripe + Firebase (compat) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://js.stripe.com/v3/"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
-<script>
-
-function goBack() {
-        // Check if there's history to go back to
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            // Fallback to main portal if no history
-            window.location.href = "index.html";
-        }
-        return false; // Prevent default link behavior
-    }
-/**
- * 1) Firebase init (compat build)
- *    Replace with your own config
- */
- const firebaseConfig = {
-  apiKey: "AIzaSyDP2YjuFB8SiSJTsMH7yqGdyrMpiK05AEo",
-  authDomain: "mp-subscriptions.firebaseapp.com",
-  projectId: "mp-subscriptions",
-  storageBucket: "mp-subscriptions.firebasestorage.app",
-  messagingSenderId: "228607825379",
-  appId: "1:228607825379:web:02cddb56b0465cca603cd6",
-  measurementId: "G-8NXV5DBFZB"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-/**
- * 2) Stripe initialization
- */
-const stripe = Stripe("pk_test_51N9BzSHaWNal9rmeTOlLWPk9oQ4WJAxsdZ9aEXEYEKnnYCPNJRpyFTOtDP4oMrFWvKrExd2ri5Ug5nFubgq07Fgr00fhr9hXWi"); // replace with your pk
-const elements = stripe.elements();
-const cardElement = elements.create('card', { style: { base: { fontSize: '16px' } } });
-cardElement.mount('#card-element');
-
-/**
- * 3) Grab references
- */
-const statusMessage   = document.getElementById('statusMessage');
-const subStatus       = document.getElementById('subStatus');
-const purchaseBtn     = document.getElementById('purchaseBtn');
-const addCardBtn      = document.getElementById('addCardBtn');
-const paymentModal    = new bootstrap.Modal(document.getElementById('paymentModal'));
-const paymentForm     = document.getElementById('payment-form');
-const nameInput       = document.getElementById('name-input');
-const cardErrors      = document.getElementById('card-errors');
-const monthsInput     = document.getElementById('monthsInput');
-const startInput      = document.getElementById('startDateInput');
-const durationDaysEl  = document.getElementById('durationDays');
-const endDateDisplay  = document.getElementById('endDateDisplay');
-const totalCostEl     = document.getElementById('totalCost');
-
-/** LocalStorage user data */
-const playerEmail = localStorage.getItem('playerEmail');    
-const storedName  = localStorage.getItem('playerFullName');
-if (storedName) nameInput.value = storedName;
-
-/** Netlify Function endpoints */
-const findStripeUrl               = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe";
-const createStripeUrl             = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe";
-const attachStripeUrl             = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/attachStripe";
-const chargeOneTimeWithCustomerUrl = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTimeWithCustomer";
-
-let existingCustomerId     = null; // Stripe customer
-let defaultPaymentMethodId = null; // Stripe PM
-let currentSubscription    = null; // Our Firebase subscription record (if any)
-
-/**
- * 4) On page load, do two checks:
- *    A) findStripe => see if we have an existing Stripe customer + card
- *    B) if we do, retrieve from Firebase => see if there's a subscription record
- */
-document.addEventListener('DOMContentLoaded', async () => {
-  if (!playerEmail) {
-    statusMessage.textContent = "No playerEmail found in localStorage!";
-    purchaseBtn.disabled = true;
-    return;
-  }
-
-  // 1) Set up date picker default/min
-  const startDateInput = document.getElementById('startDateInput');
-  const today = new Date();
-  const april7_2025 = new Date('2025-04-07T00:00:00');
-
-  // Convert "today" to YYYY-MM-DD string
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-
-  // Enforce minimum to be "today" so user can’t pick a past date
-  startDateInput.min = todayStr;
-
-  // Default value: if we haven’t yet reached April 7, 2025, use "2025-04-07". Otherwise, use "today."
-  if (today < april7_2025) {
-    startDateInput.value = '2025-04-07';
-  } else {
-    startDateInput.value = todayStr;
-  }
-
-  statusMessage.textContent = "Checking Stripe status...";
-
-  try {
-    // --- A) findStripe call ---
-    const stripeResp = await fetch(`${findStripeUrl}?email=${encodeURIComponent(playerEmail)}`);
-    const stripeData = await stripeResp.json();
-
-    if (!stripeData.success) {
-      statusMessage.textContent = "Error from findStripe: " + JSON.stringify(stripeData.error);
-      purchaseBtn.disabled = true;
-      return;
-    }
-
-    if (!stripeData.exists) {
-      // No stripe customer yet
-      existingCustomerId = null;
-      defaultPaymentMethodId = null;
-      statusMessage.textContent = "You don't have a card on file. Please add a card to purchase a membership.";
-      purchaseBtn.disabled = true;
-      addCardBtn.style.display = "block";
-      // No need to read from Firebase if we have no Stripe cust
-    } else {
-      // We have a Stripe customer
-      existingCustomerId = stripeData.customer.id;
-      defaultPaymentMethodId = stripeData.customer.invoice_settings?.default_payment_method || null;
-      
-      if (stripeData.cardLast4) {
-        statusMessage.textContent = `Card on file: **** **** **** ${stripeData.cardLast4}`;
-        purchaseBtn.disabled = false;
-        addCardBtn.style.display = "none";
+  <script>
+    /* ================================================
+       1) 'Go Back' helper for bottom nav
+       ================================================ */
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
       } else {
-        statusMessage.textContent = "Customer found, but no card on file. Please add one.";
-        purchaseBtn.disabled = true;
-        addCardBtn.style.display = "block";
+        window.location.href = "index.html";
       }
-
-      // --- B) Check Firebase for existing subscription ---
-      const subRef = firebase.database().ref("subscriptions/" + existingCustomerId);
-      const snapshot = await subRef.once("value");
-      if (snapshot.exists()) {
-        currentSubscription = snapshot.val();
-        updateUIWithSubscription(currentSubscription);
-      } else {
-        currentSubscription = null;
-      }
-    }
-  } catch (err) {
-    statusMessage.textContent = "Network error: " + err.message;
-    purchaseBtn.disabled = true;
-  }
-
-  // Finally, set up any event listeners
-  setupEventListeners();
-  updateSubscriptionDisplay(); // show plan/duration/cost
-});
-
-/**
- * 5) If there's a subscription, display its end date
- */
-function updateUIWithSubscription(subData) {
-  // subData has: { endDate, membershipType, active, email, customerId, startDate }
-  const endDateStr = subData.endDate;
-  const endDateObj = new Date(endDateStr);
-  const startDateStr = subData.startDate;
-  const startDateObj = new Date(startDateStr);
-  const now = new Date();
-
-  if (endDateObj > now) {
-    // still active
-    subStatus.style.display = "block";
-    planSelectionCard.style.display = "none";
-    subStatus.classList.remove("alert-danger");
-    subStatus.classList.add("alert-info");
-    subStatus.textContent = `Your current ${subData.membershipType} Membership benefits are active from ${startDateObj.toLocaleDateString()} until ${endDateObj.toLocaleDateString()}.`;
-    document.getElementById('startGroup').style.display = 'none';
-  } else {
-    // expired
-    subStatus.style.display = "block";
-    subStatus.classList.remove("alert-info");
-    subStatus.classList.add("alert-danger");
-    subStatus.textContent = `Your ${subData.membershipType} subscription expired on ${endDateObj.toLocaleDateString()}.`;
-  }
-}
-
-/**
- * 6) Event listeners for plan or months changes => recalc
- */
-function setupEventListeners() {
-  const planRadios = document.querySelectorAll('input[name="plan"]');
-  planRadios.forEach(radio => {
-    radio.addEventListener('change', updateSubscriptionDisplay);
-  });
-  monthsInput.addEventListener('change', updateSubscriptionDisplay);
-  startInput.addEventListener('change', updateSubscriptionDisplay);
-
-  purchaseBtn.addEventListener('click', onPurchaseClick);
-  addCardBtn.addEventListener('click', () => {
-    cardErrors.textContent = "";
-    paymentModal.show();
-  });
-
-  paymentForm.addEventListener('submit', onPaymentFormSubmit);
-}
-
-/**
- * 7) updateSubscriptionDisplay => show total days, cost, potential end date if started now
- */
-function updateSubscriptionDisplay() {
-  const planValue = getSelectedPlanAmount();
-  const months = parseInt(monthsInput.value, 10) || 1;
-
-  // 1) Calculate total days
-  const totalDays = months * 30;
-  durationDaysEl.textContent = totalDays.toString();
-
-  // 2) The user’s chosen start date
-  const userSelectedDate = new Date(document.getElementById("startDateInput").value);
-  let startDate = userSelectedDate;
-
-  // 2B) If user currently has an active subscription that ends in the future,
-  //     we keep the new subscription from starting before the old one ends.
-  if (currentSubscription && currentSubscription.endDate) {
-    const subEnd = new Date(currentSubscription.endDate);
-    const now = new Date();
-    // If the subEnd is > today, it means it's still active.
-    if (subEnd > now && subEnd > startDate) {
-      startDate = subEnd;
-    }
-  }
-
-  // 4) futureDate = startDate + totalDays
-  const futureDate = new Date(startDate.getTime() + totalDays * 86400000);
-  endDateDisplay.textContent = futureDate.toLocaleDateString();
-
-  // 5) Calculate total cost & display
-  const totalCost = planValue * months;
-  totalCostEl.textContent = totalCost.toString();
-}
-
-/**
- * 8) onPurchaseClick => do the immediate purchase with default PaymentMethod (if any)
- */
-async function onPurchaseClick() {
-  const planValue = getSelectedPlanAmount();
-  const months = parseInt(monthsInput.value, 10) || 1;
-  const totalCost = planValue * months;
-
-  if (!planValue) {
-    statusMessage.textContent = "Please select a plan.";
-    return;
-  }
-  if (!existingCustomerId) {
-    statusMessage.textContent = "No Stripe customer found. Please add a card first.";
-    return;
-  }
-  if (!defaultPaymentMethodId) {
-    statusMessage.textContent = "No default card found. Please add one.";
-    return;
-  }
-
-  await chargeSubscription(totalCost, planValue, months, defaultPaymentMethodId, existingCustomerId);
-}
-
-/**
- * 9) onPaymentFormSubmit => user is adding a new card + immediate purchase
- */
-async function onPaymentFormSubmit(e) {
-  e.preventDefault();
-  cardErrors.textContent = "";
-
-  const planValue = getSelectedPlanAmount();
-  const months = parseInt(monthsInput.value, 10) || 1;
-  const totalCost = planValue * months;
-
-  if (!playerEmail) {
-    cardErrors.textContent = "No playerEmail. Cannot proceed.";
-    return;
-  }
-
-  const userName = nameInput.value || "Unnamed";
-
-  try {
-    // (A) Create PaymentMethod
-    const { paymentMethod, error } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-      billing_details: { name: userName, email: playerEmail }
-    });
-    if (error) {
-      cardErrors.textContent = error.message;
-      return;
+      return false;
     }
 
-    // (B) If no Stripe customer yet, create it
-    if (!existingCustomerId) {
-      const createResp = await fetch(createStripeUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: userName,
-          email: playerEmail,
-          paymentMethodId: paymentMethod.id
-        })
-      });
-      const createData = await createResp.json();
-      if (!createData.success) {
-        cardErrors.textContent = createData.error || "Error creating Stripe customer.";
-        return;
-      }
-      existingCustomerId = createData.customer.id;
-      defaultPaymentMethodId = paymentMethod.id;
-    } else {
-      // (C) Attach PaymentMethod to existing customer
-      const attachResp = await fetch(attachStripeUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: existingCustomerId,
-          paymentMethodId: paymentMethod.id
-        })
-      });
-      const attachData = await attachResp.json();
-      if (!attachData.success) {
-        cardErrors.textContent = attachData.error || "Error attaching card.";
-        return;
-      }
-      defaultPaymentMethodId = paymentMethod.id;
-    }
-
-    // (D) Now do the charge
-    await chargeSubscription(totalCost, planValue, months, paymentMethod.id, existingCustomerId);
-
-    // (E) Close modal if success
-    paymentModal.hide();
-  } catch (err) {
-    cardErrors.textContent = err.message || "Unknown error while creating PaymentMethod.";
-  }
-}
-
-/**
- * chargeSubscription
- *
- * 1) Creates a PaymentIntent via /chargeOneTimeWithCustomer.
- * 2) Confirms on the client (stripe.confirmCardPayment).
- * 3) On success, updates Firebase subscription data with:
- *    - membershipType (Silver/Gold/TripleCrown)
- *    - startDate (original if sub active, else user-chosen)
- *    - endDate (stacked on oldEnd if sub active, else startDate + totalDays)
- * 4) Shows the "Success" modal that cannot be closed, forcing redirect to index.html.
- */
-async function chargeSubscription(
-  amountInDollars,  // e.g. 99 or 175 or 499 * months
-  planValue,        // e.g. 99, 175, or 499 (single-month cost)
-  months,           // number of 30-day increments
-  paymentMethodId,  // e.g. "pm_123"
-  customerId        // e.g. "cus_ABC"
-) {
-  const amountInCents = amountInDollars * 100;
-  statusMessage.textContent = "Creating PaymentIntent...";
-
-  try {
-    // (A) Create PaymentIntent in Netlify function
-    const resp = await fetch(chargeOneTimeWithCustomerUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: amountInCents,
-        paymentMethodId,
-        customerId
-      })
-    });
-    const data = await resp.json();
-    if (!data.success) {
-      statusMessage.textContent = "Error creating PaymentIntent: " + data.error;
-      return;
-    }
-
-    // (B) Confirm on client
-    statusMessage.textContent = "Confirming Payment...";
-    const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
-    if (confirmError) {
-      statusMessage.textContent = "Payment failed: " + confirmError.message;
-      return;
-    }
-
-    // (C) Payment Succeeded
-    const totalDays = months * 30;
-    statusMessage.textContent = `Success! Charged $${amountInDollars} for subscription. (PI: ${paymentIntent.id})`;
-
-    // (C1) Determine membership type
-    let membershipType = "Silver";
-    if (planValue === 175) membershipType = "Gold";
-    else if (planValue === 499) membershipType = "TripleCrown";
-
-    // (C2) Decide final startDate
-    //     - If current sub is active, keep old startDate
-    //     - If no active sub, use user’s chosen date
-    let finalStartDate = new Date(document.getElementById('startDateInput').value);
-    const now = new Date();
-
-    if (currentSubscription && currentSubscription.endDate) {
-      const oldEnd = new Date(currentSubscription.endDate);
-      const oldStart = new Date(currentSubscription.startDate || now);
-
-      // If sub is still active (oldEnd > now), keep oldStart
-      if (oldEnd > now) {
-        finalStartDate = oldStart;
-      }
-    }
-
-    // (C3) Compute endDate
-    //     - If sub was active, we "stack" from the oldEnd date
-    //       Otherwise, we start from finalStartDate
-    let finalEndDate;
-    if (currentSubscription && currentSubscription.endDate) {
-      const oldEnd = new Date(currentSubscription.endDate);
-      if (oldEnd > now) {
-        // subscription active => extend from oldEnd
-        finalEndDate = new Date(oldEnd.getTime() + totalDays * 86400000);
-      } else {
-        // subscription exists but not active => new start
-        finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
-      }
-    } else {
-      // no subscription => new start
-      finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
-    }
-
-    // (C4) Update Firebase
-    firebase.database().ref("subscriptions/" + customerId).set({
-      email: playerEmail,
-      customerId,
-      membershipType,
-      rate: planValue,  
-      startDate: finalStartDate.toISOString(),
-      endDate: finalEndDate.toISOString(),
-      active: true
-    });
-
-    // (C5) Update our local subscription data in memory
-    currentSubscription = {
-      email: playerEmail,
-      customerId,
-      membershipType,
-      startDate: finalStartDate.toISOString(),
-      endDate: finalEndDate.toISOString(),
-      active: true
+    /* ================================================
+       2) Firebase init (compat build)
+       ================================================ */
+    const firebaseConfig = {
+      apiKey: "AIzaSyDP2YjuFB8SiSJTsMH7yqGdyrMpiK05AEo",
+      authDomain: "mp-subscriptions.firebaseapp.com",
+      projectId: "mp-subscriptions",
+      storageBucket: "mp-subscriptions.firebasestorage.app",
+      messagingSenderId: "228607825379",
+      appId: "1:228607825379:web:02cddb56b0465cca603cd6",
+      measurementId: "G-8NXV5DBFZB"
     };
-    updateUIWithSubscription(currentSubscription);
+    firebase.initializeApp(firebaseConfig);
 
-    // (D) Show the "Success" Modal
-    const successModalEl = document.getElementById("successModal");
-    const successModal = new bootstrap.Modal(successModalEl);
-    successModal.show();
+    /* ================================================
+       3) Stripe initialization
+       ================================================ */
+    const stripe = Stripe("pk_test_51N9BzSHaWNal9rmeTOlLWPk9oQ4WJAxsdZ9aEXEYEKnnYCPNJRpyFTOtDP4oMrFWvKrExd2ri5Ug5nFubgq07Fgr00fhr9hXWi");
+    const elements = stripe.elements();
+    const cardElement = elements.create('card', {
+      style: { base: { fontSize: '16px' } }
+    });
+    cardElement.mount('#card-element');
 
-    // (D1) If forcibly closed => redirect
-    successModalEl.addEventListener("hide.bs.modal", () => {
-      window.location.href = "index.html";
+    /* ================================================
+       4) DOM references
+       ================================================ */
+    const statusMessage    = document.getElementById("statusMessage");
+    const subStatus        = document.getElementById("subStatus");
+    const planSelectionCard= document.getElementById("planSelectionCard");
+    const purchaseBtn      = document.getElementById("purchaseBtn");
+    const addCardBtn       = document.getElementById("addCardBtn");
+    const paymentModal     = new bootstrap.Modal(document.getElementById("paymentModal"));
+    const paymentForm      = document.getElementById("payment-form");
+    const nameInput        = document.getElementById("name-input");
+    const cardErrors       = document.getElementById("card-errors");
+    const monthsInput      = document.getElementById("monthsInput");
+    const startInput       = document.getElementById("startDateInput");
+    const durationDaysEl   = document.getElementById("durationDays");
+    const endDateDisplay   = document.getElementById("endDateDisplay");
+    const totalCostEl      = document.getElementById("totalCost");
+
+    /* Grab from localStorage */
+    const playerEmail = localStorage.getItem("playerEmail");
+    const storedName  = localStorage.getItem("playerFullName");
+    if (storedName) nameInput.value = storedName;
+
+    /* Netlify function endpoints */
+    const findStripeUrl                = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe";
+    const createStripeUrl              = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe";
+    const attachStripeUrl              = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/attachStripe";
+    const chargeOneTimeWithCustomerUrl = "https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTimeWithCustomer";
+
+    let existingCustomerId     = null; // Stripe customer
+    let defaultPaymentMethodId = null; // Stripe PM
+    let currentSubscription    = null; // Our Firebase subscription record
+
+    /* ================================================
+       5) On page load: find existing Stripe & sub data
+       ================================================ */
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!playerEmail) {
+        statusMessage.textContent = "No playerEmail found in localStorage!";
+        purchaseBtn.disabled = true;
+        return;
+      }
+
+      // Setup date picker defaults
+      const today = new Date();
+      const april7_2025 = new Date("2025-04-07T00:00:00");
+
+      const yyyy = today.getFullYear();
+      const mm   = String(today.getMonth() + 1).padStart(2, "0");
+      const dd   = String(today.getDate()).padStart(2, "0");
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      startInput.min = todayStr;
+
+      if (today < april7_2025) {
+        startInput.value = "2025-04-07";
+      } else {
+        startInput.value = todayStr;
+      }
+
+      statusMessage.textContent = "Checking Stripe status...";
+
+      try {
+        // 1) findStripe
+        const stripeResp = await fetch(`${findStripeUrl}?email=${encodeURIComponent(playerEmail)}`);
+        const stripeData = await stripeResp.json();
+
+        if (!stripeData.success) {
+          statusMessage.textContent = "Error from findStripe: " + JSON.stringify(stripeData.error);
+          purchaseBtn.disabled = true;
+          return;
+        }
+        if (!stripeData.exists) {
+          existingCustomerId = null;
+          defaultPaymentMethodId = null;
+          statusMessage.textContent = "You don't have a card on file. Please add a card to purchase a membership.";
+          purchaseBtn.disabled = true;
+          addCardBtn.style.display = "block";
+        } else {
+          existingCustomerId = stripeData.customer.id;
+          defaultPaymentMethodId = stripeData.customer.invoice_settings?.default_payment_method || null;
+
+          if (stripeData.cardLast4) {
+            statusMessage.textContent = `Card on file: **** **** **** ${stripeData.cardLast4}`;
+            purchaseBtn.disabled = false;
+            addCardBtn.style.display = "none";
+          } else {
+            statusMessage.textContent = "Customer found, but no card on file. Please add one.";
+            purchaseBtn.disabled = true;
+            addCardBtn.style.display = "block";
+          }
+
+          // 2) Check Firebase subscription
+          const subRef = firebase.database().ref("subscriptions/" + existingCustomerId);
+          const snapshot = await subRef.once("value");
+          if (snapshot.exists()) {
+            currentSubscription = snapshot.val();
+            updateUIWithSubscription(currentSubscription);
+          } else {
+            currentSubscription = null;
+          }
+        }
+      } catch (err) {
+        statusMessage.textContent = "Network error: " + err.message;
+        purchaseBtn.disabled = true;
+      }
+
+      // Setup event listeners
+      setupEventListeners();
+      updateSubscriptionDisplay();
     });
 
-    // (D2) If user clicks OK => redirect
-    const successOkBtn = document.getElementById("successOkBtn");
-    successOkBtn.addEventListener("click", () => {
-      window.location.href = "index.html";
-    });
+    /* ================================================
+       6) updateUIWithSubscription
+       ================================================ */
+    function updateUIWithSubscription(subData) {
+      const endDateStr   = subData.endDate;
+      const endDateObj   = new Date(endDateStr);
+      const startDateStr = subData.startDate;
+      const startDateObj = new Date(startDateStr);
+      const now = new Date();
 
-  } catch (err) {
-    statusMessage.textContent = "Network/Server error: " + err.message;
-  }
-}
+      if (endDateObj > now) {
+        // Still active
+        subStatus.style.display = "block";
+        planSelectionCard.style.display = "none";
+        subStatus.classList.remove("alert-danger");
+        subStatus.classList.add("alert-info");
+        subStatus.textContent = `Your current ${subData.membershipType} Membership is active from ${startDateObj.toLocaleDateString()} until ${endDateObj.toLocaleDateString()}.`;
+        document.getElementById("startGroup").style.display = "none";
+      } else {
+        // Expired
+        subStatus.style.display = "block";
+        subStatus.classList.remove("alert-info");
+        subStatus.classList.add("alert-danger");
+        subStatus.textContent = `Your ${subData.membershipType} subscription expired on ${endDateObj.toLocaleDateString()}.`;
+      }
+    }
 
-/** Utility: which plan is selected? */
-function getSelectedPlanAmount() {
-  const planRadios = document.querySelectorAll('input[name="plan"]');
-  for (let r of planRadios) {
-    if (r.checked) return parseInt(r.value, 10);
-  }
-  return 99; // fallback
-}
-</script>
+    /* ================================================
+       7) setupEventListeners
+       ================================================ */
+    function setupEventListeners() {
+      const planRadios = document.querySelectorAll('input[name="plan"]');
+      planRadios.forEach(radio => {
+        radio.addEventListener("change", updateSubscriptionDisplay);
+      });
+      monthsInput.addEventListener("change", updateSubscriptionDisplay);
+      startInput.addEventListener("change", updateSubscriptionDisplay);
+
+      purchaseBtn.addEventListener("click", onPurchaseClick);
+      addCardBtn.addEventListener("click", () => {
+        cardErrors.textContent = "";
+        paymentModal.show();
+      });
+
+      paymentForm.addEventListener("submit", onPaymentFormSubmit);
+    }
+
+    /* ================================================
+       8) updateSubscriptionDisplay
+       ================================================ */
+    function updateSubscriptionDisplay() {
+      const planValue = getSelectedPlanAmount();
+      const months = parseInt(monthsInput.value, 10) || 1;
+
+      // total days
+      const totalDays = months * 30;
+      durationDaysEl.textContent = totalDays.toString();
+
+      // user-chosen start
+      let userSelectedDate = new Date(startInput.value);
+      const now = new Date();
+
+      // If current sub is still active, start after oldEnd
+      if (currentSubscription && currentSubscription.endDate) {
+        const subEnd = new Date(currentSubscription.endDate);
+        if (subEnd > now && subEnd > userSelectedDate) {
+          userSelectedDate = subEnd;
+        }
+      }
+
+      // future date = userSelectedDate + totalDays
+      const futureDate = new Date(userSelectedDate.getTime() + totalDays * 86400000);
+      endDateDisplay.textContent = futureDate.toLocaleDateString();
+
+      // total cost
+      const totalCost = planValue * months;
+      totalCostEl.textContent = totalCost.toString();
+    }
+
+    /* ================================================
+       9) onPurchaseClick
+       ================================================ */
+    async function onPurchaseClick() {
+      const planValue = getSelectedPlanAmount();
+      const months = parseInt(monthsInput.value, 10) || 1;
+      const totalCost = planValue * months;
+
+      if (!planValue) {
+        statusMessage.textContent = "Please select a plan.";
+        return;
+      }
+      if (!existingCustomerId) {
+        statusMessage.textContent = "No Stripe customer found. Please add a card first.";
+        return;
+      }
+      if (!defaultPaymentMethodId) {
+        statusMessage.textContent = "No default card found. Please add one.";
+        return;
+      }
+
+      await chargeSubscription(totalCost, planValue, months, defaultPaymentMethodId, existingCustomerId);
+    }
+
+    /* ================================================
+       10) onPaymentFormSubmit
+       ================================================ */
+    async function onPaymentFormSubmit(e) {
+      e.preventDefault();
+      cardErrors.textContent = "";
+
+      const planValue = getSelectedPlanAmount();
+      const months = parseInt(monthsInput.value, 10) || 1;
+      const totalCost = planValue * months;
+
+      if (!playerEmail) {
+        cardErrors.textContent = "No playerEmail. Cannot proceed.";
+        return;
+      }
+      const userName = nameInput.value || "Unnamed";
+
+      try {
+        // (A) Create PaymentMethod
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement,
+          billing_details: { name: userName, email: playerEmail }
+        });
+        if (error) {
+          cardErrors.textContent = error.message;
+          return;
+        }
+
+        // (B) If no Stripe customer, create
+        if (!existingCustomerId) {
+          const createResp = await fetch(createStripeUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: userName,
+              email: playerEmail,
+              paymentMethodId: paymentMethod.id
+            })
+          });
+          const createData = await createResp.json();
+          if (!createData.success) {
+            cardErrors.textContent = createData.error || "Error creating Stripe customer.";
+            return;
+          }
+          existingCustomerId = createData.customer.id;
+          defaultPaymentMethodId = paymentMethod.id;
+        } else {
+          // (C) Attach PaymentMethod to existing
+          const attachResp = await fetch(attachStripeUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customerId: existingCustomerId,
+              paymentMethodId: paymentMethod.id
+            })
+          });
+          const attachData = await attachResp.json();
+          if (!attachData.success) {
+            cardErrors.textContent = attachData.error || "Error attaching card.";
+            return;
+          }
+          defaultPaymentMethodId = paymentMethod.id;
+        }
+
+        // (D) Charge
+        await chargeSubscription(totalCost, planValue, months, paymentMethod.id, existingCustomerId);
+
+        // (E) Close modal
+        paymentModal.hide();
+      } catch (err) {
+        cardErrors.textContent = err.message || "Unknown error while creating PaymentMethod.";
+      }
+    }
+
+    /* ================================================
+       11) chargeSubscription
+       ================================================ */
+    async function chargeSubscription(
+      amountInDollars,
+      planValue,
+      months,
+      paymentMethodId,
+      customerId
+    ) {
+      const amountInCents = amountInDollars * 100;
+      statusMessage.textContent = "Creating PaymentIntent...";
+
+      try {
+        // (A) Create PaymentIntent
+        const resp = await fetch(chargeOneTimeWithCustomerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: amountInCents,
+            paymentMethodId,
+            customerId
+          })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+          statusMessage.textContent = "Error creating PaymentIntent: " + data.error;
+          return;
+        }
+
+        // (B) Confirm on client
+        statusMessage.textContent = "Confirming Payment...";
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
+        if (confirmError) {
+          statusMessage.textContent = "Payment failed: " + confirmError.message;
+          return;
+        }
+
+        // (C) Payment succeeded
+        const totalDays = months * 30;
+        statusMessage.textContent = `Success! Charged $${amountInDollars}. (PI: ${paymentIntent.id})`;
+
+        // (C1) membership type
+        let membershipType = "Silver";
+        if (planValue === 175) membershipType = "Gold";
+        else if (planValue === 499) membershipType = "TripleCrown";
+
+        // (C2) finalStartDate
+        let finalStartDate = new Date(document.getElementById("startDateInput").value);
+        const now = new Date();
+        if (currentSubscription && currentSubscription.endDate) {
+          const oldEnd = new Date(currentSubscription.endDate);
+          const oldStart= new Date(currentSubscription.startDate || now);
+          if (oldEnd > now) {
+            // still active => keep oldStart
+            finalStartDate = oldStart;
+          }
+        }
+
+        // (C3) endDate
+        let finalEndDate;
+        if (currentSubscription && currentSubscription.endDate) {
+          const oldEnd = new Date(currentSubscription.endDate);
+          if (oldEnd > now) {
+            finalEndDate = new Date(oldEnd.getTime() + totalDays * 86400000);
+          } else {
+            finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
+          }
+        } else {
+          finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
+        }
+
+        // (C4) Update Firebase
+        firebase
+          .database()
+          .ref("subscriptions/" + customerId)
+          .set({
+            email: playerEmail,
+            customerId,
+            membershipType,
+            rate: planValue,
+            startDate: finalStartDate.toISOString(),
+            endDate: finalEndDate.toISOString(),
+            active: true
+          });
+
+        currentSubscription = {
+          email: playerEmail,
+          customerId,
+          membershipType,
+          startDate: finalStartDate.toISOString(),
+          endDate: finalEndDate.toISOString(),
+          active: true
+        };
+        updateUIWithSubscription(currentSubscription);
+
+        // (D) Show success modal
+        const successModalEl = document.getElementById("successModal");
+        const successModal    = new bootstrap.Modal(successModalEl);
+        successModal.show();
+
+        // (D1) If forcibly closed => redirect
+        successModalEl.addEventListener("hide.bs.modal", () => {
+          window.location.href = "index.html";
+        });
+
+        // (D2) If user clicks OK => redirect
+        const successOkBtn = document.getElementById("successOkBtn");
+        successOkBtn.addEventListener("click", () => {
+          window.location.href = "index.html";
+        });
+
+      } catch (err) {
+        statusMessage.textContent = "Network/Server error: " + err.message;
+      }
+    }
+
+    /* Get selected plan amount */
+    function getSelectedPlanAmount() {
+      const planRadios = document.querySelectorAll('input[name="plan"]');
+      for (let r of planRadios) {
+        if (r.checked) return parseInt(r.value, 10);
+      }
+      return 99; // fallback
+    }
+  </script>
 </body>
 </html>
+
