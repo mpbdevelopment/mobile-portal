@@ -206,7 +206,7 @@
 
         <!-- Purchase Buttons -->
         <div class="bg-white p-3 rounded shadow-sm mb-3">
-          <button id="purchaseBtn" class="btn btn-primary w-100 mb-2" disabled>
+          <button id="purchaseBtn" class="btn btn-primary w-100 mb-2" disabled style="display: none">
             Confirm Purchase
           </button>
           <button
@@ -214,7 +214,7 @@
             class="btn btn-outline-secondary w-100"
             style="display: none;"
           >
-            <i class="bi bi-credit-card"></i> Add Card
+            <i class="bi bi-credit-card"></i> Add Card & Purchase
           </button>
           <div
             class="alert alert-info mt-2 mb-0"
@@ -265,8 +265,8 @@
                 class="card-errors text-danger mt-1"
               ></div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">
-              Add Payment Profile &amp; Purchase
+            <button id='submitBtn' type="submit" class="btn btn-primary w-100">
+              Add Card on File &amp; Purchase
             </button>
           </form>
         </div>
@@ -290,7 +290,7 @@
           <h5 class="modal-title">Purchase Successful!</h5>
         </div>
         <div class="modal-body">
-          <p>Your subscription has been successfully updated!</p>
+          <p>Your membership has been successfully updated!<br>Please note that if you added a new card on file it may take a few minutes to update in the portal.</p>
         </div>
         <div class="modal-footer">
           <!-- Single OK button that redirects -->
@@ -439,10 +439,11 @@
 
           if (stripeData.cardLast4) {
             statusMessage.textContent = `Card on file: **** **** **** ${stripeData.cardLast4}`;
+            purchaseBtn.style.display = 'block';
             purchaseBtn.disabled = false;
             addCardBtn.style.display = "none";
           } else {
-            statusMessage.textContent = "Customer found, but no card on file. Please add one.";
+            statusMessage.textContent = "You don't have a card on file. Please add a card to purchase a membership.";
             purchaseBtn.disabled = true;
             addCardBtn.style.display = "block";
           }
@@ -576,6 +577,8 @@
     async function onPaymentFormSubmit(e) {
       e.preventDefault();
       cardErrors.textContent = "";
+
+      document.getElementById('submitBtn').textContent = 'Processing...';
 
       const planValue = getSelectedPlanAmount();
       const months = parseInt(monthsInput.value, 10) || 1;
@@ -773,4 +776,5 @@
   </script>
 </body>
 </html>
+
 
