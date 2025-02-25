@@ -631,7 +631,7 @@
 
           <div id="registrations-spinner">
             <div class="spinner-border text-primary mb-2" role="status"></div>
-            <p class="mb-0">Loading Registrations...</p>
+            <p class="mb-0">Loading Registrations...<br>New registrations may take a couple minutes to appear.</p>
           </div>
           <div id="registrations-content">
             <div id="calendar"></div>
@@ -711,7 +711,7 @@
                 Save this card on file for future use
                 </label>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Pay Now</button>
+            <button id="oneTimeSubmitBtn" type="submit" class="btn btn-primary w-100">Pay Now</button>
           </form>
         </div>
       </div>
@@ -1021,7 +1021,7 @@ function refreshData() {
 }
 
 // Finally, continue to refresh every 60 seconds.
-setInterval(refreshData, 60000);
+setInterval(refreshData, 120000);
 
 
 
@@ -2110,7 +2110,7 @@ function toYMDString(d) {
 
     updateCartSummaryPill();
 
-    if (totalCents == 0) {
+    if (totalCents == 0 || amountDue == 0) {
       document.getElementById('btn-charge-on-file').textContent = 'Submit Registration (No Charge)';
       document.getElementById('btn-credit-debit').style.display = 'none';
     } else {
@@ -2242,6 +2242,9 @@ function toYMDString(d) {
 e.preventDefault();
 document.getElementById('otpf-card-errors').textContent = '';
 
+document.getElementById('oneTimeSubmitBtn').textContent = 'Processing...';
+document.getElementById('oneTimeSubmitBtn').disabled=true;
+
 const nameOnCard = document.getElementById('otpf-name').value.trim();
 if (!nameOnCard) {
   document.getElementById('otpf-card-errors').textContent = 'Name is required.';
@@ -2343,6 +2346,7 @@ try {
   showPaymentSpinner(false);
   document.getElementById('otpf-card-errors').textContent = err.message;
 }
+document.getElementById('oneTimeSubmitBtn').disabled=false;
 });
 
 /**
@@ -3015,11 +3019,13 @@ if (isListView) {
     if(calendarBtn.textContent.includes('Calendar')) {
       calendarBtn.textContent = "Switch to Program View";
       document.getElementById('category-filter-group').style.display = 'none';
+      document.getElementById('program-cards-container').style.display = 'none';
       document.getElementById('category-filter').selectedIndex = 0;
     } else {
       calendarBtn.textContent = "Switch to Calendar View";
+      document.getElementById('category-filter-group').style.display = 'block';
     }
-    document.getElementById('program-cards-container').style.display = 'block';
+    //document.getElementById('program-cards-container').style.display = 'block';
   });
 
   function populateStandardizedLevelDropdown() {
@@ -3324,7 +3330,7 @@ if (isInCart && info.view.type.startsWith('list')) {
 
       if (isInCart) {
         // Remove from cart
-        removeProductFromCart(product);
+        removeProductFromCart(product, selectedSession.spreadsheetId);
 
         // Now event is no longer in cart => pick the normal color
         const { backgroundColor, borderColor } = getEventColors(product, false);
