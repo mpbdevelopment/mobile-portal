@@ -9,13 +9,55 @@
     rel="stylesheet"
   />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <style>
+        .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 56px;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0e2f7b; /* Bootstrap primary color */
+      color: #fff;              /* White text for contrast */
+      font-weight: 500;
+    }
+
+    .nav-bottom .nav-profile {
+    flex: 0 0 auto;       /* let it shrink to fit icon content */
+    width: 50px;          /* pick a smaller width */
+    text-align: center;
+    padding: 6px 0;       /* less vertical padding */
+    font-size: 1.1rem;    /* adjust icon size as you like */
+    }
+
+    .nav-bottom .nav-forum {
+    flex: 0 0 auto;
+    width: 50px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 1.2rem;
+    }
+  </style>
 </head>
 <body class="bg-light">
 
 <div class="container py-4">
   <div class="row">
     <div class="col-12 text-center">
-      <h1>Manage Your Subscription</h1>
+      <h1>Manage Your Membership</h1>
     </div>
   </div>
 
@@ -63,19 +105,33 @@
             id="monthsInput" 
             value="1" 
             min="1" 
-            max="24" 
+            max="8" 
             step="1"
           >
         </div>
+
+        <!-- 2.5) Start Date Picker -->
+        <div class="card mb-3 p-3" id="startGroup">
+            <h4>Select Start Date</h4>
+            <div class="input-group mb-2">
+              <label class="input-group-text" for="startDateInput">Start Date</label>
+              <input 
+                  type="date" 
+                  class="form-control" 
+                  id="startDateInput" 
+              />
+            </div>
+        </div>
+  
         <p class="mb-1">
-          <strong>Duration:</strong> <span id="durationDays">30</span> days
+          <strong>Pre-Booked Duration:</strong> <span id="durationDays">30</span> days
         </p>
         <p class="mb-1">
-          <strong>End Date if starting now:</strong>
+          <strong>Renews On (Valid Through):</strong>
           <span id="endDateDisplay">[calculated]</span>
         </p>
         <p class="mb-0">
-          <strong>Total Cost for this purchase:</strong> $<span id="totalCost">99</span>
+          <strong>Total Billed Now:</strong> $<span id="totalCost">99</span>
         </p>
       </div>
 
@@ -150,6 +206,12 @@
   </div>
 </div>
 
+<nav class="nav nav-bottom d-flex justify-content-around">
+  <a class="nav-link" href="#" onclick="goBack()" role="button">
+      <span class="d-block">Back to Main Portal</span>
+  </a>
+</nav>
+
 
 <!-- Bootstrap + Stripe + Firebase (compat) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -158,6 +220,17 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
 <script>
+
+function goBack() {
+        // Check if there's history to go back to
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            // Fallback to main portal if no history
+            window.location.href = "index.html";
+        }
+        return false; // Prevent default link behavior
+    }
 /**
  * 1) Firebase init (compat build)
  *    Replace with your own config
@@ -194,6 +267,7 @@ const paymentForm     = document.getElementById('payment-form');
 const nameInput       = document.getElementById('name-input');
 const cardErrors      = document.getElementById('card-errors');
 const monthsInput     = document.getElementById('monthsInput');
+const startInput      = document.getElementById('startDateInput');
 const durationDaysEl  = document.getElementById('durationDays');
 const endDateDisplay  = document.getElementById('endDateDisplay');
 const totalCostEl     = document.getElementById('totalCost');
@@ -225,6 +299,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // 1) Set up date picker default/min
+  const startDateInput = document.getElementById('startDateInput');
+  const today = new Date();
+  const april7_2025 = new Date('2025-04-07T00:00:00');
+
+  // Convert "today" to YYYY-MM-DD string
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+
+  // Enforce minimum to be "today" so user can’t pick a past date
+  startDateInput.min = todayStr;
+
+  // Default value: if we haven’t yet reached April 7, 2025, use "2025-04-07". Otherwise, use "today."
+  if (today < april7_2025) {
+    startDateInput.value = '2025-04-07';
+  } else {
+    startDateInput.value = todayStr;
+  }
+
   statusMessage.textContent = "Checking Stripe status...";
 
   try {
@@ -242,7 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // No stripe customer yet
       existingCustomerId = null;
       defaultPaymentMethodId = null;
-      statusMessage.textContent = "No Stripe customer yet. Please add a card to purchase a subscription.";
+      statusMessage.textContent = "You don't have a card on file. Please add a card to purchase a membership.";
       purchaseBtn.disabled = true;
       addCardBtn.style.display = "block";
       // No need to read from Firebase if we have no Stripe cust
@@ -285,9 +380,11 @@ document.addEventListener('DOMContentLoaded', async () => {
  * 5) If there's a subscription, display its end date
  */
 function updateUIWithSubscription(subData) {
-  // subData has: { endDate, membershipType, active, email, customerId }
+  // subData has: { endDate, membershipType, active, email, customerId, startDate }
   const endDateStr = subData.endDate;
   const endDateObj = new Date(endDateStr);
+  const startDateStr = subData.startDate;
+  const startDateObj = new Date(startDateStr);
   const now = new Date();
 
   if (endDateObj > now) {
@@ -296,7 +393,8 @@ function updateUIWithSubscription(subData) {
     planSelectionCard.style.display = "none";
     subStatus.classList.remove("alert-danger");
     subStatus.classList.add("alert-info");
-    subStatus.textContent = `Your current ${subData.membershipType} subscription is active until ${endDateObj.toLocaleDateString()}.`;
+    subStatus.textContent = `Your current ${subData.membershipType} Membership benefits are active from ${startDateObj.toLocaleDateString()} until ${endDateObj.toLocaleDateString()}.`;
+    document.getElementById('startGroup').style.display = 'none';
   } else {
     // expired
     subStatus.style.display = "block";
@@ -315,6 +413,7 @@ function setupEventListeners() {
     radio.addEventListener('change', updateSubscriptionDisplay);
   });
   monthsInput.addEventListener('change', updateSubscriptionDisplay);
+  startInput.addEventListener('change', updateSubscriptionDisplay);
 
   purchaseBtn.addEventListener('click', onPurchaseClick);
   addCardBtn.addEventListener('click', () => {
@@ -328,31 +427,34 @@ function setupEventListeners() {
 /**
  * 7) updateSubscriptionDisplay => show total days, cost, potential end date if started now
  */
- function updateSubscriptionDisplay() {
+function updateSubscriptionDisplay() {
   const planValue = getSelectedPlanAmount();
   const months = parseInt(monthsInput.value, 10) || 1;
 
-  // 1) Calculate totalDays
+  // 1) Calculate total days
   const totalDays = months * 30;
   durationDaysEl.textContent = totalDays.toString();
 
-  // 2) Determine base date
-  const now = new Date();
-  let baseDate = now; // default if no active sub
+  // 2) The user’s chosen start date
+  const userSelectedDate = new Date(document.getElementById("startDateInput").value);
+  let startDate = userSelectedDate;
+
+  // 2B) If user currently has an active subscription that ends in the future,
+  //     we keep the new subscription from starting before the old one ends.
   if (currentSubscription && currentSubscription.endDate) {
     const subEnd = new Date(currentSubscription.endDate);
-    if (subEnd > now) {
-      // subscription still active, so use subEnd as the base
-      baseDate = subEnd;
+    const now = new Date();
+    // If the subEnd is > today, it means it's still active.
+    if (subEnd > now && subEnd > startDate) {
+      startDate = subEnd;
     }
   }
 
-  // 3) Compute futureDate from baseDate
-  const futureDate = new Date(baseDate.getTime() + totalDays * 86400000);
+  // 4) futureDate = startDate + totalDays
+  const futureDate = new Date(startDate.getTime() + totalDays * 86400000);
+  endDateDisplay.textContent = futureDate.toLocaleDateString();
 
-  endDateDisplay.textContent = futureDate.toLocaleDateString(); // e.g. "MM/DD/YYYY"
-
-  // 4) Calculate cost
+  // 5) Calculate total cost & display
   const totalCost = planValue * months;
   totalCostEl.textContent = totalCost.toString();
 }
@@ -460,18 +562,26 @@ async function onPaymentFormSubmit(e) {
 /**
  * chargeSubscription
  *
- * 1) Creates PaymentIntent via /chargeOneTimeWithCustomer.
+ * 1) Creates a PaymentIntent via /chargeOneTimeWithCustomer.
  * 2) Confirms on the client (stripe.confirmCardPayment).
- * 3) On success, updates Firebase subscription logic (same as before).
- * 4) Shows a "Success" modal that the user cannot close, and if they do close or click "OK," 
- *    we redirect to index.html.
+ * 3) On success, updates Firebase subscription data with:
+ *    - membershipType (Silver/Gold/TripleCrown)
+ *    - startDate (original if sub active, else user-chosen)
+ *    - endDate (stacked on oldEnd if sub active, else startDate + totalDays)
+ * 4) Shows the "Success" modal that cannot be closed, forcing redirect to index.html.
  */
- async function chargeSubscription(amountInDollars, planValue, months, paymentMethodId, customerId) {
+async function chargeSubscription(
+  amountInDollars,  // e.g. 99 or 175 or 499 * months
+  planValue,        // e.g. 99, 175, or 499 (single-month cost)
+  months,           // number of 30-day increments
+  paymentMethodId,  // e.g. "pm_123"
+  customerId        // e.g. "cus_ABC"
+) {
   const amountInCents = amountInDollars * 100;
   statusMessage.textContent = "Creating PaymentIntent...";
 
   try {
-    // (A) Create PaymentIntent (unchanged logic)
+    // (A) Create PaymentIntent in Netlify function
     const resp = await fetch(chargeOneTimeWithCustomerUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -495,7 +605,7 @@ async function onPaymentFormSubmit(e) {
       return;
     }
 
-    // (C) Payment Succeeded -> Same membership logic as before
+    // (C) Payment Succeeded
     const totalDays = months * 30;
     statusMessage.textContent = `Success! Charged $${amountInDollars} for subscription. (PI: ${paymentIntent.id})`;
 
@@ -504,38 +614,58 @@ async function onPaymentFormSubmit(e) {
     if (planValue === 175) membershipType = "Gold";
     else if (planValue === 499) membershipType = "TripleCrown";
 
-    // (C2) Compute new end date
+    // (C2) Decide final startDate
+    //     - If current sub is active, keep old startDate
+    //     - If no active sub, use user’s chosen date
+    let finalStartDate = new Date(document.getElementById('startDateInput').value);
     const now = new Date();
-    let oldEndDate = now;
+
+    if (currentSubscription && currentSubscription.endDate) {
+      const oldEnd = new Date(currentSubscription.endDate);
+      const oldStart = new Date(currentSubscription.startDate || now);
+
+      // If sub is still active (oldEnd > now), keep oldStart
+      if (oldEnd > now) {
+        finalStartDate = oldStart;
+      }
+    }
+
+    // (C3) Compute endDate
+    //     - If sub was active, we "stack" from the oldEnd date
+    //       Otherwise, we start from finalStartDate
+    let finalEndDate;
     if (currentSubscription && currentSubscription.endDate) {
       const oldEnd = new Date(currentSubscription.endDate);
       if (oldEnd > now) {
-        oldEndDate = oldEnd;
+        // subscription active => extend from oldEnd
+        finalEndDate = new Date(oldEnd.getTime() + totalDays * 86400000);
+      } else {
+        // subscription exists but not active => new start
+        finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
       }
+    } else {
+      // no subscription => new start
+      finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
     }
-    const newEndDate = new Date(oldEndDate.getTime() + totalDays * 86400000);
 
-    // (C3) Update Firebase
+    // (C4) Update Firebase
     firebase.database().ref("subscriptions/" + customerId).set({
       email: playerEmail,
       customerId,
       membershipType,
-      endDate: newEndDate.toISOString(),
+      rate: planValue,  
+      startDate: finalStartDate.toISOString(),
+      endDate: finalEndDate.toISOString(),
       active: true
-    }, (err) => {
-      if (err) {
-        console.error("Error writing to Firebase:", err);
-      } else {
-        console.log("Updated subscription in Firebase!");
-      }
     });
 
-    // (C4) Update our local subscription in memory
+    // (C5) Update our local subscription data in memory
     currentSubscription = {
       email: playerEmail,
       customerId,
       membershipType,
-      endDate: newEndDate.toISOString(),
+      startDate: finalStartDate.toISOString(),
+      endDate: finalEndDate.toISOString(),
       active: true
     };
     updateUIWithSubscription(currentSubscription);
@@ -550,7 +680,7 @@ async function onPaymentFormSubmit(e) {
       window.location.href = "index.html";
     });
 
-    // (D2) If user clicks OK button => also redirect
+    // (D2) If user clicks OK => redirect
     const successOkBtn = document.getElementById("successOkBtn");
     successOkBtn.addEventListener("click", () => {
       window.location.href = "index.html";
@@ -560,7 +690,6 @@ async function onPaymentFormSubmit(e) {
     statusMessage.textContent = "Network/Server error: " + err.message;
   }
 }
-
 
 /** Utility: which plan is selected? */
 function getSelectedPlanAmount() {
