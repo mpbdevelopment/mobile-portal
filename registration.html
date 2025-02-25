@@ -2,20 +2,147 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>User Registration</title>
-  <!-- Bootstrap CSS -->
+  <meta name="theme-color" content="#0e2f7b" />
+  <title>Montclair Pickleball - Registration</title>
+
+  <!-- Bootstrap 5 CSS -->
   <link
-    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     rel="stylesheet"
   />
+
+  <!-- Viewport fit for iPhone safe-area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- (Optional) Service Worker registration (adapt if you want offline support) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('service-worker.js')
+        .then((reg) => console.log('Service Worker registered:', reg))
+        .catch((err) => console.error('Service Worker registration failed:', err));
+    }
+  </script>
+
+  <style>
+    /* BASIC GLOBAL STYLING */
+    body {
+      margin: 0;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      background-color: #f9f9f9;
+    }
+
+    /* Brand color as the primary background and for buttons */
+    .bg-primary {
+      background-color: #0e2f7b !important;
+    }
+    .btn-primary {
+      background-color: #0e2f7b !important;
+      border-color: #0e2f7b !important;
+    }
+    .btn-primary:hover,
+    .btn-primary:focus,
+    .btn-primary:active {
+      background-color: #0c2563 !important;
+      border-color: #0c2563 !important;
+    }
+
+    /* Smaller button variant (matching your .btn-xs in the main app) */
+    .btn-xs {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.65rem;
+      line-height: 1;
+      border-radius: 0.2rem;
+    }
+
+    /* HEADER STYLING */
+    header {
+      background-color: #0e2f7b;
+      color: #fff;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header img {
+      height: 40px;
+    }
+
+    /* MAIN CONTAINER */
+    .registration-container {
+      max-width: 600px;
+      margin: 1.5rem auto;
+      padding: 1.5rem;
+      background: #fff;
+      border-radius: 5px;
+    }
+
+    /* REGISTRATION SPINNER OVERLAY */
+    #reg-spinner-overlay {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    /* BOTTOM NAV (optional, if you want consistent nav across all pages) */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0e2f7b;
+      color: #fff;
+      font-weight: 500;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h2 class="mt-5">User Registration</h2>
-    <form id="registrationForm" class="mt-4">
-      <div class="form-group">
-        <label for="firstName">First Name</label>
+
+  <!-- HEADER -->
+  <header>
+    <h5 class="mb-0">Montclair Pickleball</h5>
+    <img src="icons/banner-logo.png" alt="Montclair Pickleball Logo">
+  </header>
+
+  <!-- REGISTRATION SPINNER (overlay while submitting) -->
+  <div id="reg-spinner-overlay">
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-2" role="status"></div>
+      <p class="mb-0">Creating your profile!<br>This may take up to 60 seocnds...<br>You will be automatically logged in.</p>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT: Registration Form -->
+  <div class="registration-container shadow-sm">
+    <h4 class="mb-3">New Profile Registration</h4>
+    <p>Welcome! We can't wait to get on the court with you soon. Just fill out a little more information so we can create a profile for you. Then you'll be able to use our player portal!</p>
+
+    <form id="registrationForm">
+      <!-- FIRST NAME -->
+      <div class="mb-3">
+        <label for="firstName" class="form-label">First Name</label>
         <input
           type="text"
           class="form-control"
@@ -24,8 +151,10 @@
           required
         />
       </div>
-      <div class="form-group">
-        <label for="lastName">Last Name</label>
+
+      <!-- LAST NAME -->
+      <div class="mb-3">
+        <label for="lastName" class="form-label">Last Name</label>
         <input
           type="text"
           class="form-control"
@@ -34,8 +163,10 @@
           required
         />
       </div>
-      <div class="form-group">
-        <label for="email">Email</label>
+
+      <!-- EMAIL -->
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
         <input
           type="email"
           class="form-control"
@@ -44,8 +175,10 @@
           required
         />
       </div>
-      <div class="form-group">
-        <label for="phone">Phone Number</label>
+
+      <!-- PHONE (will be formatted to (xxx) xxx-xxxx) -->
+      <div class="mb-3">
+        <label for="phone" class="form-label">Phone Number</label>
         <input
           type="tel"
           class="form-control"
@@ -54,60 +187,120 @@
           required
         />
       </div>
-      <div class="form-group">
-        <label for="level">Level</label>
-        <select class="form-control" id="level" name="level" required>
+
+      <!-- LEVEL -->
+      <div class="mb-3">
+        <label for="level" class="form-label">Level</label>
+        <select class="form-select" id="level" name="level" required>
           <option value="">Select Level</option>
           <option value="Beginner">Beginner</option>
-          <option value="Intermediate">Intermediate</option>
-          <option value="Advanced">Advanced</option>
+          <option value="Advanced Beginner/Intermediate (2.0-3.0)">Advanced Beginner/Intermediate (2.0-3.0)</option>
+          <option value="High Intermediate (3.0-3.5)">High Intermediate (3.0-3.5)</option>
+          <option value="Advanced (3.5-4.0)">Advanced (3.5-4.0)</option>
+          <option value="Expert (4.0+)">Expert (4.0+)</option>
         </select>
       </div>
-      <button type="submit" class="btn btn-primary">Register</button>
+
+      <!-- SUBMIT BUTTON -->
+      <button type="submit" class="btn btn-primary w-100">
+        Register
+      </button>
     </form>
+
+    <!-- ALERT MESSAGE -->
     <div id="alertMessage" class="alert mt-3" style="display: none;"></div>
   </div>
 
-  <!-- jQuery, Popper.js, and Bootstrap JS -->
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <!-- (OPTIONAL) BOTTOM NAV -->
+
+
+  <nav class="nav nav-bottom d-flex justify-content-around">
+    <a class="nav-link" href="index.html">
+      <span class="d-block">Go Back</span>
+    </a>
+
+  <!-- Bootstrap 5 JS (no jQuery needed) -->
   <script
-    src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
-  ></script>
-  <script
-    src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
   ></script>
 
-  <!-- JavaScript to handle form submission -->
   <script>
-    // Replace this URL with your deployed Google Apps Script Web App URL.
-    const scriptURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-
-    document.getElementById('registrationForm').addEventListener('submit', function (e) {
-      e.preventDefault(); // Prevent the default form submission
-
-      // Collect the form data
-      const formData = new FormData(this);
-
-      // Send the data to your Google Sheet via the Google Apps Script web app
-      fetch(scriptURL, { method: 'POST', body: formData })
-        .then((response) => response.json())
-        .then((response) => {
-          console.log('Success!', response);
-          const alertDiv = document.getElementById('alertMessage');
-          alertDiv.style.display = 'block';
-          alertDiv.className = 'alert alert-success';
-          alertDiv.innerText = 'Registration successful!';
-          // Optionally reset the form
-          this.reset();
-        })
-        .catch((error) => {
-          console.error('Error!', error.message);
-          const alertDiv = document.getElementById('alertMessage');
-          alertDiv.style.display = 'block';
-          alertDiv.className = 'alert alert-danger';
-          alertDiv.innerText = 'An error occurred. Please try again.';
-        });
+    // Replace this URL with your deployed Google Apps Script URL
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxwyy6FN0z1ML2qWXY6CeVTHYry2Bbq7XO7c7h8hWaagO9Ws_0dupBypj_15MchQiUeUw/exec';
+  
+    const form = document.getElementById('registrationForm');
+    const alertDiv = document.getElementById('alertMessage');
+    const spinnerOverlay = document.getElementById('reg-spinner-overlay');
+    const phoneInput = document.getElementById('phone');
+  
+    // 1) Format phone => (xxx) xxx-xxxx
+    phoneInput.addEventListener('input', () => {
+      // Strip all non-digits, up to 10 digits
+      let rawValue = phoneInput.value.replace(/\D/g, '').substring(0, 10);
+  
+      // Build the formatted string
+      let formatted = '';
+      if (rawValue.length > 0) {
+        formatted = '(' + rawValue.substring(0, 3);
+      }
+      if (rawValue.length >= 4) {
+        formatted += ') ' + rawValue.substring(3, 6);
+      }
+      if (rawValue.length >= 7) {
+        formatted += '-' + rawValue.substring(6, 10);
+      }
+  
+      phoneInput.value = formatted;
     });
-  </script>
+  
+    // 2) Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+  
+      // Show the spinner immediately
+      spinnerOverlay.style.display = 'block';
+  
+      // Collect the form data
+      const formData = new FormData(form);
+  
+      try {
+        // Submit formData to Apps Script
+        const response = await fetch(scriptURL, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+  
+        // If successful, show success alert but DO NOT hide the spinner
+        if (data.result === 'success' || data.success) {
+          alertDiv.style.display = 'block';
+          alertDiv.className = 'alert alert-success mt-3';
+          alertDiv.innerText = 'Registration successful!';
+          form.reset();
+  
+          // Wait 60 seconds, then redirect to index.html
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 60000);
+  
+        } else {
+          // If error => hide spinner, show error alert
+          spinnerOverlay.style.display = 'none';
+          alertDiv.style.display = 'block';
+          alertDiv.className = 'alert alert-danger mt-3';
+          alertDiv.innerText = data.error || 'An error occurred. Please try again.';
+        }
+  
+      } catch (error) {
+        // On fetch/network error => hide spinner, show error alert
+        spinnerOverlay.style.display = 'none';
+        alertDiv.style.display = 'block';
+        alertDiv.className = 'alert alert-danger mt-3';
+        alertDiv.innerText = 'An error occurred. Please try again.';
+        console.error('Registration error:', error);
+      }
+    });
+  </script>  
 </body>
 </html>
+
