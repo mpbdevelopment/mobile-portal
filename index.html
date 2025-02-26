@@ -87,6 +87,7 @@
       text-align: center;
       padding: 10px 0;
       color: #000;
+      cursor: pointer;
     }
     .nav-bottom .nav-link.active {
       background-color: #0e2f7b; /* Bootstrap primary color */
@@ -411,35 +412,176 @@
   border-radius: 5px;        /* Optional: gives rounded corners */
 }
 
+/* Original CSS for Event List
 
-/* Default: unselected events show a plus sign */
 .fc-list-event-time::before {
-  content: "+";
-  font-size: 1.2em;
-  color: #0e2f7b; /* your brand color */
+  content: "\2610";
+  font-size: 1.8em;
+  color: #0e2f7b; 
   display: inline-block;
   width: 1.5em;
   text-align: center;
 }
 
-/* When an event is selected, its container gets the class selected-list-event.
-   This rule changes the plus into a check mark. */
 .selected-list-event .fc-list-event-time::before {
-  content: "\2713"; /* Unicode check mark */
-  color: #28a745;  /* or any color you want for selected items */
+  content: "\2611"; 
+  color: #28a745; 
 }
 
-/*
 .fc-unselectable .fc-list-event-time::before {
   content: "";
 }
-*/
 
-/* Hide the plus/check icon for sold-out events */
+
 .sold-out .fc-list-event-time::before {
   content: "";
 }
 
+*/
+
+
+/* Desktop Default Plus/Check Icon Styles */
+.fc-list-event-time::before {
+  content: "\2610";
+  font-size: 1.8em;
+  color: #0e2f7b;
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+}
+
+.selected-list-event .fc-list-event-time::before {
+  content: "\2611";
+  color: #28a745;
+}
+
+.sold-out .fc-list-event-time::before {
+  content: "";
+}
+
+.listPackageBtn {
+  color: #0e2f7b;
+  font-size: 1.0em;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .fc-event {  /* or the appropriate container selector */
+    position: relative; /* creates a positioning context */
+  }
+  .fc-event .listPackageBtn {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+  }
+}
+
+
+/* Mobile Optimized Card View */
+@media (max-width: 768px) {
+  /* Convert each event row into a card with relative positioning */
+  .fc-list-event {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    /* Extra bottom padding to accommodate the button */
+    padding: 10px 15px 40px 15px;
+    margin: 8px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 0.85em;
+    line-height: 1.3;
+  }
+
+  /* Hide the graphic element on mobile */
+  .fc-list-event-graphic {
+    display: none !important;
+  }
+
+  /* Remove any default table cell styling */
+  .fc-list-event td {
+    display: block;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Stack the event time at the top */
+  .fc-list-event-time {
+    margin-bottom: 4px;
+  }
+
+  /* Stack the event title next */
+  .fc-list-event-title {
+    margin-bottom: 4px;
+  }
+
+  /* Adjust the icon size for mobile */
+  .fc-list-event-time::before {
+    font-size: 1.4em;
+    width: 1.3em;
+  }
+
+/* Updated CSS for the underlined link */
+.listPackageBtn {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+  }
+
+/* Override table header styling for day header cards */
+    th[id^="fc-dom-"] {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+  
+  /* Card styling for the day header container */
+  .fc-list-day-cushion {
+    display: block;
+    background: #f8f8f8; /* Light background for the header card */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    text-align: center;
+  }
+  
+  /* Stacking and styling the day text */
+  .fc-list-day-text {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  
+  /* Stacking and styling the side text (full date) */
+  .fc-list-day-side-text {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+  }
+
+}
+
+.arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+a[data-bs-toggle="collapse"][aria-expanded="true"] .arrow {
+  transform: rotate(180deg);
+}
+
+a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
+  transform: rotate(0deg);
+}
 
   </style>
 </head>
@@ -533,6 +675,24 @@
             class="list-group-item list-group-item-action">
             Purchase or Manage Membership
           </a>
+          <a href="https://www.montclairpickleball.com" class="list-group-item list-group-item-action">
+            Montclair Website
+          <a href="https://www.montclairpickleballbc.com" class="list-group-item list-group-item-action">
+            Fair Lawn Website
+          </a>
+          <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#moreOptions" role="button" aria-expanded="false" aria-controls="moreOptions">
+            Contact Us <span class="arrow">&#9660;</span>
+          </a>
+          <div class="collapse" id="moreOptions">
+            <div class="list-group">
+              <a href="mailto:contact@montclairpickleball.com" class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
+                Email: contact@montclairpickleball.com
+              </a>
+              <a href="tel:2013082473" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
+                Phone: 201-308-2473
+              </a>
+            </div>            
+          </div>
           </div>
         </div>
         </div>
@@ -559,6 +719,8 @@
             </p>              
             <!-- Display user credit from PromoCodes -->
             <p><strong>Credit:</strong> <span id="profile-credit-amount">No credit available</span></p>
+            
+            <div id="profileBenefits"></div>
 
             <button id="logout-button" class="btn btn-danger w-100 mt-3">Logout</button>
           </div>
@@ -604,8 +766,8 @@
             <!-- [ADDED] Toggle Calendar/List Button & List-View Container (initially hidden) -->
             <div id="toggle-view-container" style="display: none;">
                 <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
-                <a id="extndMsg" href="subscription.html" class="text-center mb-2" style="display:none;">You can expand your membership dates here.</a>
-                <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm mb-2 mt-2 mx-auto d-block">
+                <a id="extndMsg" href="subscription.html" class="text-center mb-4" style="display:none;">You can expand your membership dates here.</a>
+                <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm mb-2 mt-7 mx-auto d-block">
                   Switch to Calendar View (Level Based)
                 </button>
             </div>
@@ -637,7 +799,7 @@
             <div id="category-filter-group" style="display: none;">
               <label class="form-label"><strong>Select Program</strong></label>
               <select id="category-filter" class="form-select mb-3">
-                <option value="">--All Categories--</option>
+                <option value="">--Select a Category--</option>
               </select>
             </div>
 
@@ -645,7 +807,7 @@
             <div id="level-filter-group" style="display: none;">
               <label class="form-label"><strong>Select Level</strong></label>
               <select id="level-filter" class="form-select mb-3">
-                <option value="">--All Levels--</option>
+                <option value="">--Select a Level--</option>
               </select>
             </div>
 
@@ -653,7 +815,7 @@
             <div id="daytime-filter-group" style="display: none;">
               <label class="form-label"><strong>Select Day/Time</strong></label>
               <select id="daytime-filter" class="form-select mb-3">
-                <option value="">--All Day/Times--</option>
+                <option value="">--Select a Day/Time--</option>
               </select>
             </div>
           </div>
@@ -723,10 +885,16 @@
     </a>
     <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-registrations" role="tab">
       <span class="d-block">My Programs</span>
+    </a><!-- Mobile version (icon only) -->
+    <a class="nav-link nav-profile d-md-none" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab" aria-label="Profile">
+      <i class="bi bi-person-circle"></i>
     </a>
-    <a class="nav-link nav-profile" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab" aria-label="Profile">
-        <i class="bi bi-person-circle"></i>
-      </a>
+    
+    <!-- Desktop version (text only) -->
+    <a class="nav-link d-none d-md-block" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab" aria-label="Profile">
+      My Profile
+    </a>
+
   </nav>
 
   <!-- PAYMENT MODAL -->
@@ -1730,7 +1898,7 @@ if (!currentPlayer?.membershipType) {
 
   const purchaseTitle = document.createElement('h6');
   purchaseTitle.classList.add('card-title', 'mb-2');
-  purchaseTitle.textContent = 'Purchase a Membership (Not required to sign up, but you can get some sweet discounts!)';
+  purchaseTitle.textContent = 'Purchase a Membership (memberships are not required, but come with incredible savings and benefits)!';
 
   const purchaseBtn = document.createElement('button');
   purchaseBtn.classList.add('btn', 'btn-sm', 'btn-warning');
@@ -1800,7 +1968,7 @@ if (!currentPlayer?.membershipType) {
 
 
     const catSelect = document.getElementById('category-filter');
-    catSelect.innerHTML = '<option value="">--All Categories--</option>';
+    catSelect.innerHTML = '<option value="">--Select a Category--</option>';
 
     if (!allProducts.length) {
       showFilterStep(0);
@@ -1816,8 +1984,8 @@ if (!currentPlayer?.membershipType) {
       catSelect.appendChild(opt);
     });
 
-    document.getElementById('level-filter').innerHTML    = '<option value="">--All Levels--</option>';
-    document.getElementById('daytime-filter').innerHTML  = '<option value="">--All Day/Times--</option>';
+    document.getElementById('level-filter').innerHTML    = '<option value="">--Select a Level--</option>';
+    document.getElementById('daytime-filter').innerHTML  = '<option value="">--Select a Day/Time--</option>';
 
     showFilterStep(1);
   }
@@ -1832,7 +2000,7 @@ if (!currentPlayer?.membershipType) {
     document.getElementById('program-cards-container').style.display = 'none';
 
     const levelSelect = document.getElementById('level-filter');
-    levelSelect.innerHTML = '<option value="">--All Levels--</option>';
+    levelSelect.innerHTML = '<option value="">--Select a Level--</option>';
     const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
     levels.forEach(lv => {
       const opt = document.createElement('option');
@@ -1855,7 +2023,7 @@ if (!currentPlayer?.membershipType) {
 
     // populate day/time
     const dtSelect = document.getElementById('daytime-filter');
-    dtSelect.innerHTML = '<option value="">--All Day/Times--</option>';
+    dtSelect.innerHTML = '<option value="">--Select a Day/Time--</option>';
     const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
     dayTimes.forEach(dt => {
       const opt = document.createElement('option');
@@ -1963,7 +2131,7 @@ if (!currentPlayer?.membershipType) {
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-sm btn-success btn-add';
     if (displayPrice == 0) {
-      addBtn.textContent = `Add to Cart (Free!)`;
+      addBtn.textContent = `Add to Cart (Free)`;
     } else if (nameEl.textContent.includes('Package') && displayPrice < basePrice){
       addBtn.textContent = `Add to Cart (Member Discount)`;
     } else if (nameEl.textContent.includes('Package')){
@@ -2034,25 +2202,13 @@ if (!currentPlayer?.membershipType) {
       priceEl.insertAdjacentElement('afterend', extndBtn);
     }
 
-    /*
-    // (No omissions—keeping your commented-out block for reference)
-    if (currentPlayer?.membershipType && currentPlayer.credit > 0) {
-      let canPurchase = currentPlayer.credit - prod.price;
-      if (canPurchase < 0) {
-        const extndCreditBtn = document.createElement('button');
-        extndCreditBtn.className = 'btn btn-xs btn-danger btn-add';
-        extndCreditBtn.textContent = 'Pre-Extend Your Membership';
-        extndCreditBtn.addEventListener('click', () => {
-          window.location.href = 'subscription.html';
-        });
-        priceEl.insertAdjacentElement('afterend', extndCreditBtn);
-      }
-    }
-    */
+
 
     container.appendChild(cardDiv);
   });
 }
+
+
 
 
 function getMondayOfWeek(d) {
@@ -2073,11 +2229,10 @@ function toYMDString(d) {
   let mm = (d.getMonth()+1).toString().padStart(2,'0');
   let dd = d.getDate().toString().padStart(2,'0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+
 }
 
-
-
-  function updateProgramCardState(cardDiv, prod) {
+function updateProgramCardState(cardDiv, prod) {
     const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
     if (inCart) {
       cardDiv.classList.add('added');
@@ -2085,6 +2240,44 @@ function toYMDString(d) {
       cardDiv.classList.remove('added');
     }
   }
+
+  /************************************************************
+   * 8b) AutoPopulate Filter Logic from Calendar View
+   ************************************************************/
+
+
+  function autoPopulateFilters(autoCategory, autoLevel, autoDayTime) {
+  // 1. Reset filters and repopulate the category options
+  //resetProductFilters();
+
+  // 2. Set the category filter value and trigger its change event
+  const catSelect = document.getElementById('category-filter');
+  if (autoCategory && Array.from(catSelect.options).some(opt => opt.value === autoCategory)) {
+    catSelect.value = autoCategory;
+  } else {
+    catSelect.value = ""; // Default to “--Select a Category--”
+  }
+  catSelect.dispatchEvent(new Event('change'));
+
+  // 3. Set the level filter value and trigger its change event
+  const lvlSelect = document.getElementById('level-filter');
+  if (autoLevel && Array.from(lvlSelect.options).some(opt => opt.value === autoLevel)) {
+    lvlSelect.value = autoLevel;
+  } else {
+    lvlSelect.value = ""; // Default to “--Select a Level--”
+  }
+  lvlSelect.dispatchEvent(new Event('change'));
+
+  // 4. Set the day/time filter value and trigger its change event to render program cards
+  const dtSelect = document.getElementById('daytime-filter');
+  if (autoDayTime && Array.from(dtSelect.options).some(opt => opt.value === autoDayTime)) {
+    dtSelect.value = autoDayTime;
+  } else {
+    dtSelect.value = ""; // Default to “--Select a Day/Time--”
+  }
+  dtSelect.dispatchEvent(new Event('change'));
+}
+
 
   /************************************************************
    * 9) CART LOGIC
@@ -3075,7 +3268,7 @@ return new Date(
           saveCardContainer.style.display = 'block';
           }
       }
-
+    updateProfileBenefits();
     updateCreditDisplay();
   }
 
@@ -3101,6 +3294,51 @@ return new Date(
     location.reload();
     showMessage('Logged out.', 'info');
   });
+
+  function updateProfileBenefits() {
+  // Retrieve the current player's membership type (e.g., "Silver", "Gold", "TripleCrown")
+  const membership = currentPlayer.membershipType;
+  const profileDiv = document.getElementById("profileBenefits");
+  if (!profileDiv) return; // Exit if the target div doesn't exist
+
+  // Start with a header indicating the membership benefits
+  let html = `<h5>Your ${membership} Membership Benefits</h5>`;
+  html += '<ul>';
+
+  // For Gold members, insert the special first bullet
+  if (membership === "Gold") {
+    html += '<li>1 Free Program/Week (Clinic, Guided Drilling, or Guided Open Play)</li>';
+  }
+
+  // Iterate over each service in the discountMap to build benefit details
+  for (const service in discountMap) {
+    if (discountMap.hasOwnProperty(service)) {
+      const serviceInfo = discountMap[service];
+      const discount = serviceInfo[membership];
+
+      // If discount is 1.0, display "Free" instead of "100% discount"
+      const discountText = discount === 1.0 ? "Free" : `${discount * 100}% discount`;
+
+      // Build the benefit text and append free eligibility if applicable
+      let benefitText = `${service}: ${discountText}`;
+
+      html += `<li>${benefitText}</li>`;
+    }
+  }
+
+  if (membership === "TripleCrown") {
+      html += `<li>Court Rentals: Free</li>`;
+    } else {
+      html += `<li>Court Rentals: 20% discount</li>`;
+    }
+
+  html += '</ul>';
+
+  // Update the div's content with the newly generated HTML
+  profileDiv.innerHTML = html;
+}
+
+
 
   /************************************************************
    * 12) UTILITY: showMessage
@@ -3205,7 +3443,7 @@ if (isListView) {
     // If user has *already* chosen day/time, we might go straight to step 4
     // Otherwise, we show step 1 (or 2/3 if partial filters are filled in).
     if (selectedDayTime) {
-      showFilterStep(4); // reveals the program cards
+      showFilterStep(1); // Changed from 4 to 1 so that program cards aren't shown when switching back
     } else {
       showFilterStep(1); // or 2/3, depending on your filter logic
     }
@@ -3325,16 +3563,26 @@ let events = [];
       
 
     // === MEMBERSHIP PRICE LOGIC ===
-    const { total: memberPrice } = getDiscountedPrice(
+    const cartItem = cartItems.find(
+  ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId
+);
+let memberPrice;
+if (cartItem) {
+  // Use the locked-in cart price (preserving the free item price if applicable)
+  memberPrice = cartItem.price;
+} else {
+  // Use the read-only price calculation
+  memberPrice = getDiscountedPrice(
     prod,
     currentPlayer?.membershipType,
     currentPlayer?.membershipEndDate,
     currentPlayer?.membershipStartDate,
     freeSlotUsageMap,
     { readOnly: true }
-  );
-  const basePrice = prod.price || 0;
-  let priceLabel = `$${memberPrice.toFixed(2)}`;
+  ).total;
+}
+const basePrice = prod.price || 0;
+let priceLabel = `$${memberPrice.toFixed(2)}`;
 
   if (memberPrice < basePrice) {
     const catMap = discountMap[prod.category] || {};
@@ -3403,34 +3651,62 @@ if (!registerCalendar) {
 
 
   eventDidMount: function(info) {
-// Only add a tooltip in the timeGridWeek view
-if (info.view.type === 'timeGridWeek') {
-  // Set the native title attribute
-  info.el.setAttribute('title', info.event.title);
-  // Initialize the Bootstrap tooltip on this element
-  new bootstrap.Tooltip(info.el, {
-    container: 'body'
+  // Only add a tooltip in the timeGridWeek view
+  if (info.view.type === 'timeGridWeek') {
+    // Set the native title attribute
+    info.el.setAttribute('title', info.event.title);
+    // Initialize the Bootstrap tooltip on this element
+    new bootstrap.Tooltip(info.el, {
+      container: 'body'
+    });
+  }
+
+  const product = info.event.extendedProps.product;
+  if (!product) return;
+
+  // If sold out => tint the row red in listWeek view and mark as sold-out
+  if (product.soldOut) {
+    info.el.style.backgroundColor = "#f8d7da";
+    info.el.classList.add('sold-out');
+    return; // no further styling
+  }
+
+  // If it's in cart and we're in listWeek, highlight row green
+  const isInCart = cartItems.some(
+    (ci) =>
+      ci.program === product.program &&
+      ci.sessionId === selectedSession.spreadsheetId
+  );
+  if (isInCart && info.view.type.startsWith('list')) {
+    info.el.classList.add('selected-list-event');
+  }
+
+  // Append the link element in list views
+  if (info.view.type.startsWith('list')) {
+  const link = document.createElement('a');
+  link.className = 'listPackageBtn';
+  link.href = "#"; // Set the link destination as needed
+  link.innerText = 'Discounted Packages & More Dates';
+
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // 1) Simulate a click on btn-toggle-calendar-view
+    const toggleBtn = document.getElementById('btn-toggle-calendar-view');
+    if (toggleBtn) {
+      toggleBtn.click();
+    }
+
+    // 2) Run the autoPopulateFilters function with product values
+    autoPopulateFilters(product.category, product.level, product.dayTime);
   });
-}
 
-const product = info.event.extendedProps.product;
-if (!product) return;
-
-// If sold out => tint the row red in listWeek view
-if (product.soldOut) {
-  info.el.style.backgroundColor = "#f8d7da";
-  return; // no further styling
-}
-
-// If it's in cart and we're in listWeek, highlight row green
-const isInCart = cartItems.some(
-  (ci) =>
-    ci.program === product.program && ci.sessionId === selectedSession.spreadsheetId
-);
-if (isInCart && info.view.type.startsWith('list')) {
-  info.el.classList.add('selected-list-event');
+  info.el.appendChild(link);
 }
 },
+
+
 
     // 5) eventClick => skip if sold out, else toggle cart and recalc color
     eventClick: function(info) {
