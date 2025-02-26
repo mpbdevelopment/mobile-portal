@@ -412,6 +412,33 @@
 }
 
 
+/* Default: unselected events show a plus sign */
+.fc-list-event-time::before {
+  content: "+";
+  font-size: 1.2em;
+  color: #0e2f7b; /* your brand color */
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+}
+
+/* When an event is selected, its container gets the class selected-list-event.
+   This rule changes the plus into a check mark. */
+.selected-list-event .fc-list-event-time::before {
+  content: "\2713"; /* Unicode check mark */
+  color: #28a745;  /* or any color you want for selected items */
+}
+
+/*
+.fc-unselectable .fc-list-event-time::before {
+  content: "";
+}
+*/
+
+/* Hide the plus/check icon for sold-out events */
+.sold-out .fc-list-event-time::before {
+  content: "";
+}
 
 
   </style>
