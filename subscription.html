@@ -100,7 +100,7 @@
 
   <!-- HEADER -->
   <header>
-    <h5 class="mb-0">Montclair Pickleball</h5>
+    <h5 class="mb-0">Montclair Pickleball Memberships</h5>
     <img src="icons/banner-logo.png" alt="Montclair Pickleball Logo" />
   </header>
 
@@ -116,6 +116,12 @@
         <div class="alert alert-info" id="subStatus" style="display: none;"></div>
       </div>
     </div>
+
+    <img 
+    src="IMG_8663.png" 
+    alt="Membership" 
+    class="img-fluid mb-3 col-md-8"
+  >
 
     <!-- MAIN CARD FOR PLAN SELECTION / EXTENSION -->
     <div class="row justify-content-center">
@@ -165,7 +171,7 @@
 
         <!-- 2) Months + Duration + End Date + Cost -->
         <div class="bg-white p-3 rounded shadow-sm mb-3">
-          <h5>Number of Months to Purchase/Extend</h5>
+          <h5 id="purchaseExtend">Number of Months to Purchase/Extend</h5>
           <div class="input-group mb-2">
             <label class="input-group-text" for="monthsInput">Months</label>
             <input
@@ -193,7 +199,7 @@
           </div>
 
           <p class="mb-1">
-            <strong>Pre-Booked Duration:</strong> <span id="durationDays">30</span> days
+            <strong>Extended Membership Duration:</strong> <span id="durationDays">30</span> days
           </p>
           <p class="mb-1">
             <strong>Renews On (Valid Through):</strong>
@@ -373,6 +379,7 @@
     const durationDaysEl   = document.getElementById("durationDays");
     const endDateDisplay   = document.getElementById("endDateDisplay");
     const totalCostEl      = document.getElementById("totalCost");
+    const purchaseExtend = document.getElementById("purchaseExtend");
 
     /* Grab from localStorage */
     const playerEmail = localStorage.getItem("playerEmail");
@@ -454,8 +461,10 @@
           if (snapshot.exists()) {
             currentSubscription = snapshot.val();
             updateUIWithSubscription(currentSubscription);
+            purchaseExtend.textContent = "Number of Months to Extend";
           } else {
             currentSubscription = null;
+            purchaseExtend.textContent = "Number of Months to Purchase"
           }
         }
       } catch (err) {
