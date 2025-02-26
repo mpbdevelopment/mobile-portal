@@ -369,6 +369,51 @@
   color: inherit !important;
 }
 
+/* Inactive state: mimic btn-outline-primary */
+.fc-button.fc-button-primary {
+  color: #ffc107;              /* Primary text color */
+  background-color: transparent; /* Transparent background */
+  border: 1px solid #ffc107;     /* Primary border */
+  border-radius: 0.25rem;        /* Bootstrap border radius */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Hover effect for inactive buttons */
+.fc-button.fc-button-primary:hover {
+  color: #fff;
+  background-color: #ffc107;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+  color: black;
+  background-color: #ffc107;
+  border-color: #ffc107;
+}
+
+/* Toolbar Styles */
+.fc .fc-toolbar {
+  background-color: #0e2f7b;
+  padding: 10px;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  border: none;
+}
+
+.fc .fc-toolbar-title {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.fc.fc-media-screen.fc-direction-ltr.fc-theme-standard {
+  border: 2px solid #0e2f7b; /* Use your brand color or any color you prefer */
+  padding: 5px;              /* Optional: adds some spacing inside the border */
+  border-radius: 5px;        /* Optional: gives rounded corners */
+}
+
+
+
+
   </style>
 </head>
 <body class="bg-light">
@@ -433,7 +478,7 @@
               </div>
         <div id="home-content">
           <h5>Home</h5>
-          <p>Welcome to the Montclair Pickelball Player Portal! Here are some quick links:</p>
+          <p>Welcome to our Montclair Pickelball Player Portal!</p>
           <div class="list-group">
             <a href="#tab-profile" 
                id="home-link-profile" 
@@ -454,7 +499,7 @@
                 id="home-link-forum" 
                 class="list-group-item list-group-item-action"
                 style = "display: none">
-                Montclair PickleChat
+                Community Chat (Members Only)
             </a>
             <a href="subscription.html" 
             id="home-link-memberships" 
@@ -534,7 +579,7 @@
                 <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
                 <a id="extndMsg" href="subscription.html" class="text-center mb-2" style="display:none;">You can expand your membership dates here.</a>
                 <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm mb-2 mt-2 mx-auto d-block">
-                  Switch to Calendar View
+                  Switch to Calendar View (Level Based)
                 </button>
             </div>
   
@@ -729,8 +774,8 @@
         </div>
         <div class="modal-body">
           <p>
-            You will be partially charged for this package at full price because some of the dates fall outside of your currently paid membership cycle. 
-            If you would like to pre-extend your membership to reserve the full package for free, 
+            You will be charged at full price for the days within this package that fall outside of your current membership cycle. 
+            If you would like to extend your membership to reserve the full package using membership credits, 
             click <a href="subscription.html" class="text-decoration-none">here</a>.
           </p>
         </div>
@@ -1643,6 +1688,40 @@ sessions.forEach(sessionObj => {
   colDiv.appendChild(cardDiv);
   container.appendChild(colDiv);
 });
+
+if (!currentPlayer?.membershipType) {
+
+ // Add the "Purchase a Membership!" card
+ const purchaseCol = document.createElement('div');
+  purchaseCol.classList.add('col-12', 'col-sm-6', 'col-md-4', 'col-lg-3', 'mb-3');
+
+  const purchaseCard = document.createElement('div');
+  purchaseCard.className = 'card session-card h-100';
+
+  const purchaseBody = document.createElement('div');
+  purchaseBody.className = 'card-body';
+
+  const purchaseTitle = document.createElement('h6');
+  purchaseTitle.classList.add('card-title', 'mb-2');
+  purchaseTitle.textContent = 'Purchase a Membership (Not required to sign up, but you can get some sweet discounts!)';
+
+  const purchaseBtn = document.createElement('button');
+  purchaseBtn.classList.add('btn', 'btn-sm', 'btn-warning');
+  purchaseBtn.textContent = 'Purchase';
+
+  // Attach your function here (you can customize this logic)
+  purchaseBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'subscription.html';
+  });
+
+  purchaseBody.appendChild(purchaseTitle);
+  purchaseBody.appendChild(purchaseBtn);
+  purchaseCard.appendChild(purchaseBody);
+  purchaseCol.appendChild(purchaseCard);
+  container.appendChild(purchaseCol);
+}
+
 }
 
 
@@ -1817,6 +1896,8 @@ sessions.forEach(sessionObj => {
       displayPrice = readOnlyPrice;
     }
 
+    var pct2 = 0;
+
     // Format the display price
     const basePrice   = prod.price || 0;
     let label = `$${displayPrice.toFixed(2)}`;
@@ -1825,8 +1906,9 @@ sessions.forEach(sessionObj => {
       const catMap = discountMap[prod.category] || {};
       const discountFactor = catMap[currentPlayer?.membershipType] || 0;
       const pct = Math.round(discountFactor * 100);
-      // ORIGINAL label += ` (${pct}% discount)`;
-      label += ` (Member Benefit Applied)`;
+      pct2 = pct;
+      //label += ` (${pct}% discount)`;
+      // label += ` (Member Benefit Applied)`;
     }
     priceEl.textContent = label;
     // === END MEMBERSHIP PRICE LOGIC ===
@@ -1841,6 +1923,9 @@ sessions.forEach(sessionObj => {
     levelBadge.className = 'badge bg-info';
     levelBadge.textContent = prod.level || 'N/A';
 
+    badgesEl.appendChild(catBadge);
+    badgesEl.appendChild(levelBadge);
+
     if (prod.indoorOutdoor) {
       const ioBadge = document.createElement('span');
       ioBadge.className = 'badge bg-secondary';
@@ -1848,12 +1933,19 @@ sessions.forEach(sessionObj => {
       badgesEl.appendChild(ioBadge);
     }
 
-    badgesEl.appendChild(catBadge);
-    badgesEl.appendChild(levelBadge);
-
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-sm btn-success btn-add';
-    addBtn.textContent = 'Add';
+    if (displayPrice == 0) {
+      addBtn.textContent = `Add to Cart (Free!)`;
+    } else if (nameEl.textContent.includes('Package') && displayPrice < basePrice){
+      addBtn.textContent = `Add to Cart (Member Discount)`;
+    } else if (nameEl.textContent.includes('Package')){
+      addBtn.textContent = `Add to Cart`;
+    } else if (pct2 > 0) {
+    addBtn.textContent = `Add to Cart (${pct2}% Off)`;
+    } else {
+      addBtn.textContent = `Add to Cart`;
+    }
     if (prod.soldOut) {
       addBtn.disabled = true;
       nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
@@ -3022,7 +3114,7 @@ if (isListView) {
       document.getElementById('program-cards-container').style.display = 'none';
       document.getElementById('category-filter').selectedIndex = 0;
     } else {
-      calendarBtn.textContent = "Switch to Calendar View";
+      calendarBtn.textContent = "Switch to Calendar View (Level Based)";
       document.getElementById('category-filter-group').style.display = 'block';
     }
     //document.getElementById('program-cards-container').style.display = 'block';
@@ -3259,6 +3351,7 @@ if (!registerCalendar) {
           defaultView = 'listWeek';
           viewOptions = 'listWeek,timeGridWeek';
       }
+
   registerCalendar = new FullCalendar.Calendar(calendarEl, {
     initialView: defaultView,
     dayHeaderFormat: { weekday: 'short' }, 
@@ -3269,11 +3362,17 @@ if (!registerCalendar) {
     contentHeight: 'auto',
     expandRows: true,
     headerToolbar: {
-      left:'',
-    center: 'title',
-    right: viewOptions,
+      left:'title',
+    center: viewOptions,
+    right: '',
     // => user sees two buttons on the right
   },
+  buttonText: {
+    listWeek: 'Weekly List View',
+    timeGridWeek: 'Weekly Calendar View'
+  },
+
+
 
 
   eventDidMount: function(info) {
