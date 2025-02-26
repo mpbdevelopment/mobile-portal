@@ -118,9 +118,9 @@
     </div>
 
     <img 
-    src="icons/memberGraphic.png" 
+    src="memberGraphic.png" 
     alt="Membership" 
-    class="img-fluid mb-3 col-md-8"
+    class="img-fluid mb-3 col-md-8 d-block mx-auto rounded"
   >
 
     <!-- MAIN CARD FOR PLAN SELECTION / EXTENSION -->
@@ -205,8 +205,11 @@
             <strong>Renews On (Valid Through):</strong>
             <span id="endDateDisplay">[calculated]</span>
           </p>
-          <p class="mb-0">
+          <p class="mb-1">
             <strong>Total Billed Now:</strong> $<span id="totalCost">99</span>
+          </p>
+          <p id="contactToUpgrade" class="mb-0" style="display:none">
+            <i>Please contact us at contact@montclairpickleball.com if you would like to upgrade or start your membership early.</i>
           </p>
         </div>
 
@@ -462,6 +465,7 @@
             currentSubscription = snapshot.val();
             updateUIWithSubscription(currentSubscription);
             purchaseExtend.textContent = "Number of Months to Extend";
+            document.getElementById('contactToUpgrade').style.display='block';
           } else {
             currentSubscription = null;
             purchaseExtend.textContent = "Number of Months to Purchase"
