@@ -642,7 +642,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
             <div id="login-spinner">
                 <div class="text-center">
                   <div class="spinner-border text-primary mb-2" role="status"></div>
-                  <p class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
+                  <p id = "loginText" class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
                 </div>
               </div>
         <div id="home-content">
@@ -906,7 +906,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p>Add a card on file to make registration easier! This is not required, but it is recommended.</p>
+          <p id="cardOnFileModalText">Add a card on file to make registration easier! This is not required, but it is recommended.</p>
           <form id="payment-form">
             <div class="mb-3">
               <label for="name-input" class="form-label">Name</label>
@@ -917,7 +917,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               <div id="card-element" class="form-control"></div>
               <div id="card-errors" class="card-errors"></div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Add Payment Profile</button>
+            <button id="submitCardOnFile" type="submit" class="btn btn-primary w-100">Add Payment Profile</button>
           </form>
         </div>
       </div>
@@ -1460,6 +1460,191 @@ try {
   if (!stripeData.success) {
     showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
     showProfileSpinner(false);
+    //return;
+  }
+  if (stripeData.exists) {
+    currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+  } else {
+    showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+  }
+
+  // 3) Fetch user credit
+  const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
+  const creditResp = await fetch(creditUrl);
+  const creditData = await creditResp.json();
+  showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
+  currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
+
+  // 4) Fetch membership from Firebase Realtime Database
+  try {
+    const dbRef = firebase.database().ref('subscriptions');
+    // We'll read ALL subscriptions and find the one that matches currentPlayer.email
+    const snapshot = await dbRef.once('value');
+    const subsData = snapshot.val() || {};
+    let membershipType = null;
+    let membershipEnd = null;
+
+    // We search for a record with .email === currentPlayer.email
+    Object.keys(subsData).forEach(key => {
+      const sub = subsData[key];
+      if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
+        // Found a match
+        if (sub.active) {
+          membershipType = sub.membershipType || null;
+          membershipEnd  = sub.endDate || null;
+          membershipStart = sub.startDate || null;
+        }
+      }
+    });
+
+    
+    currentPlayer.membershipType    = membershipType;
+    currentPlayer.membershipEndDate = membershipEnd;
+    currentPlayer.membershipStartDate = membershipStart;
+
+    //Only members can use forum. This is anyone with an unexpired membership
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const endDate = new Date(membershipEnd);
+      
+      // Only show the forum link if membershipEnd is in the future
+      if (endDate > now) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+
+
+    /* Only Allow Active Members to Use Forum
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const startDate = new Date(membershipStart);
+      const endDate = new Date(membershipEnd);
+
+      // Only show the forum link if today is between the start and end dates (inclusive)
+      if (now >= startDate && now <= endDate) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+    */
+
+    showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
+  } catch (firebaseErr) {
+    showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
+    currentPlayer.membershipType = null;
+    currentPlayer.membershipEndDate = null;
+    currentPlayer.membershipStartDate = null;
+  }
+
+  await fetchExistingFreeSlots(currentPlayer.email);
+
+  // Show profile
+  setProfileData(currentPlayer);
+
+  updateMembershipMessage();
+
+  // If no stripe => show modal
+
+  // Load sessions
+  showSessionSpinner(true);
+  await loadSessions();
+  showSessionSpinner(false);
+  showProfileSpinner(false);
+
+  if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
+    const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modalEl.show();
+  }
+
+} catch (err) {
+  showMessage('initiateValidationFlow error: ' + err.message, 'error');
+  showProfileSpinner(false);
+  showSessionSpinner(false);
+
+}
+}
+
+
+  /************************************************************
+   * 6) PAYMENT PROFILE FORM
+   ************************************************************/
+  document.getElementById('payment-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById('name-input').value.trim();
+    const email = currentPlayer?.email || '';
+    document.getElementById('submitCardOnFile').textContent="Processing...";
+    document.getElementById('submitCardOnFile').disabled=true;
+
+    showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+      billing_details: { name: nameInput, email }
+    });
+    if (error) {
+      showMessage('Stripe error: ' + error.message, 'error');
+      return;
+    }
+    showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
+
+    const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
+    try {
+      const resp = await fetch(CREATE_STRIPE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
+
+      if (!data.success) {
+        showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
+        return;
+      }
+      showMessage('Payment profile created successfully!', 'success');
+
+      document.getElementById('submitCardOnFile').textContent="Success!";
+      document.getElementById('cardOnFileModalText').textContent="Card added successfully! It may take a couple minutes for your card to appear in your profile.";
+      await loadSessions();
+
+      setTimeout(() => {
+      const storedEmail = localStorage.getItem('playerEmail');
+      initiateValidationFlowInBackground(storedEmail);
+    }, 60000);
+
+    } catch (err) {
+      showMessage('Payment profile error: ' + err.message, 'error');
+    }
+  });
+
+  async function initiateValidationFlowInBackground(email) {
+    document.getElementById('mainNav').classList.remove('d-none');
+    showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+
+try {
+  // 1) getPlayerInfo from GAS
+  const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
+  const playerResp = await fetch(playerUrl);
+  const playerData = await playerResp.json();
+  showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+
+  if (!playerData.success || !playerData.player) {
+    const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+    welcomeModal.show();
+    showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+    showProfileSpinner(false);
+    return;
+  }
+  currentPlayer = playerData.player;
+
+  // 2) Check Stripe
+  const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+  const stripeResp = await fetch(stripeUrl);
+  const stripeData = await stripeResp.json();
+  showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+
+  if (!stripeData.success) {
+    showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+    showProfileSpinner(false);
     return;
   }
   if (stripeData.exists) {
@@ -1548,66 +1733,17 @@ try {
     modalEl.show();
   } else {
     // Load sessions
-    showSessionSpinner(true);
+  
     await loadSessions();
-    showSessionSpinner(false);
+    
   }
 
-  showProfileSpinner(false);
+  
 } catch (err) {
   showMessage('initiateValidationFlow error: ' + err.message, 'error');
-  showProfileSpinner(false);
-  showSessionSpinner(false);
+
 }
 }
-
-
-  /************************************************************
-   * 6) PAYMENT PROFILE FORM
-   ************************************************************/
-  document.getElementById('payment-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nameInput = document.getElementById('name-input').value.trim();
-    const email = currentPlayer?.email || '';
-
-    showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
-    const { paymentMethod, error } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-      billing_details: { name: nameInput, email }
-    });
-    if (error) {
-      showMessage('Stripe error: ' + error.message, 'error');
-      return;
-    }
-    showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
-
-    const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
-    try {
-      const resp = await fetch(CREATE_STRIPE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
-
-      if (!data.success) {
-        showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
-        return;
-      }
-      showMessage('Payment profile created successfully!', 'success');
-
-      const modalEl = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
-      modalEl.hide();
-
-      showSessionSpinner(true);
-      await loadSessions();
-      showSessionSpinner(false);
-    } catch (err) {
-      showMessage('Payment profile error: ' + err.message, 'error');
-    }
-  });
 
   /************************************************************
    * 7) LOAD SESSIONS -> DISPLAY AS CARDS
@@ -2428,6 +2564,10 @@ function updateProgramCardState(cardDiv, prod) {
     } else {
       document.getElementById('btn-charge-on-file').textContent = 'Charge Card On File';
       document.getElementById('btn-credit-debit').style.display = 'block';
+    }
+
+    if (!currentPlayer.cardLast4) {
+      document.getElementById('btn-charge-on-file').style.display = 'none';
     }
 
     // CHANGED: If we're in list view, refresh the list; otherwise, refresh cards.
