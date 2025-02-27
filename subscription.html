@@ -94,6 +94,19 @@
       background: #fff;
     }
 
+    .arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+a[data-bs-toggle="collapse"][aria-expanded="true"] .arrow {
+  transform: rotate(180deg);
+}
+
+a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
+  transform: rotate(0deg);
+}
+
   </style>
 </head>
 <body>
@@ -118,10 +131,68 @@
     </div>
 
     <img 
-    src="icons/memberGraphic.png" 
+    src="IMG_8663.png" 
     alt="Membership" 
     class="img-fluid mb-3 col-md-8 d-block mx-auto rounded"
   >
+
+  <div class="list-group bg-white p-3 rounded shadow-sm mb-3 col-md-8 d-block mx-auto">
+    <a href="https://www.montclairpickleballbc.com/memberships" class="list-group-item list-group-item-action">
+      Membership FAQs
+    </a>
+    <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#moreOptions" role="button" aria-expanded="false" aria-controls="moreOptions">
+      Membership Details <span class="arrow">&#9660;</span>
+    </a>
+    <div class="collapse" id="moreOptions">
+      <div class="list-group">
+        <div class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
+          <strong>SILVER MEMBERSHIP</strong><br>
+          MONTHLY BENEFITS
+          <ul class="mb-0 mt-1 ps-3">
+            <li>Unlimited Free Open Play</li>
+            <li>Unlimited Free Open Drilling</li>
+            <li>20% off ALL Programs + Events</li>
+            <li>20% off Court Rentals</li>
+            <li>Access to Member-Only Events</li>
+            <li>Access to Early Signups</li>
+            <li>Valid at all Montclair Pickleball locations</li>
+          </ul>
+        </div>
+      
+        <!-- GOLD MEMBERSHIP -->
+        <div class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
+          <strong>GOLD MEMBERSHIP</strong><br>
+          MONTHLY BENEFITS
+          <ul class="mb-0 mt-1 ps-3">
+            <li>4 Free Programs (1 Free Program/Week)</li>
+            <li>Unlimited Free Open Play</li>
+            <li>Unlimited Free Open Drilling</li>
+            <li>20% off ALL Programs + Events</li>
+            <li>20% off Court Rentals</li>
+            <li>Access to Member-Only Events</li>
+            <li>Access to Early Signups</li>
+            <li>Valid at all Montclair Pickleball locations</li>
+          </ul>
+        </div>
+      
+        <!-- TRIPLE CROWN MEMBERSHIP -->
+        <div class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
+          <strong>TRIPLE CROWN MEMBERSHIP</strong><br>
+          MONTHLY BENEFITS
+          <ul class="mb-0 mt-1 ps-3">
+            <li>Unlimited Free Programs</li>
+            <li>Unlimited Free Open Play</li>
+            <li>Unlimited Free Open Drilling</li>
+            <li>Unlimited Free Events</li>
+            <li>Unlimited Free Court Rentals</li>
+            <li>Access to Member-Only Events</li>
+            <li>Access to Early Signups</li>
+            <li>Valid at all Montclair Pickleball locations</li>
+          </ul>
+        </div>
+      </div>            
+    </div>
+    </div>
 
     <!-- MAIN CARD FOR PLAN SELECTION / EXTENSION -->
     <div class="row justify-content-center">
@@ -358,7 +429,7 @@
   <!-- FIXED BOTTOM NAV -->
   <nav class="nav nav-bottom d-flex justify-content-around">
     <a class="nav-link" href="#" onclick="goBack()" role="button">
-      <span class="d-block">Back to Main Portal</span>
+      <span class="d-block">Back to Home</span>
     </a>
   </nav>
 
@@ -398,7 +469,7 @@
     /* ================================================
        3) Stripe initialization
        ================================================ */
-    const stripe = Stripe("pk_test_51N9BzSHaWNal9rmeTOlLWPk9oQ4WJAxsdZ9aEXEYEKnnYCPNJRpyFTOtDP4oMrFWvKrExd2ri5Ug5nFubgq07Fgr00fhr9hXWi");
+    const stripe = Stripe("pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb");
     const elements = stripe.elements();
     const cardElement = elements.create('card', {
       style: { base: { fontSize: '16px' } }
@@ -668,6 +739,8 @@
        9) onPurchaseClick
        ================================================ */
     async function onPurchaseClick() {
+      document.getElementById('purchaseBtn').textContent = 'Processing...';
+      document.getElementById('purchaseBtn').disabled = true;
       const planValue = getSelectedPlanAmount();
       const months = parseInt(monthsInput.value, 10) || 1;
       const totalCost = planValue * months;
@@ -696,6 +769,7 @@
       cardErrors.textContent = "";
 
       document.getElementById('submitBtn').textContent = 'Processing...';
+      document.getElementById('submitBtn').disabled = true;
 
       const planValue = getSelectedPlanAmount();
       const months = parseInt(monthsInput.value, 10) || 1;
@@ -884,12 +958,32 @@
 
     /* Get selected plan amount */
     function getSelectedPlanAmount() {
-      const planRadios = document.querySelectorAll('input[name="plan"]');
-      for (let r of planRadios) {
-        if (r.checked) return parseInt(r.value, 10);
-      }
-      return 99; // fallback
+  // If the user has a current subscription that hasn't ended:
+  if (
+    currentSubscription && 
+    new Date(currentSubscription.endDate) > new Date()
+  ) {
+    // Keep the same plan as their existing membership
+    switch (currentSubscription.membershipType) {
+      case "Gold":
+        return 175;
+      case "TripleCrown":
+        return 499;
+      default:
+        return 99; // default to Silver if none matched
     }
+  }
+
+  // Otherwise, user is either new or expired: read whichever radio they picked
+  const planRadios = document.querySelectorAll('input[name="plan"]');
+  for (let r of planRadios) {
+    if (r.checked) {
+      return parseInt(r.value, 10);
+    }
+  }
+  return 99; // fallback
+}
+
   </script>
 </body>
 </html>
