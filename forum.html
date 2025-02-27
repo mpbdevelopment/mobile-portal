@@ -91,7 +91,7 @@
       background-color: #0e2f7b; /* brand color */
       color: #fff;
       padding: 0.75rem;
-      text-align: center;
+      text-align: left;
     }
 
     /* 
@@ -228,7 +228,7 @@
     
     <!-- Header / Title Bar -->
     <div class="chat-header">
-      <h5 class="m-0">Montclair PickleChat</h5>
+      <h5 class="m-0">Montclair Pickleball Community Chat</h5>
     </div>
     
     <!-- Chat Messages -->
@@ -254,8 +254,8 @@
 
     <!-- FIXED BOTTOM NAV -->
     <nav class="nav nav-bottom d-flex justify-content-around">
-        <a class="nav-link" href="#" onclick="goBack()" role="button">
-            <span class="d-block">Back to Main Portal</span>
+        <a class="nav-link" href="index.html" role="button">
+            <span class="d-block">Back to Home</span>
         </a>
     </nav>
 
@@ -269,6 +269,26 @@
   <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
 
   <script>
+
+
+// Keyboard detection to adjust chat input position
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    const chatFooter = document.querySelector(".chat-footer");
+    const navHeight = 56; // height of your fixed bottom nav
+    const keyboardHeight = window.innerHeight - window.visualViewport.height;
+    
+    // Use a threshold to determine if the keyboard is open
+    if (keyboardHeight > 100) {
+      // Keyboard is open – lock the footer above the keyboard
+      chatFooter.style.bottom = `${keyboardHeight + navHeight}px`;
+    } else {
+      // Keyboard is closed – revert to the default position
+      chatFooter.style.bottom = `${navHeight}px`;
+    }
+  });
+}
+
 
 //Nav bar back to portal 
     function goBack() {
@@ -381,3 +401,4 @@
   </script>
 </body>
 </html>
+
