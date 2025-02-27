@@ -469,22 +469,8 @@
   cursor: pointer;
 }
 
-@media (min-width: 768px) {
-  .fc-event {  /* or the appropriate container selector */
-    position: relative; /* creates a positioning context */
-  }
-  .fc-event .listPackageBtn {
-    position: absolute;
-    bottom: 10px;
-    right: 15px;
-  }
-}
-
-
 /* Mobile Optimized Card View */
-@media (max-width: 768px) {
-  /* Convert each event row into a card with relative positioning */
-  .fc-list-event {
+.fc-list-event {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -568,8 +554,6 @@
     color: #666;
   }
 
-}
-
 .arrow {
   display: inline-block;
   transition: transform 0.2s ease;
@@ -647,7 +631,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               </div>
         <div id="home-content">
           <h5>Home</h5>
-          <p>Welcome to our Montclair Pickelball Player Portal!</p>
+          <p id="welcomeMsg">Welcome to our Montclair Pickelball Player Portal!</p>
           <div class="list-group">
             <a href="#tab-profile" 
                id="home-link-profile" 
@@ -664,17 +648,17 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
                class="list-group-item list-group-item-action">
               My Registrations
             </a>
+            <a href="subscription.html" 
+            id="home-link-memberships" 
+            class="list-group-item list-group-item-action">
+            Purchase or Manage Membership
+          </a>
             <a href="forum.html" 
                 id="home-link-forum" 
                 class="list-group-item list-group-item-action"
                 style = "display: none">
                 Community Chat (Members Only)
             </a>
-            <a href="subscription.html" 
-            id="home-link-memberships" 
-            class="list-group-item list-group-item-action">
-            Purchase or Manage Membership
-          </a>
           <a href="https://www.montclairpickleball.com" class="list-group-item list-group-item-action">
             Montclair Website
           <a href="https://www.montclairpickleballbc.com" class="list-group-item list-group-item-action">
@@ -690,6 +674,12 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               </a>
               <a href="tel:2013082473" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
                 Phone: 201-308-2473
+              </a>
+              <a href="https://www.instagram.com/montclairpickleball/?hl=en" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
+                Instagram
+              </a>
+              <a href="https://www.facebook.com/montclairpickleball/" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
+               Facebook
               </a>
             </div>            
           </div>
@@ -1046,10 +1036,10 @@ function forceRefreshIfFromSubscription() {
   const GAS_PROXY         = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy';
   const FIND_STRIPE_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe';
   const CREATE_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe';
-  const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify/functions/chargeCart';
+  const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeCart';
   const GET_CREDIT_URL    = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy?action=getCredit';
 
-  const stripe = Stripe('pk_test_51N9BzSHaWNal9rmeTOlLWPk9oQ4WJAxsdZ9aEXEYEKnnYCPNJRpyFTOtDP4oMrFWvKrExd2ri5Ug5nFubgq07Fgr00fhr9hXWi');
+  const stripe = Stripe('pk_live_51N9BzSHaWNal9rme3vwhLRs3vRgdqPQO35KZ2WQHPvefzbh2dP1VRCLTc8wKBNxN3jk8VXkeu8P3MJxnoJ1A3JaP00OotZGNnb');
   const elements = stripe.elements();
   const cardElement = elements.create('card');
   cardElement.mount('#card-element');
@@ -1351,6 +1341,7 @@ setInterval(refreshData, 120000);
     if (!rawInput) return;
     
     document.getElementById('verificationBtn').textContent = 'Processing...';
+    document.getElementById('verificationBtn').disabled = true;
 
     let isAdminLogin = false;
     let adminEmail    = '';
@@ -1554,7 +1545,9 @@ try {
     const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
     modalEl.show();
   }
-
+  if (currentPlayer.firstName) {
+  document.getElementById('welcomeMsg').textContent = `Hey ${currentPlayer.firstName}! Welcome to our Montclair Pickelball Player Portal.`;
+}
 } catch (err) {
   showMessage('initiateValidationFlow error: ' + err.message, 'error');
   showProfileSpinner(false);
@@ -3471,6 +3464,9 @@ return new Date(
     } else {
       html += `<li>Court Rentals: 20% discount</li>`;
     }
+
+  html += `<li>Access to member only events</li>`;
+  html += `<li>Access to early signups</li>`;
 
   html += '</ul>';
 
