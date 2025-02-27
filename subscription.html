@@ -137,9 +137,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
   >
 
   <div class="list-group bg-white p-3 rounded shadow-sm mb-3 col-md-8 d-block mx-auto">
-    <a href="https://www.montclairpickleballbc.com/memberships" class="list-group-item list-group-item-action">
-      Membership FAQs
-    </a>
+    <!-- Membership Details now on top -->
     <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#moreOptions" role="button" aria-expanded="false" aria-controls="moreOptions">
       Membership Details <span class="arrow">&#9660;</span>
     </a>
@@ -155,10 +153,10 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
             <li>20% off Court Rentals</li>
             <li>Access to Member-Only Events</li>
             <li>Access to Early Signups</li>
-            <li>Valid at all Montclair Pickleball locations</li>
+            <li>Valid at all Montclair Pickleball Locations</li>
           </ul>
         </div>
-      
+        
         <!-- GOLD MEMBERSHIP -->
         <div class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
           <strong>GOLD MEMBERSHIP</strong><br>
@@ -171,10 +169,10 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
             <li>20% off Court Rentals</li>
             <li>Access to Member-Only Events</li>
             <li>Access to Early Signups</li>
-            <li>Valid at all Montclair Pickleball locations</li>
+            <li>Valid at all Montclair Pickleball Locations</li>
           </ul>
         </div>
-      
+        
         <!-- TRIPLE CROWN MEMBERSHIP -->
         <div class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
           <strong>TRIPLE CROWN MEMBERSHIP</strong><br>
@@ -187,12 +185,17 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
             <li>Unlimited Free Court Rentals</li>
             <li>Access to Member-Only Events</li>
             <li>Access to Early Signups</li>
-            <li>Valid at all Montclair Pickleball locations</li>
+            <li>Valid at all Montclair Pickleball Locations</li>
           </ul>
         </div>
       </div>            
     </div>
-    </div>
+  
+    <!-- Membership FAQs now below Membership Details -->
+    <a href="https://www.montclairpickleballbc.com/memberships#faq" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
+      Membership FAQs
+    </a>
+  </div>  
 
     <!-- MAIN CARD FOR PLAN SELECTION / EXTENSION -->
     <div class="row justify-content-center">
@@ -428,7 +431,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
 
   <!-- FIXED BOTTOM NAV -->
   <nav class="nav nav-bottom d-flex justify-content-around">
-    <a class="nav-link" href="index.html" role="button">
+    <a class="nav-link" onclick="goBack()" role="button">
       <span class="d-block">Back to Home</span>
     </a>
   </nav>
@@ -443,13 +446,15 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
     /* ================================================
        1) 'Go Back' helper for bottom nav
        ================================================ */
-    function goBack() {
-      if (window.history.length > 1) {
-        window.history.back();
-      } else {
-        window.location.href = "index.html";
-      }
-      return false;
+       function goBack() {
+        // Check if there's history to go back to
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            // Fallback to main portal if no history
+            window.location.href = "index.html";
+        }
+        return false; // Prevent default link behavior
     }
 
     /* ================================================
