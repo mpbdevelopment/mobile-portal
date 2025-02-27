@@ -1548,6 +1548,7 @@ try {
   if (currentPlayer.firstName) {
   document.getElementById('welcomeMsg').textContent = `Hey ${currentPlayer.firstName}! Welcome to our Montclair Pickelball Player Portal.`;
 }
+  
 } catch (err) {
   showMessage('initiateValidationFlow error: ' + err.message, 'error');
   showProfileSpinner(false);
@@ -3431,6 +3432,7 @@ return new Date(
   function updateProfileBenefits() {
   // Retrieve the current player's membership type (e.g., "Silver", "Gold", "TripleCrown")
   const membership = currentPlayer.membershipType;
+  if (!membership) return;
   const profileDiv = document.getElementById("profileBenefits");
   if (!profileDiv) return; // Exit if the target div doesn't exist
 
