@@ -2456,8 +2456,10 @@ function updateProgramCardState(cardDiv, prod) {
   level: product.level,
   price: total,
   sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
-  freeWeeksUsed: usedWeeks
+  freeWeeksUsed: usedWeeks,
+  indoorOutdoor: product.indoorOutdoor // store the indoorOutdoor tag
 });
+
 
   // Update UI
   updateCartTable();
@@ -2942,7 +2944,11 @@ try {
         program: ci.program
       })),
       creditUsed: creditUsed || 0,
-      partnerName: partnerNameValue
+      partnerName: partnerNameValue,
+      cartItemsIo: cartItems.map(ci => ({
+        sessionId: ci.sessionId,
+        program: ci.program + (ci.indoorOutdoor ? ' | ' + ci.indoorOutdoor : '')
+      }))
     };
 
     try {
