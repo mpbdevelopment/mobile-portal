@@ -626,7 +626,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
             <div id="login-spinner">
                 <div class="text-center">
                   <div class="spinner-border text-primary mb-2" role="status"></div>
-                  <p id = "loginText" class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
+                  <p id = "loginText" class="mb-0">Logging you in!</br>This may take up to 20 seconds...<br>Please don't refresh this page.</nr></p>
                 </div>
               </div>
         <div id="home-content">
@@ -659,11 +659,11 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
                 style = "display: none">
                 Community Chat (Members Only)
             </a>
-          <a href="https://www.montclairpickleball.com" class="list-group-item list-group-item-action">
-            Montclair Website
-          <a href="https://www.montclairpickleballbc.com" class="list-group-item list-group-item-action">
-            Fair Lawn Website
+          <a href="https://www.montclairpickleballbc.com" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
+              Fair Lawn Website
           </a>
+          <a href="https://www.montclairpickleball.com" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
+            Montclair Website</a>
           <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#moreOptions" role="button" aria-expanded="false" aria-controls="moreOptions">
             Contact Us <span class="arrow">&#9660;</span>
           </a>
@@ -675,10 +675,10 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               <a href="tel:2013082473" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
                 Phone: 201-308-2473
               </a>
-              <a href="https://www.instagram.com/montclairpickleball/?hl=en" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
+              <a href="https://www.instagram.com/montclairpickleball/?hl=en" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
                 Instagram
               </a>
-              <a href="https://www.facebook.com/montclairpickleball/" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
+              <a href="https://www.facebook.com/montclairpickleball/" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
                Facebook
               </a>
             </div>            
@@ -827,6 +827,11 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               </thead>
               <tbody></tbody>
             </table>
+
+            <div id="partnerName" class="form-group col-md-6" style="display:none">
+              <label for="partner-name">Name of Partner (For Showdown)</label>
+              <input type="text" id="partner-name" name="partner-name" class="form-control"/>
+            </div>
           
             <div id="amount-due-line"></div>
             <div id="breakdown-line"></div>
@@ -1093,6 +1098,7 @@ function forceRefreshIfFromSubscription() {
   "Open Play": "#F1C40F",             // example: yellow
   "Guided Open Play": "#9B59B6",      // darker green
   "Coach Guided Drilling": "#0074D9", // example: blue
+  "Guided Drilling": "#0074D9",
   };
 
   const CATEGORY_DARK_COLORS = {
@@ -1100,6 +1106,7 @@ function forceRefreshIfFromSubscription() {
   "Open Play": "#2ECC40",             // ~ darkened #2ECC40
   "Guided Open Play": "#2ECC40",      // ~ darkened #3D9970
   "Coach Guided Drilling": "#2ECC40", // ~ darkened #0074D9
+  "Guided Drilling": "#2ECC40",
   };
 
 
@@ -2564,6 +2571,13 @@ function updateProgramCardState(cardDiv, prod) {
       document.getElementById('btn-charge-on-file').style.display = 'none';
     }
 
+    const partnerNameDiv = document.getElementById('partnerName');
+    if (cartItems.some(item => item.program.includes("Showdown"))) {
+      partnerNameDiv.style.display = "block";
+    } else {
+      partnerNameDiv.style.display = "none";
+    }
+
     // CHANGED: If we're in list view, refresh the list; otherwise, refresh cards.
     if (isListView) {
       renderProgramListForRange();
@@ -2916,6 +2930,7 @@ try {
 
 
   async function submitCartToSpreadsheet(creditUsed) {
+    const partnerNameValue = document.getElementById('partner-name').value;
     const payload = {
       action: 'registerMultiple',
       firstName: currentPlayer.firstName,
@@ -2926,7 +2941,8 @@ try {
         sessionId: ci.sessionId,
         program: ci.program
       })),
-      creditUsed: creditUsed || 0
+      creditUsed: creditUsed || 0,
+      partnerName: partnerNameValue
     };
 
     try {
@@ -3411,7 +3427,7 @@ return new Date(
     if (!creditSpan) return;
     const creditVal = currentPlayer?.credit || 0;
     if (creditVal > 0) {
-      creditSpan.textContent = `$${creditVal.toFixed(2)}`;
+      creditSpan.innerHTML = `$${creditVal.toFixed(2)}<br><small><i>Automatically applied at checkout</i></small>`;
     } else {
       creditSpan.textContent = 'No credit available';
     }
@@ -3911,8 +3927,8 @@ if (prod.soldOut) {
 }
 
 // Not sold out => pick base or dark
-const baseColor = CATEGORY_COLORS[prod.category] || "#888888";
-const darkColor = CATEGORY_DARK_COLORS[prod.category] || "#666666";
+const baseColor = CATEGORY_COLORS[prod.category] || "#0e2f7b";
+const darkColor = CATEGORY_DARK_COLORS[prod.category] || "#2ECC40";
 if (inCart) {
   return {
     backgroundColor: darkColor,
