@@ -1,0 +1,4096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" name="theme-color" content="#0e2f7b" />
+  <title>Montclair Pickleball Player Portal</title>
+  <!-- Bootstrap 5 CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <!-- Stripe.js -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <link rel="icon" href="icons/icon-192x192.png">
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(registration => console.log('Service Worker registered:', registration))
+        .catch(error => console.error('Service Worker registration failed:', error));
+    }
+  </script>
+
+  <!-- IMPORTANT: Use viewport-fit=cover for iPhone safe-area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <style>
+    /* 1) Remove default margin on body and add padding for iPhone safe-area */
+    body {
+      margin: 0;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      background-color: #f9f9f9;
+    }
+
+    /*Brand color as the primary background and buttons */
+    .bg-primary {
+      background-color: #0e2f7b !important;
+    }
+
+    .btn-primary {
+      background-color: #0e2f7b !important;
+      border-color: #0e2f7b !important;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus,
+    .btn-primary:active {
+      background-color: #0c2563 !important; /* Slightly darker shade for hover/focus */
+      border-color: #0c2563 !important;
+    }
+
+    .btn-xs {
+      padding: 0.2rem 0.4rem;  /* Adjust as needed */
+      font-size: 0.65rem;      /* Smaller font size */
+      line-height: 1;
+      border-radius: 0.2rem;   /* Optional: adjust to match your badge style */
+    }
+
+    /* 2) Fixed bottom nav with safe-area padding. Also highlight the active link with a background color. */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+      cursor: pointer;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0e2f7b; /* Bootstrap primary color */
+      color: #fff;              /* White text for contrast */
+      font-weight: 500;
+    }
+
+    .nav-bottom .nav-profile {
+    flex: 0 0 auto;       /* let it shrink to fit icon content */
+    width: 50px;          /* pick a smaller width */
+    text-align: center;
+    padding: 6px 0;       /* less vertical padding */
+    font-size: 1.1rem;    /* adjust icon size as you like */
+    }
+
+    .nav-bottom .nav-forum {
+    flex: 0 0 auto;
+    width: 50px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 1.2rem;
+    }
+
+    .tab-content {
+      padding: 1rem;
+    }
+
+    /* Hide main tab content until user is verified */
+    #tab-content-section {
+      display: none;
+    }
+
+    /* Email verification UI */
+    #verification-section {
+      display: none; 
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 5px;
+    }
+    .card-errors {
+      color: red;
+    }
+
+    /* Profile container with a spinner overlay */
+    #profile-container {
+      position: relative; 
+    }
+    #profile-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    #profile-content {
+      display: none; 
+    }
+
+    .session-card.selected-session {
+    border: 2px solid green; 
+    background-color: #e6f7e8; /* a light greenish background to match your existing style */
+    transform: scale(1);
+    opacity: 1;
+    }
+
+
+    /* Register tab container with a spinner overlay */
+    #register-container {
+      position: relative; 
+    }
+    /* Spinner overlay for Payment Processing */
+    #payment-spinner {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .overlay {
+      background: transparent; 
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9998;
+      display: none;
+      pointer-events: all;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Spinner overlay for Session Loading */
+    #session-spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    #payment-success {
+      display: none; 
+      margin-top: 10px;
+    }
+
+    /* My Registrations container */
+    #registrations-container {
+      position: relative;
+    }
+    #registrations-spinner {
+      display: none;
+      background: #fff; 
+      text-align: center;
+    }
+    #registrations-content {
+      display: none;
+    }
+
+    /* Program listing & cart are replaced by a new card layout
+       but keep them hidden or repurposed as needed. */
+
+    /* [CHANGED] Hide the old #products-section & #cart-section by default (we'll re-use some logic) */
+    #products-section {
+      display: none;
+    }
+    #cart-section {
+      display: none;
+    }
+
+    /* For "Amount Due" and breakdown lines */
+    #amount-due-line {
+      margin-top: 8px;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    #breakdown-line {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+
+    .text-primary {
+      color: #0e2f7b !important;
+    }
+
+    /* [CHANGED] Session Cards Container */
+    #session-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .session-card {
+      flex: 1 1 200px; /* responsive sizing */
+      min-width: 200px;
+      max-width: 300px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+
+    .session-card.non-selected-session {
+      transform: scale(0.9);
+      opacity: 0.7;
+    }
+
+    @media (max-width: 576px) {
+  .session-card .card-body {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+  .session-card h6 {
+    font-size: 1rem;
+  }
+}
+
+    /* [CHANGED] Hide filters initially (progressive) */
+    #filter-section {
+      display: none;
+      margin-bottom: 1rem;
+    }
+
+    /* [CHANGED] Program Cards Container */
+    #program-cards-container {
+      display: none; /* shown only once filters are all selected */
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .badges .badge {
+    margin-bottom: 0.25rem;  /* small spacing between badges */
+    margin-right: 0.25rem
+
+    }
+
+
+    .program-card {
+      width: 100%;
+      max-width: 300px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 1rem;
+      background: #fff;
+      position: relative;
+    }
+    .program-card .program-name {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .program-card .program-price {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .program-card .badges {
+      margin-bottom: 0.5rem;
+    }
+
+    /* [CHANGED] "Added" state styling */
+    .program-card.added {
+      background-color: #e6f7e8; /* light greenish */
+      border-color: #81c784;    /* greener border */
+    }
+
+    .program-card.added .btn-add {
+      display: none;
+    }
+    .program-card.added .added-controls {
+      display: block;
+    }
+    .added-controls {
+      display: none;
+    }
+
+
+    /* [CHANGED] Floating Cart Pill */
+    #cart-summary-pill {
+      position: fixed;
+      bottom: 80px; /* just above the nav */
+      right: 15px;
+      z-index: 9999;
+      background: #0e2f7b;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+
+    .selected-list-event {
+  background-color: #c3e6cb !important; /* a pale green */
+}
+
+/* fullCalendar turn off hover effect */
+.fc-list-table:hover,
+.fc-list-table:hover td {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* Inactive state: mimic btn-outline-primary */
+.fc-button.fc-button-primary {
+  color: #ffc107;              /* Primary text color */
+  background-color: transparent; /* Transparent background */
+  border: 1px solid #ffc107;     /* Primary border */
+  border-radius: 0.25rem;        /* Bootstrap border radius */
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Hover effect for inactive buttons */
+.fc-button.fc-button-primary:hover {
+  color: #fff;
+  background-color: #ffc107;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+  color: black;
+  background-color: #ffc107;
+  border-color: #ffc107;
+}
+
+/* Toolbar Styles */
+.fc .fc-toolbar {
+  background-color: #0e2f7b;
+  padding: 10px;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  border: none;
+}
+
+.fc .fc-toolbar-title {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.fc.fc-media-screen.fc-direction-ltr.fc-theme-standard {
+  border: 2px solid #0e2f7b; /* Use your brand color or any color you prefer */
+  padding: 5px;              /* Optional: adds some spacing inside the border */
+  border-radius: 5px;        /* Optional: gives rounded corners */
+}
+
+/* Original CSS for Event List
+
+.fc-list-event-time::before {
+  content: "\2610";
+  font-size: 1.8em;
+  color: #0e2f7b; 
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+}
+
+.selected-list-event .fc-list-event-time::before {
+  content: "\2611"; 
+  color: #28a745; 
+}
+
+.fc-unselectable .fc-list-event-time::before {
+  content: "";
+}
+
+
+.sold-out .fc-list-event-time::before {
+  content: "";
+}
+
+*/
+
+
+/* Desktop Default Plus/Check Icon Styles */
+.fc-list-event-time::before {
+  content: "\2610";
+  font-size: 1.8em;
+  color: #0e2f7b;
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+}
+
+.selected-list-event .fc-list-event-time::before {
+  content: "\2611";
+  color: #28a745;
+}
+
+.sold-out .fc-list-event-time::before {
+  content: "";
+}
+
+.listPackageBtn {
+  color: #0e2f7b;
+  font-size: 1.0em;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .fc-event {  /* or the appropriate container selector */
+    position: relative; /* creates a positioning context */
+  }
+  .fc-event .listPackageBtn {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+  }
+}
+
+
+/* Mobile Optimized Card View */
+@media (max-width: 768px) {
+  /* Convert each event row into a card with relative positioning */
+  .fc-list-event {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    /* Extra bottom padding to accommodate the button */
+    padding: 10px 15px 40px 15px;
+    margin: 8px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 0.85em;
+    line-height: 1.3;
+  }
+
+  /* Hide the graphic element on mobile */
+  .fc-list-event-graphic {
+    display: none !important;
+  }
+
+  /* Remove any default table cell styling */
+  .fc-list-event td {
+    display: block;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Stack the event time at the top */
+  .fc-list-event-time {
+    margin-bottom: 4px;
+  }
+
+  /* Stack the event title next */
+  .fc-list-event-title {
+    margin-bottom: 4px;
+  }
+
+  /* Adjust the icon size for mobile */
+  .fc-list-event-time::before {
+    font-size: 1.4em;
+    width: 1.3em;
+  }
+
+/* Updated CSS for the underlined link */
+.listPackageBtn {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+  }
+
+/* Override table header styling for day header cards */
+    th[id^="fc-dom-"] {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+  
+  /* Card styling for the day header container */
+  .fc-list-day-cushion {
+    display: block;
+    background: #f8f8f8; /* Light background for the header card */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    text-align: center;
+  }
+  
+  /* Stacking and styling the day text */
+  .fc-list-day-text {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  
+  /* Stacking and styling the side text (full date) */
+  .fc-list-day-side-text {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+  }
+
+}
+
+.arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+a[data-bs-toggle="collapse"][aria-expanded="true"] .arrow {
+  transform: rotate(180deg);
+}
+
+a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
+  transform: rotate(0deg);
+}
+
+  </style>
+</head>
+<body class="bg-light">
+
+  <div id="overlay" class="overlay"></div>
+
+  <!-- HEADER -->
+  <header 
+    class="text-white p-3 mb-2 d-flex align-items-center justify-content-between" 
+    style="background-color: #0e2f7b;"
+  >
+    <h4 class="mb-0">Montclair Pickleball Player Portal</h4>
+    <img 
+      src="icons/banner-logo.png" 
+      alt="Logo" 
+      style="height: 40px;"
+    >
+  </header>
+
+  <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
+  <section id="verification-section" class="shadow-sm">
+    <h5>Verify Your Email to Login</h5>
+    <p>If you've ever played with Montclair Pickleball before, you already have a profile set up for you. If not, no worries! Enter your email and we'll help you get started.</p>
+    <form id="verification-form">
+      <div class="mb-3">
+        <label for="verify-email-input" class="form-label">Email Address</label>
+        <input type="text" class="form-control" id="verify-email-input" required />
+      </div>
+      <button id="verificationBtn" type="submit" class="btn btn-primary w-100 mb-2">
+        Send Verification Code
+      </button>
+      <a href="registration.html" class="btn btn-secondary" style="display:none">Register New User</a>
+    </form>
+
+    <div id="code-entry" style="display: none;">
+      <p>Enter the 6-digit code we sent to your email:</p>
+      <div class="mb-3">
+        <input type="text" class="form-control" id="verify-code-input" placeholder="123456" />
+      </div>
+      <div id="wrongCodeAlert" class="alert alert-danger" style="display:none" role="alert">
+        Invalid code. Please re-check your email or try again.
+      </div>
+      <button id="verify-code-button" class="btn btn-success w-100 mb-2">
+        Verify Code
+      </button>
+      <button id="verificationRefresh" class="btn btn-secondary w-100">Try Again</button>
+    </div>
+  </section>
+
+  <!-- MAIN TAB CONTENT (Once verified) -->
+  <section id="tab-content-section">
+    <div class="tab-content" id="myTabContent">
+
+            <!-- HOME TAB (new) -->
+    <div class="tab-pane fade show active" id="tab-home" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm">
+            <div id="login-spinner">
+                <div class="text-center">
+                  <div class="spinner-border text-primary mb-2" role="status"></div>
+                  <p id = "loginText" class="mb-0">Logging you in!</br>This may take up to 20 seconds...</p>
+                </div>
+              </div>
+        <div id="home-content">
+          <h5>Home</h5>
+          <p>Welcome to our Montclair Pickelball Player Portal!</p>
+          <div class="list-group">
+            <a href="#tab-profile" 
+               id="home-link-profile" 
+               class="list-group-item list-group-item-action">
+              View Profile
+            </a>
+            <a href="#tab-register" 
+               id="home-link-register" 
+               class="list-group-item list-group-item-action">
+              Register for a Program
+            </a>
+            <a href="#tab-registrations" 
+               id="home-link-registrations" 
+               class="list-group-item list-group-item-action">
+              My Registrations
+            </a>
+            <a href="forum.html" 
+                id="home-link-forum" 
+                class="list-group-item list-group-item-action"
+                style = "display: none">
+                Community Chat (Members Only)
+            </a>
+            <a href="subscription.html" 
+            id="home-link-memberships" 
+            class="list-group-item list-group-item-action">
+            Purchase or Manage Membership
+          </a>
+          <a href="https://www.montclairpickleball.com" class="list-group-item list-group-item-action">
+            Montclair Website
+          <a href="https://www.montclairpickleballbc.com" class="list-group-item list-group-item-action">
+            Fair Lawn Website
+          </a>
+          <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#moreOptions" role="button" aria-expanded="false" aria-controls="moreOptions">
+            Contact Us <span class="arrow">&#9660;</span>
+          </a>
+          <div class="collapse" id="moreOptions">
+            <div class="list-group">
+              <a href="mailto:contact@montclairpickleball.com" class="list-group-item list-group-item-action bg-white border rounded mb-1 mt-1 shadow-sm py-2">
+                Email: contact@montclairpickleball.com
+              </a>
+              <a href="tel:2013082473" class="list-group-item list-group-item-action bg-white border rounded mb-1 shadow-sm py-2">
+                Phone: 201-308-2473
+              </a>
+            </div>            
+          </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- PROFILE TAB -->
+      <div class="tab-pane fade" id="tab-profile" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm" id="profile-container">
+
+          <!-- Actual Profile Content -->
+          <div id="profile-content">
+            <h5>Profile</h5>
+            <p><strong>First Name:</strong> <span id="profile-first-name"></span></p>
+            <p><strong>Last Name:</strong> <span id="profile-last-name"></span></p>
+            <p><strong>Phone:</strong> <span id="profile-phone"></span></p>
+            <p><strong>Email:</strong> <span id="profile-email"></span></p>
+            <p><strong>Card on File:</strong>
+                <span id="profile-card-last4">No card on file</span>
+                <!-- We'll show/hide or change the text on this button in JS -->
+                <button id="profile-card-button" 
+                        class="btn btn-sm btn-outline-secondary ms-2" 
+                        style="display: none;">
+                </button>
+            </p>              
+            <!-- Display user credit from PromoCodes -->
+            <p><strong>Credit:</strong> <span id="profile-credit-amount">No credit available</span></p>
+            
+            <div id="profileBenefits"></div>
+
+            <button id="logout-button" class="btn btn-danger w-100 mt-3">Logout</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGISTER TAB -->
+      <div class="tab-pane fade" id="tab-register" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
+          
+          <!-- Session Loading Spinner -->
+          <div id="session-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Loading Session...</p>
+            </div>
+          </div>
+
+          <!-- Payment Spinner overlay while processing payment -->
+          <div id="payment-spinner">
+            <div class="text-center">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="mb-0">Processing Payment...</p>
+            </div>
+          </div>
+
+          <!-- Payment success alert (may show credit left) -->
+          <div id="payment-success" class="alert alert-success" role="alert">
+            Payment processed successfully! Your registration has been submitted.
+          </div>
+
+          <h5>Select a Location/Session</h5>
+
+          <!-- [CHANGED] 1) Session Cards Container -->
+          <div id="session-cards" class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-1">
+            <!-- Dynamically populated in loadSessions() -->
+          </div>
+
+          <!-- [CHANGED] 2) Filter Section (Progressive) -->
+          <div id="filter-section">
+            <!-- We still use the same 3 filters, but they appear one at a time. -->
+
+            <!-- [ADDED] Toggle Calendar/List Button & List-View Container (initially hidden) -->
+            <div id="toggle-view-container" style="display: none;">
+                <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
+                <a id="extndMsg" href="subscription.html" class="text-center mb-4" style="display:none;">You can expand your membership dates here.</a>
+                <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm mb-2 mt-7 mx-auto d-block">
+                  Switch to Calendar View (Level Based)
+                </button>
+            </div>
+  
+<!-- [ADJUSTED] List View Container -->
+<div id="list-view-container" style="display: none;">
+    <div id="standardized-level-filter-group" style="display: none;">
+        <label class="form-label"><strong>Filter By Your Level</strong></label>
+        <select id="standardized-level-filter" class="form-select mb-3">
+          <option value="">--Select Your Level--</option>
+        </select>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <button id="btn-list-prev" class="btn btn-sm btn-secondary">&laquo; Previous 7 Days</button>
+        <button id="btn-list-next" class="btn btn-sm btn-secondary">Next 7 Days &raquo;</button>
+    </div>
+  
+    <!-- The new FullCalendar container -->
+    <div style="overflow-x: auto; max-width: 100%;">
+    <div id="register-calendar"></div>
+    </div>
+    
+  </div>
+  
+  
+            
+            <!-- Category Filter -->
+            <div id="category-filter-group" style="display: none;">
+              <label class="form-label"><strong>Select Program</strong></label>
+              <select id="category-filter" class="form-select mb-3">
+                <option value="">--Select a Category--</option>
+              </select>
+            </div>
+
+            <!-- Level Filter -->
+            <div id="level-filter-group" style="display: none;">
+              <label class="form-label"><strong>Select Level</strong></label>
+              <select id="level-filter" class="form-select mb-3">
+                <option value="">--Select a Level--</option>
+              </select>
+            </div>
+
+            <!-- Day/Time Filter -->
+            <div id="daytime-filter-group" style="display: none;">
+              <label class="form-label"><strong>Select Day/Time</strong></label>
+              <select id="daytime-filter" class="form-select mb-3">
+                <option value="">--Select a Day/Time--</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- [CHANGED] 3) Program Cards Container -->
+          <div id="program-cards-container"></div>
+
+          <!-- The old cart-section is still in code, but hidden. We'll keep the logic for payment. -->
+          <hr/>
+          <div id="cart-section" style="display: none;">
+            <h6>Your Cart</h6>
+            <table class="table table-striped table-sm" id="cart-table">
+              <thead>
+                <tr>
+                  <th>Program</th>
+                  <th>Session</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          
+            <div id="amount-due-line"></div>
+            <div id="breakdown-line"></div>
+          
+            <!-- TWO buttons -->
+            <div class="d-flex gap-2 mt-3">
+              <!-- 1) Charge On-File -->
+              <button id="btn-charge-on-file" class="btn btn-primary flex-fill">
+                Charge Card on File
+              </button>
+          
+              <!-- 2) One-Time Payment -->
+              <button id="btn-credit-debit" class="btn btn-secondary flex-fill">
+                Credit/Debit Card
+              </button>
+            </div>
+          </div>          
+
+        </div>
+      </div>
+
+      <!-- MY REGISTRATIONS TAB -->
+      <div class="tab-pane fade" id="tab-registrations" role="tabpanel">
+        <div class="bg-white p-3 rounded shadow-sm position-relative" id="registrations-container">
+          <h5>My Registrations</h5>
+
+          <div id="registrations-spinner">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <p class="mb-0">Loading Registrations...<br>New registrations may take a couple minutes to appear.</p>
+          </div>
+          <div id="registrations-content">
+            <div id="calendar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FIXED BOTTOM NAV -->
+  <nav id="mainNav" class="nav nav-bottom d-flex justify-content-around d-none">
+    <a class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-home" role="tab">
+        <span class="d-block">Home</span>
+      </a>
+    <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-register" role="tab">
+      <span class="d-block">Register</span>
+    </a>
+    <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-registrations" role="tab">
+      <span class="d-block">My Programs</span>
+    </a><!-- Mobile version (icon only) -->
+    <a class="nav-link nav-profile d-md-none" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab" aria-label="Profile">
+      <i class="bi bi-person-circle"></i>
+    </a>
+    
+    <!-- Desktop version (text only) -->
+    <a class="nav-link d-none d-md-block" data-bs-toggle="tab" data-bs-target="#tab-profile" role="tab" aria-label="Profile">
+      My Profile
+    </a>
+
+  </nav>
+
+  <!-- PAYMENT MODAL -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Payment Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="cardOnFileModalText">Add a card on file to make registration easier! This is not required, but it is recommended.</p>
+          <form id="payment-form">
+            <div class="mb-3">
+              <label for="name-input" class="form-label">Name</label>
+              <input type="text" class="form-control" id="name-input" required />
+            </div>
+            <div class="mb-3">
+              <label for="card-element" class="form-label">Card</label>
+              <div id="card-element" class="form-control"></div>
+              <div id="card-errors" class="card-errors"></div>
+            </div>
+            <button id="submitCardOnFile" type="submit" class="btn btn-primary w-100">Add Payment Profile</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONE-TIME PAYMENT MODAL -->
+  <div class="modal fade" id="oneTimePaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Pay with Credit/Debit Card</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please enter your card details to complete the payment. This card will <strong>not</strong> be saved on file.</p>
+          <form id="one-time-payment-form">
+            <div class="mb-3">
+              <label for="otpf-name" class="form-label">Name on Card</label>
+              <input type="text" class="form-control" id="otpf-name" required />
+            </div>
+            <div class="mb-3">
+              <label for="otpf-card-element" class="form-label">Card</label>
+              <div id="otpf-card-element" class="form-control"></div>
+              <div id="otpf-card-errors" class="card-errors text-danger mt-1"></div>
+            </div>
+            <!-- [NEW] Save Card Checkbox Container -->
+            <div id="save-card-checkbox-container" class="form-check mb-3" style="display: none;">
+                <input type="checkbox" class="form-check-input" id="save-card-checkbox" />
+                <label class="form-check-label" for="save-card-checkbox">
+                Save this card on file for future use
+                </label>
+            </div>
+            <button id="oneTimeSubmitBtn" type="submit" class="btn btn-primary w-100">Pay Now</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Alert Modal-->
+
+  <div class="modal fade" id="creditAlertModal" tabindex="-1" aria-labelledby="creditAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="creditAlertModalLabel">Member Benefit Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            You will be charged at full price for the days within this package that fall outside of your current membership cycle. 
+            If you would like to extend your membership to reserve the full package using membership credits, 
+            click <a href="subscription.html" class="text-decoration-none">here</a>.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <a href="subscription.html" class="btn btn-primary">Extend Membership</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="welcomeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="welcomeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="welcomeModalLabel">Welcome!</h5>
+        </div>
+        <div class="modal-body">
+          Hey There! It looks like you haven't played with us before. We can't wait to meet you on the court! We just need a bit more information from you to finish creating your account. Please click "Get Started" below to get set up.
+        </div>
+        <div class="modal-footer justify-content-center">
+          <a href="registration.html" class="btn btn-primary">Get Started</a>
+          <button type="button" class="btn btn-secondary" onclick="localStorage.removeItem('playerEmail'); location.reload();">
+            Try Another Email
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>  
+
+  <div class="modal fade" id="cartAlertModal" tabindex="-1" aria-labelledby="cartAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cartAlertModalLabel">Sold Out Program Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            A program has been removed from your cart because it became Sold Out before you completed your purchase.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- [CHANGED] Floating Cart Summary Pill -->
+  <div id="cart-summary-pill" style="display: none;">0 items - $0.00</div>
+
+  <!-- Bootstrap 5 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- PART 1/3 START -->
+<script>
+
+function forceRefreshIfFromSubscription() {
+    // Check if the referrer URL ends with or contains 'subscription.html'
+    if (document.referrer && document.referrer.includes('subscription.html')) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    }
+  }
+
+  // Example usage: run on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', forceRefreshIfFromSubscription);
+
+  /************************************************************
+   * 1) CONFIG & STRIPE SETUP
+   ************************************************************/
+  const GAS_PROXY         = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy';
+  const FIND_STRIPE_URL   = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/findStripe';
+  const CREATE_STRIPE_URL = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/createStripe';
+  const CHARGE_CART_URL   = 'https://merry-rugelach-c028d1.netlify/functions/chargeCart';
+  const GET_CREDIT_URL    = 'https://merry-rugelach-c028d1.netlify.app/.netlify/functions/proxy?action=getCredit';
+
+  const stripe = Stripe('pk_test_51N9BzSHaWNal9rmeTOlLWPk9oQ4WJAxsdZ9aEXEYEKnnYCPNJRpyFTOtDP4oMrFWvKrExd2ri5Ug5nFubgq07Fgr00fhr9hXWi');
+  const elements = stripe.elements();
+  const cardElement = elements.create('card');
+  cardElement.mount('#card-element');
+
+  // Create a second Elements instance
+  const oneTimeElements = stripe.elements();
+  const oneTimeCard = oneTimeElements.create('card');
+  oneTimeCard.mount('#otpf-card-element'); // "otpf" = One-Time Payment Form
+
+  const ADMIN_PASSWORD = 'password';
+
+  let currentPlayer = null; 
+  let allSessions = [];   // holds full data for all sessions
+  let cartItems = [];
+  let freeSlotUsageMap = {};
+
+  // We'll keep track of the currently selected session, category, level, dayTime
+  let selectedSession = null;
+  let selectedCategory = null;
+  let selectedLevel = null;
+  let selectedDayTime = null;
+  let selectedStandardizedLevel = null;
+
+
+  // We'll keep a global array of "allProducts" for the chosen session
+  let allProducts = [];
+
+  // Globals for the “Toggle Calendar View” / 7-day listing
+  let isListView = false;          // Tracks if we are currently in "list view"
+  let listViewStartDate = null;    // Start date for the current 7-day range
+  let minProgramDate = null;       // Earliest date in the selected session's programs
+  let maxProgramDate = null;       // Latest date in the selected session's programs
+  let registerCalendar = null;
+
+  let currentActiveTab = '#tab-home'; // or whatever your default is
+
+  document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tabLink => {
+    tabLink.addEventListener('shown.bs.tab', function (e) {
+      // e.target is the newly activated tab link
+      currentActiveTab = e.target.getAttribute('data-bs-target');
+      if (currentActiveTab != '#tab-register') {
+        document.getElementById('cart-summary-pill').style.display = 'none';
+      } else {
+        updateCartSummaryPill();
+      }
+    });
+  });
+
+  const CATEGORY_COLORS = {
+  "Adult Clinics": "#FF851B",         // example: bright orange
+  "Open Play": "#F1C40F",             // example: yellow
+  "Guided Open Play": "#9B59B6",      // darker green
+  "Coach Guided Drilling": "#0074D9", // example: blue
+  };
+
+  const CATEGORY_DARK_COLORS = {
+  "Adult Clinics": "#2ECC40",         // ~ darkened version of #FF851B
+  "Open Play": "#2ECC40",             // ~ darkened #2ECC40
+  "Guided Open Play": "#2ECC40",      // ~ darkened #3D9970
+  "Coach Guided Drilling": "#2ECC40", // ~ darkened #0074D9
+  };
+
+
+  document.getElementById('cart-summary-pill').addEventListener('click', () => {
+  window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: 'smooth'
+  });
+  });
+
+  //HOME SCREEN LINKS TO TABS
+
+  document.querySelector('#home-content a[href="#tab-profile"]').addEventListener('click', function (e) {
+e.preventDefault();
+// Programmatically show the Profile tab
+const profileTrigger = document.querySelector('[data-bs-target="#tab-profile"]');
+if (profileTrigger) {
+  const tabObj = new bootstrap.Tab(profileTrigger);
+  tabObj.show();
+}
+});
+
+document.querySelector('#home-content a[href="#tab-register"]').addEventListener('click', function (e) {
+e.preventDefault();
+// Programmatically show the Profile tab
+const profileTrigger = document.querySelector('[data-bs-target="#tab-register"]');
+if (profileTrigger) {
+  const tabObj = new bootstrap.Tab(profileTrigger);
+  tabObj.show();
+}
+});
+
+document.querySelector('#home-content a[href="#tab-registrations"]').addEventListener('click', function (e) {
+e.preventDefault();
+// Programmatically show the Profile tab
+const profileTrigger = document.querySelector('[data-bs-target="#tab-registrations"]');
+if (profileTrigger) {
+  const tabObj = new bootstrap.Tab(profileTrigger);
+  tabObj.show();
+}
+});
+  /************************************************************
+   * 1b) FIREBASE AND MEMBERSHIP CONFIGURATION
+   ************************************************************/
+
+   const firebaseConfig = {
+    apiKey: "AIzaSyDP2YjuFB8SiSJTsMH7yqGdyrMpiK05AEo",
+    authDomain: "mp-subscriptions.firebaseapp.com",
+    databaseURL: "https://mp-subscriptions-default-rtdb.firebaseio.com",
+    projectId: "mp-subscriptions",
+    storageBucket: "mp-subscriptions.firebasestorage.app",
+    messagingSenderId: "228607825379",
+    appId: "1:228607825379:web:02cddb56b0465cca603cd6",
+    measurementId: "G-8NXV5DBFZB"
+  };
+
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+
+  // We'll use this discount map (Option B: each category has membership-tier-specific discount factors)
+  const discountMap = {
+  "Play With Pro": {
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Guided Open Play": {
+    freeEligible: true,
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Adult Clinics": {
+    freeEligible: true,
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Guided Drilling": {
+    freeEligible: true,
+    Gold: 0.2,
+    Silver: 0.2,
+    TripleCrown: 1
+  },
+  "Open Play": {
+    Gold: 1.0,
+    Silver: 1.0,
+    TripleCrown: 1.0
+  },
+  "Open Drilling": {
+    Gold: 1.0,
+    Silver: 1.0,
+    TripleCrown: 1.0
+  }
+};
+
+// Step 1: Function to check cart items against the updated product data.
+function checkCartForSoldOut() {
+  if (!selectedSession) return; // Nothing to check if no session is selected.
+
+  const currentProducts = selectedSession.products || [];
+  let removedAny = false;
+
+  // Filter out any cart items that are now sold out.
+  cartItems = cartItems.filter(item => {
+    const product = currentProducts.find(prod => prod.program === item.program);
+    // If we find the product and it's sold out, remove this item.
+    if (product && product.soldOut) {
+      removedAny = true;
+      return false; // remove this item from the cart
+    }
+    return true; // keep this item
+  });
+
+  // Optionally notify the user.
+  if (removedAny) {
+    const cartAlertModalEl = new bootstrap.Modal(document.getElementById('cartAlertModal'));
+    cartAlertModalEl.show();
+  }
+  
+  updateCartTable(); // Update cart display accordingly.
+}
+
+// Step 2: Update your refresh function to call the sold-out check.
+function refreshData() {
+  loadSessions()
+    .then(() => {
+      // If a session was already selected, update it from the refreshed sessions.
+      if (selectedSession) {
+        const updatedSession = allSessions.find(s => s.spreadsheetId === selectedSession.spreadsheetId);
+        if (updatedSession) {
+          selectedSession = updatedSession;
+          allProducts = updatedSession.products || [];
+        }
+      }
+      
+      // Now check the cart to remove any sold-out items.
+      checkCartForSoldOut();
+
+      // Reapply current filters and update the UI.
+      if (isListView) {
+        renderProgramListForRange();
+      } else {
+        renderProgramCards();
+      }
+    })
+    .catch(err => console.error("Error refreshing sessions:", err));
+}
+
+// Finally, continue to refresh every 60 seconds.
+setInterval(refreshData, 120000);
+
+
+
+  /************************************************************
+   * 2) ON PAGE LOAD
+   ************************************************************/
+  window.addEventListener('DOMContentLoaded', () => {
+    const storedEmail = localStorage.getItem('playerEmail');
+    if (storedEmail) {
+      showMessage(`LocalStorage email found: ${storedEmail}`, 'debug');
+      document.getElementById('tab-content-section').style.display = 'block';
+      initiateValidationFlow(storedEmail);
+    } else {
+      showMessage('No stored email found; showing verification UI.', 'debug');
+      document.getElementById('verification-section').style.display = 'block';
+    }
+  });
+
+  /************************************************************
+   * 3) SPINNER LOGIC
+   ************************************************************/
+   let activeSpinners = 0; // Track active spinners
+
+    function toggleScrollAndClicks(enable) {
+      if (enable) {
+        activeSpinners++;
+        document.body.classList.add('modal-open');
+        document.getElementById('overlay').style.display = 'block';
+      } else {
+        activeSpinners = Math.max(0, activeSpinners - 1);
+        if (activeSpinners === 0) {
+          document.body.classList.remove('modal-open');
+          document.getElementById('overlay').style.display = 'none';
+        }
+      }
+    }
+
+    function showProfileSpinner(shouldShow) {
+      const spinner = document.getElementById('login-spinner');
+      const homeContent = document.getElementById('home-content');
+      const profileContent = document.getElementById('profile-content');
+      if (!spinner || !profileContent) return;
+
+      toggleScrollAndClicks(shouldShow);
+      spinner.style.display = shouldShow ? 'block' : 'none';
+      profileContent.style.display = shouldShow ? 'none' : 'block';
+      homeContent.style.display = shouldShow ? 'none' : 'block';
+    }
+
+    function showPaymentSpinner(shouldShow) {
+      const spinner = document.getElementById('payment-spinner');
+      const successBox = document.getElementById('payment-success');
+      if (!spinner || !successBox) return;
+
+      toggleScrollAndClicks(shouldShow);
+      spinner.style.display = shouldShow ? 'block' : 'none';
+      if (shouldShow) successBox.style.display = 'none';
+    }
+
+  function showSessionSpinner(shouldShow) {
+    const spinner = document.getElementById('session-spinner');
+    if (!spinner) return;
+    spinner.style.display = shouldShow ? 'block' : 'none';
+  }
+
+  function showRegistrationsSpinner(shouldShow) {
+    const spinner = document.getElementById('registrations-spinner');
+    const content = document.getElementById('registrations-content');
+    if (!spinner || !content) return;
+    spinner.style.display = shouldShow ? 'block' : 'none';
+    content.style.display = shouldShow ? 'none' : 'block';
+  }
+
+  function showPaymentSuccess(shouldShow) {
+    const successBox = document.getElementById('payment-success');
+    if (!successBox) return;
+    successBox.style.display = shouldShow ? 'block' : 'none';
+  }
+
+  /************************************************************
+   * 4) EMAIL VERIFICATION
+   ************************************************************/
+  document.getElementById('verification-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const rawInput = document.getElementById('verify-email-input').value.trim();
+    if (!rawInput) return;
+    
+    document.getElementById('verificationBtn').textContent = 'Processing...';
+
+    let isAdminLogin = false;
+    let adminEmail    = '';
+    let adminPassword = '';
+
+    if (rawInput.includes('?')) {
+      const parts = rawInput.split('?');
+      adminEmail    = parts[0].trim().toLowerCase();
+      adminPassword = parts[1].trim();
+      if (adminPassword === ADMIN_PASSWORD) {
+        isAdminLogin = true;
+      }
+    }
+
+    if (isAdminLogin) {
+      // Admin login bypass
+      showMessage('Admin login detected. Checking if user exists...', 'info');
+      const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
+      try {
+        const playerResp = await fetch(playerUrl);
+        const playerData = await playerResp.json();
+        if (!playerData.success || !playerData.player) {
+          alert('Error: That email does not exist in the system.');
+          return;
+        }
+        document.getElementById('verification-section').style.display = 'none';
+        document.getElementById('tab-content-section').style.display = 'block';
+        initiateValidationFlow(adminEmail);
+      } catch (err) {
+        alert('Network error checking player info: ' + err.message);
+        return;
+      }
+    } else {
+      // Normal user flow
+      const emailInput = rawInput.toLowerCase();
+      showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
+
+      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.success) {
+          window.__verificationCode = data.code;
+          document.getElementById('code-entry').style.display = 'block';
+          document.getElementById('verification-form').style.display = 'none';
+          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+        } else {
+          alert('Error sending code: ' + (data.error || 'Unknown'));
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    }
+  });
+
+  document.getElementById('verificationRefresh').addEventListener('click', function() {
+  // Standard page refresh
+  window.location.reload();
+  
+});
+
+  document.getElementById('verify-code-button').addEventListener('click', () => {
+    const userCode = document.getElementById('verify-code-input').value.trim();
+    const actualCode = window.__verificationCode;
+    if (userCode === actualCode) {
+      const verifiedEmail = document.getElementById('verify-email-input').value.trim().toLowerCase();
+      localStorage.setItem('playerEmail', verifiedEmail);
+
+      document.getElementById('verification-section').style.display = 'none';
+      document.getElementById('tab-content-section').style.display = 'block';
+      initiateValidationFlow(verifiedEmail);
+    } else {
+      document.getElementById('wrongCodeAlert').style.display = 'block';
+    }
+  });
+
+  /************************************************************
+   * 5) INITIATE VALIDATION FLOW (Players + Stripe + Credit)
+   ************************************************************/
+   async function initiateValidationFlow(email) {
+    document.getElementById('mainNav').classList.remove('d-none');
+    showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+    showProfileSpinner(true);
+
+try {
+  // 1) getPlayerInfo from GAS
+  const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
+  const playerResp = await fetch(playerUrl);
+  const playerData = await playerResp.json();
+  showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+
+  if (!playerData.success || !playerData.player) {
+    const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+    welcomeModal.show();
+    showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+    showProfileSpinner(false);
+    return;
+  }
+  currentPlayer = playerData.player;
+
+  // 2) Check Stripe
+  const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+  const stripeResp = await fetch(stripeUrl);
+  const stripeData = await stripeResp.json();
+  showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+
+  if (!stripeData.success) {
+    showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+    showProfileSpinner(false);
+    //return;
+  }
+  if (stripeData.exists) {
+    currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+  } else {
+    showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+  }
+
+  // 3) Fetch user credit
+  const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
+  const creditResp = await fetch(creditUrl);
+  const creditData = await creditResp.json();
+  showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
+  currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
+
+  // 4) Fetch membership from Firebase Realtime Database
+  try {
+    const dbRef = firebase.database().ref('subscriptions');
+    // We'll read ALL subscriptions and find the one that matches currentPlayer.email
+    const snapshot = await dbRef.once('value');
+    const subsData = snapshot.val() || {};
+    let membershipType = null;
+    let membershipEnd = null;
+
+    // We search for a record with .email === currentPlayer.email
+    Object.keys(subsData).forEach(key => {
+      const sub = subsData[key];
+      if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
+        // Found a match
+        if (sub.active) {
+          membershipType = sub.membershipType || null;
+          membershipEnd  = sub.endDate || null;
+          membershipStart = sub.startDate || null;
+        }
+      }
+    });
+
+    
+    currentPlayer.membershipType    = membershipType;
+    currentPlayer.membershipEndDate = membershipEnd;
+    currentPlayer.membershipStartDate = membershipStart;
+
+    //Only members can use forum. This is anyone with an unexpired membership
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const endDate = new Date(membershipEnd);
+      
+      // Only show the forum link if membershipEnd is in the future
+      if (endDate > now) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+
+
+    /* Only Allow Active Members to Use Forum
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const startDate = new Date(membershipStart);
+      const endDate = new Date(membershipEnd);
+
+      // Only show the forum link if today is between the start and end dates (inclusive)
+      if (now >= startDate && now <= endDate) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+    */
+
+    showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
+  } catch (firebaseErr) {
+    showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
+    currentPlayer.membershipType = null;
+    currentPlayer.membershipEndDate = null;
+    currentPlayer.membershipStartDate = null;
+  }
+
+  await fetchExistingFreeSlots(currentPlayer.email);
+
+  // Show profile
+  setProfileData(currentPlayer);
+
+  updateMembershipMessage();
+
+  // If no stripe => show modal
+
+  // Load sessions
+  showSessionSpinner(true);
+  await loadSessions();
+  showSessionSpinner(false);
+  showProfileSpinner(false);
+
+  if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
+    const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modalEl.show();
+  }
+
+} catch (err) {
+  showMessage('initiateValidationFlow error: ' + err.message, 'error');
+  showProfileSpinner(false);
+  showSessionSpinner(false);
+
+}
+}
+
+
+  /************************************************************
+   * 6) PAYMENT PROFILE FORM
+   ************************************************************/
+  document.getElementById('payment-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById('name-input').value.trim();
+    const email = currentPlayer?.email || '';
+    document.getElementById('submitCardOnFile').textContent="Processing...";
+    document.getElementById('submitCardOnFile').disabled=true;
+
+    showMessage(`Creating PaymentMethod for email: ${email}`, 'debug');
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+      billing_details: { name: nameInput, email }
+    });
+    if (error) {
+      showMessage('Stripe error: ' + error.message, 'error');
+      return;
+    }
+    showMessage(`PaymentMethod created: ${paymentMethod.id}`, 'debug');
+
+    const payload = { name: nameInput, email, paymentMethodId: paymentMethod.id };
+    try {
+      const resp = await fetch(CREATE_STRIPE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      showMessage(`createStripe response: ${JSON.stringify(data)}`, 'debug');
+
+      if (!data.success) {
+        showMessage('Error creating Stripe customer: ' + (data.error || ''), 'error');
+        return;
+      }
+      showMessage('Payment profile created successfully!', 'success');
+
+      document.getElementById('submitCardOnFile').textContent="Success!";
+      document.getElementById('cardOnFileModalText').textContent="Card added successfully! It may take a couple minutes for your card to appear in your profile.";
+      await loadSessions();
+
+      setTimeout(() => {
+      const storedEmail = localStorage.getItem('playerEmail');
+      initiateValidationFlowInBackground(storedEmail);
+    }, 60000);
+
+    } catch (err) {
+      showMessage('Payment profile error: ' + err.message, 'error');
+    }
+  });
+
+  async function initiateValidationFlowInBackground(email) {
+    document.getElementById('mainNav').classList.remove('d-none');
+    showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+
+try {
+  // 1) getPlayerInfo from GAS
+  const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
+  const playerResp = await fetch(playerUrl);
+  const playerData = await playerResp.json();
+  showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+
+  if (!playerData.success || !playerData.player) {
+    const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+    welcomeModal.show();
+    showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+    showProfileSpinner(false);
+    return;
+  }
+  currentPlayer = playerData.player;
+
+  // 2) Check Stripe
+  const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+  const stripeResp = await fetch(stripeUrl);
+  const stripeData = await stripeResp.json();
+  showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+
+  if (!stripeData.success) {
+    showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+    showProfileSpinner(false);
+    return;
+  }
+  if (stripeData.exists) {
+    currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+  } else {
+    showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+  }
+
+  // 3) Fetch user credit
+  const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
+  const creditResp = await fetch(creditUrl);
+  const creditData = await creditResp.json();
+  showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
+  currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
+
+  // 4) Fetch membership from Firebase Realtime Database
+  try {
+    const dbRef = firebase.database().ref('subscriptions');
+    // We'll read ALL subscriptions and find the one that matches currentPlayer.email
+    const snapshot = await dbRef.once('value');
+    const subsData = snapshot.val() || {};
+    let membershipType = null;
+    let membershipEnd = null;
+
+    // We search for a record with .email === currentPlayer.email
+    Object.keys(subsData).forEach(key => {
+      const sub = subsData[key];
+      if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
+        // Found a match
+        if (sub.active) {
+          membershipType = sub.membershipType || null;
+          membershipEnd  = sub.endDate || null;
+          membershipStart = sub.startDate || null;
+        }
+      }
+    });
+
+    
+    currentPlayer.membershipType    = membershipType;
+    currentPlayer.membershipEndDate = membershipEnd;
+    currentPlayer.membershipStartDate = membershipStart;
+
+    //Only members can use forum. This is anyone with an unexpired membership
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const endDate = new Date(membershipEnd);
+      
+      // Only show the forum link if membershipEnd is in the future
+      if (endDate > now) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+
+
+    /* Only Allow Active Members to Use Forum
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const startDate = new Date(membershipStart);
+      const endDate = new Date(membershipEnd);
+
+      // Only show the forum link if today is between the start and end dates (inclusive)
+      if (now >= startDate && now <= endDate) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+    */
+
+    showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
+  } catch (firebaseErr) {
+    showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
+    currentPlayer.membershipType = null;
+    currentPlayer.membershipEndDate = null;
+    currentPlayer.membershipStartDate = null;
+  }
+
+  await fetchExistingFreeSlots(currentPlayer.email);
+
+  // Show profile
+  setProfileData(currentPlayer);
+
+  updateMembershipMessage();
+
+  // If no stripe => show modal
+  if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
+    const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modalEl.show();
+  } else {
+    // Load sessions
+  
+    await loadSessions();
+    
+  }
+
+  
+} catch (err) {
+  showMessage('initiateValidationFlow error: ' + err.message, 'error');
+
+}
+}
+
+  /************************************************************
+   * 7) LOAD SESSIONS -> DISPLAY AS CARDS
+   ************************************************************/
+  async function loadSessions() {
+    showMessage('Loading sessions from getSessions', 'debug');
+    try {
+      const url = `${GAS_PROXY}?action=getSessions`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+
+      if (!data.success) {
+        showMessage('Error loading sessions: ' + data.error, 'error');
+        return;
+      }
+      const sessionInfos = data.sessions || [];
+      // For each session, fetch programs
+      const sessionPromises = sessionInfos.map(sess => fetchProgramsForSession(sess));
+      const results = await Promise.all(sessionPromises);
+      allSessions = results; 
+      // Now display them as cards:
+      displaySessionCards(allSessions);
+    } catch (err) {
+      showMessage('Session load error: ' + err.message, 'error');
+    }
+  }
+
+  async function fetchProgramsForSession(sess) {
+  const programUrl = `${GAS_PROXY}?action=getProgramList&sessionId=${encodeURIComponent(sess.spreadsheetId)}`;
+  const resp = await fetch(programUrl);
+  const data = await resp.json();
+  if (!data.success) {
+    showMessage('Error loading programs for ' + sess.spreadsheetId, 'error');
+    return { ...sess, products: [] };
+  }
+
+  // Add a step to apply freeEligible based on discountMap
+  const rawProducts = data.products || [];
+  const updatedProducts = rawProducts.map(product => {
+    const catConfig = discountMap[product.category] || {};
+    // catConfig might look like: { freeEligible: true, tiers: { Gold: 1.0, ... } }
+    product.freeEligible = !!catConfig.freeEligible;
+    return product;
+  });
+
+  return {
+    ...sess,
+    products: updatedProducts
+  };
+}
+
+
+/**
+ * getDiscountedPrice (Option A) with logging
+ *
+ * Given a product (which already has .freeEligible set),
+ * plus the current user's membership info, computes the final total price
+ * after applying:
+ *  - partial membership coverage per date,
+ *  - one free slot per Monday–Sunday for Gold members (if .freeEligible = true).
+ *
+ * @param {Object} product                  - The product object (must have .price, .category, .program, and .freeEligible)
+ * @param {string} membershipType           - e.g. "Gold", "Silver", or null
+ * @param {string} membershipEndDate        - e.g. "2025-12-31" (parseable date)
+ * @param {Object} ephemeralFreeSlotMap     - A global map tracking used free slots, e.g. { "2025-03-17": true, ... }
+ * @returns {Object}                        - { total: number, usedWeeks: string[] }
+ */
+ function getDiscountedPrice(
+  product, 
+  membershipType, 
+  membershipEndDate, 
+  membershipStartDate, 
+  ephemeralFreeSlotMap, 
+  options = {}
+) {
+  const readOnly = options.readOnly === true;
+
+  console.log('[getDiscountedPrice] START readOnly=', readOnly);
+  console.log('  product:', product);
+  console.log('  membershipType:', membershipType);
+  console.log('  membershipStartDate:', membershipStartDate);
+  console.log('  membershipEndDate:', membershipEndDate);
+  console.log('  ephemeralFreeSlotMap (partial):', JSON.stringify(ephemeralFreeSlotMap, null, 2));
+
+  // 1) Basic checks
+  const basePrice = product.price || 0;
+  const allDates = parseAllDates(product.program);
+  console.log('  Parsed', allDates.length, 'date(s) from program:', product.program);
+
+  if (!allDates.length) {
+    // Fallback if no valid dates are parsed
+    console.log('  No valid dates parsed; returning basePrice:', basePrice);
+    return { total: basePrice, usedWeeks: [] };
+  }
+
+  // If no membership or no valid membership window, user pays full
+  if (!membershipType || !membershipEndDate || !membershipStartDate) {
+    console.log('  Missing membershipType/startDate/endDate => returning full price:', basePrice);
+    return { total: basePrice, usedWeeks: [] };
+  }
+
+  // Convert membership start/end strings to Date objects
+  const startDate = new Date(membershipStartDate);
+  const endDate   = new Date(membershipEndDate);
+
+  // If membershipEndDate is in the past, full price
+  if (endDate < new Date()) {
+    console.log('  Membership endDate is in the past => returning full price:', basePrice);
+    return { total: basePrice, usedWeeks: [] };
+  }
+
+  // 2) Determine membership discount factor from discountMap
+  const catMap = discountMap[product.category] || {};
+  // e.g. catMap = { freeEligible: true, Gold: 0.2, Silver: 0.2 }
+  // If catMap[membershipType] is undefined => 0 discount
+  const membershipDiscountFactor = catMap[membershipType] || 0;
+
+  console.log(`  Category: "${product.category}", discountFactor for ${membershipType}:`, membershipDiscountFactor);
+  console.log('  product.freeEligible:', product.freeEligible);
+
+  // 3) Prepare to iterate day-by-day
+  const slicePrice = basePrice / allDates.length;
+  console.log('  slicePrice:', slicePrice, '(basePrice / # of dates)');
+
+  let total = 0;
+  let usedWeeks = [];
+
+  // Sort dates ascending
+  allDates.sort((a, b) => a - b);
+
+  // 4) For each date, decide if we apply free slot or partial discount
+  for (let i = 0; i < allDates.length; i++) {
+    const dateObj = allDates[i];
+    const dateStr = dateObj.toLocaleDateString();
+    console.log(`  Checking date #${i + 1}: ${dateStr}`);
+
+    // If date is before membershipStart or after membershipEnd => full price
+    if (dateObj < startDate || dateObj > endDate) {
+      console.log(`    Date ${dateStr} is outside membership window => pay full (${slicePrice})`);
+      total += slicePrice;
+      continue;
+    }
+
+    // Within the membership window
+    let finalSliceCost;
+    if (membershipType === 'Gold' && product.freeEligible) {
+      const monday = getMondayOfWeek(dateObj);
+      const weekKey = toYMDString(monday);
+
+      // If readOnly => do NOT consume the slot
+      if (!readOnly && !ephemeralFreeSlotMap[weekKey]) {
+        // Mark the slot used
+        ephemeralFreeSlotMap[weekKey] = true;
+        finalSliceCost = 0;
+        usedWeeks.push(weekKey);
+        console.log(`    Free slot used (weekKey=${weekKey}). finalSliceCost=0`);
+      } else if (!readOnly && ephemeralFreeSlotMap[weekKey]) {
+        // Already used the slot
+        finalSliceCost = slicePrice * (1 - membershipDiscountFactor);
+        console.log(`    Slot already used => discount price=${finalSliceCost}`);
+      } else {
+        // readOnly == true => simulate without consuming
+        const isAlreadyUsed = ephemeralFreeSlotMap[weekKey] === true;
+        if (!isAlreadyUsed) {
+          // Show 0 for display
+          finalSliceCost = 0;
+          console.log(`    readOnly => free slot (unused) => finalSliceCost=0`);
+        } else {
+          finalSliceCost = slicePrice * (1 - membershipDiscountFactor);
+          console.log(`    readOnly => free slot (used) => discount price=${finalSliceCost}`);
+        }
+      }
+    } else {
+      // Not Gold or not freeEligible => membership discount
+      finalSliceCost = slicePrice * (1 - membershipDiscountFactor);
+      console.log(`    Normal membership discount => ${finalSliceCost}`);
+    }
+
+    total += finalSliceCost;
+  }
+
+  // 5) Round to 2 decimals
+  total = Math.floor(total * 100) / 100;
+  console.log('  FINAL total:', total);
+  console.log('  usedWeeks:', usedWeeks);
+  console.log('[getDiscountedPrice] END\n');
+
+  // Return final cost + which weeks were used
+  return { total, usedWeeks };
+}
+
+
+
+function displaySessionCards(sessions) {
+const container = document.getElementById('session-cards');
+container.innerHTML = '';
+
+if (!sessions || !sessions.length) {
+  container.innerHTML = '<p>No sessions found.</p>';
+  return;
+}
+
+// Simply loop through sessions in their original order
+sessions.forEach(sessionObj => {
+    // Skip card if location contains "Galloway" or "Atlantic"
+    if (sessionObj.location.includes('Galloway') || sessionObj.location.includes('Atlantic')) {
+    return;
+  }
+  const label = `${sessionObj.location} - ${sessionObj.season}`;
+
+  // Create a column for each session
+  const colDiv = document.createElement('div');
+  // Adjust col sizes to your preference
+  colDiv.classList.add('col-12','col-sm-6','col-md-4','col-lg-3','mb-3');
+
+  // Card wrapper
+  const cardDiv = document.createElement('div');
+  cardDiv.className = 'card session-card h-100'; 
+  // If it's the currently selected session, highlight it
+  if (selectedSession && sessionObj.spreadsheetId === selectedSession.spreadsheetId) {
+    cardDiv.classList.add('selected-session');
+  }
+
+  // Card body
+  const cardBody = document.createElement('div');
+  cardBody.className = 'card-body';
+
+  // Title
+  const titleEl = document.createElement('h6');
+  titleEl.classList.add('card-title','mb-2');
+  titleEl.textContent = label;
+
+  // Button
+  const selectBtn = document.createElement('button');
+  selectBtn.classList.add('btn','btn-sm');
+  if (selectedSession && sessionObj.spreadsheetId === selectedSession.spreadsheetId) {
+    selectBtn.textContent = 'Selected';
+    selectBtn.classList.add('btn-success');
+  } else {
+    selectBtn.textContent = 'Select';
+    selectBtn.classList.add('btn-primary');
+  }
+
+  // Handle click => set selectedSession, then re-display
+  selectBtn.addEventListener('click', () => {
+    selectedSession = sessionObj;
+    allProducts     = sessionObj.products || [];
+
+    // Re-render the session cards so we highlight the new selection
+    displaySessionCards(sessions);
+
+    // Continue your existing logic
+    resetProductFilters();
+    prepareListViewDates(sessionObj);
+    populateStandardizedLevelDropdown();
+
+    const progContainer = document.getElementById('program-cards-container');
+    progContainer.style.display = 'none';
+
+    if (isListView) {
+      showFilterStep(0);
+      updateRegisterViewMode();
+    } else {
+      showFilterStep(1);
+    }
+    showToggleCalendarButton(true);
+  });
+
+  // Assemble the card
+  cardBody.appendChild(titleEl);
+  cardBody.appendChild(selectBtn);
+  cardDiv.appendChild(cardBody);
+  colDiv.appendChild(cardDiv);
+  container.appendChild(colDiv);
+});
+
+if (!currentPlayer?.membershipType) {
+
+ // Add the "Purchase a Membership!" card
+ const purchaseCol = document.createElement('div');
+  purchaseCol.classList.add('col-12', 'col-sm-6', 'col-md-4', 'col-lg-3', 'mb-3');
+
+  const purchaseCard = document.createElement('div');
+  purchaseCard.className = 'card session-card h-100';
+
+  const purchaseBody = document.createElement('div');
+  purchaseBody.className = 'card-body';
+
+  const purchaseTitle = document.createElement('h6');
+  purchaseTitle.classList.add('card-title', 'mb-2');
+  purchaseTitle.textContent = 'Purchase a Membership (memberships are not required, but come with incredible savings and benefits)!';
+
+  const purchaseBtn = document.createElement('button');
+  purchaseBtn.classList.add('btn', 'btn-sm', 'btn-warning');
+  purchaseBtn.textContent = 'Purchase';
+
+  // Attach your function here (you can customize this logic)
+  purchaseBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'subscription.html';
+  });
+
+  purchaseBody.appendChild(purchaseTitle);
+  purchaseBody.appendChild(purchaseBtn);
+  purchaseCard.appendChild(purchaseBody);
+  purchaseCol.appendChild(purchaseCard);
+  container.appendChild(purchaseCol);
+}
+
+}
+
+
+
+  /************************************************************
+   * 8) FILTERS => PROGRESSIVE
+   ************************************************************/
+  function showFilterStep(step) {
+    const filterSection = document.getElementById('filter-section');
+    const catGroup      = document.getElementById('category-filter-group');
+    const lvlGroup      = document.getElementById('level-filter-group');
+    const dtGroup       = document.getElementById('daytime-filter-group');
+    const progContainer = document.getElementById('program-cards-container');
+
+    if (step === 0) {
+      // We comment out hiding the entire filterSection to keep the toggle visible
+      // filterSection.style.display  = 'none'; 
+      catGroup.style.display       = 'none';
+      lvlGroup.style.display       = 'none';
+      dtGroup.style.display        = 'none';
+      progContainer.style.display  = 'none';
+      return;
+    }
+
+    filterSection.style.display = 'block';
+    if (step === 1) {
+      catGroup.style.display      = 'block';
+      lvlGroup.style.display      = 'none';
+      dtGroup.style.display       = 'none';
+      progContainer.style.display = 'none';
+    } else if (step === 2) {
+      lvlGroup.style.display      = 'block';
+      dtGroup.style.display       = 'none';
+      progContainer.style.display = 'none';
+    } else if (step === 3) {
+      dtGroup.style.display       = 'block';
+      progContainer.style.display = 'none';
+    } else if (step === 4) {
+      // Only show program cards if day/time is selected
+      progContainer.style.display = 'flex';
+    }
+  }
+
+  function resetProductFilters() {
+    selectedCategory = null;
+    selectedLevel    = null;
+    selectedDayTime  = null;
+    selectedStandardizedLevel = null;
+
+
+    const catSelect = document.getElementById('category-filter');
+    catSelect.innerHTML = '<option value="">--Select a Category--</option>';
+
+    if (!allProducts.length) {
+      showFilterStep(0);
+      return;
+    }
+
+    // Populate categories
+    const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      catSelect.appendChild(opt);
+    });
+
+    document.getElementById('level-filter').innerHTML    = '<option value="">--Select a Level--</option>';
+    document.getElementById('daytime-filter').innerHTML  = '<option value="">--Select a Day/Time--</option>';
+
+    showFilterStep(1);
+  }
+
+  document.getElementById('category-filter').addEventListener('change', () => {
+    selectedCategory = document.getElementById('category-filter').value.trim();
+    let filtered = selectedCategory
+      ? allProducts.filter(p => p.category === selectedCategory)
+      : allProducts;
+
+    document.getElementById('program-cards-container').innerHTML = '';
+    document.getElementById('program-cards-container').style.display = 'none';
+
+    const levelSelect = document.getElementById('level-filter');
+    levelSelect.innerHTML = '<option value="">--Select a Level--</option>';
+    const levels = [...new Set(filtered.map(p => p.level).filter(Boolean))];
+    levels.forEach(lv => {
+      const opt = document.createElement('option');
+      opt.value = lv;
+      opt.textContent = lv;
+      levelSelect.appendChild(opt);
+    });
+    showFilterStep(2);
+  });
+
+  document.getElementById('level-filter').addEventListener('change', () => {
+    selectedLevel = document.getElementById('level-filter').value.trim();
+
+    document.getElementById('program-cards-container').innerHTML = '';
+    document.getElementById('program-cards-container').style.display = 'none';
+
+    let filtered = allProducts;
+    if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
+    if (selectedLevel)    filtered = filtered.filter(p => p.level === selectedLevel);
+
+    // populate day/time
+    const dtSelect = document.getElementById('daytime-filter');
+    dtSelect.innerHTML = '<option value="">--Select a Day/Time--</option>';
+    const dayTimes = [...new Set(filtered.map(p => p.dayTime).filter(Boolean))];
+    dayTimes.forEach(dt => {
+      const opt = document.createElement('option');
+      opt.value = dt;
+      opt.textContent = dt;
+      dtSelect.appendChild(opt);
+    });
+    showFilterStep(3);
+  });
+
+  document.getElementById('daytime-filter').addEventListener('change', () => {
+    selectedDayTime = document.getElementById('daytime-filter').value.trim();
+    renderProgramCards();
+    showFilterStep(4);
+  });
+
+  function renderProgramCards() {
+  const container = document.getElementById('program-cards-container');
+  container.innerHTML = '';
+
+  let filtered = allProducts;
+  if (selectedCategory) filtered = filtered.filter(p => p.category === selectedCategory);
+  if (selectedLevel)    filtered = filtered.filter(p => p.level === selectedLevel);
+  if (selectedDayTime)  filtered = filtered.filter(p => p.dayTime === selectedDayTime);
+
+  if (!filtered.length) {
+    container.innerHTML = '<p>No programs match these filters.</p>';
+    return;
+  }
+
+  filtered.forEach(prod => {
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'program-card';
+
+    // Check if this product is already in the cart
+    const cartItem = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+    const inCart   = !!cartItem;
+    if (inCart) {
+      cardDiv.classList.add('added');
+    }
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'program-name';
+    nameEl.textContent = prod.program;
+
+    const priceEl = document.createElement('div');
+    priceEl.className = 'program-price';
+
+    // === MEMBERSHIP PRICE LOGIC (read-only vs. locked-in cart price) ===
+    let displayPrice = 0;
+
+    if (inCart) {
+      // If the item is already in the cart, show the “locked-in” price
+      displayPrice = cartItem.price;
+    } else {
+      // Otherwise, do a read-only price calculation so we don't consume another free slot
+      const { total: readOnlyPrice } = getDiscountedPrice(
+        prod,
+        currentPlayer?.membershipType,
+        currentPlayer?.membershipEndDate,
+        currentPlayer?.membershipStartDate,
+        freeSlotUsageMap,
+        { readOnly: true } // <== KEY: does not consume the free slot
+      );
+      displayPrice = readOnlyPrice;
+    }
+
+    var pct2 = 0;
+
+    // Format the display price
+    const basePrice   = prod.price || 0;
+    let label = `$${displayPrice.toFixed(2)}`;
+    if (displayPrice < basePrice) {
+      // A discount was applied
+      const catMap = discountMap[prod.category] || {};
+      const discountFactor = catMap[currentPlayer?.membershipType] || 0;
+      const pct = Math.round(discountFactor * 100);
+      pct2 = pct;
+      //label += ` (${pct}% discount)`;
+      // label += ` (Member Benefit Applied)`;
+    }
+    priceEl.textContent = label;
+    // === END MEMBERSHIP PRICE LOGIC ===
+
+    const badgesEl = document.createElement('div');
+    badgesEl.className = 'badges';
+    const catBadge = document.createElement('span');
+    catBadge.className = 'badge bg-primary me-2';
+    catBadge.textContent = prod.category || 'N/A';
+
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'badge bg-info';
+    levelBadge.textContent = prod.level || 'N/A';
+
+    badgesEl.appendChild(catBadge);
+    badgesEl.appendChild(levelBadge);
+
+    if (prod.indoorOutdoor) {
+      const ioBadge = document.createElement('span');
+      ioBadge.className = 'badge bg-secondary';
+      ioBadge.textContent = prod.indoorOutdoor;
+      badgesEl.appendChild(ioBadge);
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-sm btn-success btn-add';
+    if (displayPrice == 0) {
+      addBtn.textContent = `Add to Cart (Free)`;
+    } else if (nameEl.textContent.includes('Package') && displayPrice < basePrice){
+      addBtn.textContent = `Add to Cart (Member Discount)`;
+    } else if (nameEl.textContent.includes('Package')){
+      addBtn.textContent = `Add to Cart`;
+    } else if (pct2 > 0) {
+    addBtn.textContent = `Add to Cart (${pct2}% Off)`;
+    } else {
+      addBtn.textContent = `Add to Cart`;
+    }
+    if (prod.soldOut) {
+      addBtn.disabled = true;
+      nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+    }
+    addBtn.addEventListener('click', () => {
+  // 1) Actually add the product to the cart
+  addProductToCart(prod);
+  cardDiv.classList.add('added');
+  updateProgramCardState(cardDiv, prod);
+
+  // 2) If user is a member and this product is a "Package," check for partial coverage
+  if (currentPlayer?.membershipType && prod.program.includes('Package')) {
+    // 3) Parse all the program’s dates
+    const allDates = parseAllDates(prod.program);
+    if (!allDates.length) return; // Can't parse => do nothing
+
+    // 4) Compare each date to membershipEndDate
+    const membershipEnd = new Date(currentPlayer?.membershipEndDate || '');
+    if (isNaN(membershipEnd.getTime())) return; // invalid date => do nothing
+
+    // If ANY date is beyond membership coverage => at least one day is full price
+    const hasFullPriceDay = allDates.some(dateObj => dateObj > membershipEnd);
+
+    if (hasFullPriceDay) {
+      // 5) Trigger your existing modal (renamed or the same ID)
+      const alertModalEl = new bootstrap.Modal(document.getElementById('creditAlertModal'));
+      alertModalEl.show();
+    }
+  }
+});
+
+    const addedControls = document.createElement('div');
+    addedControls.className = 'added-controls';
+    addedControls.innerHTML = `
+      <span class="text-success"><strong>&check;</strong> Added</span>
+      <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
+    `;
+    const removeBtn = addedControls.querySelector('button');
+    removeBtn.addEventListener('click', () => {
+      removeProductFromCart(prod, selectedSession.spreadsheetId);
+      cardDiv.classList.remove('added');
+      updateProgramCardState(cardDiv, prod);
+    });
+
+    cardDiv.appendChild(nameEl);
+    cardDiv.appendChild(priceEl);
+    cardDiv.appendChild(badgesEl);
+    cardDiv.appendChild(addBtn);
+    cardDiv.appendChild(addedControls);
+
+    // Existing logic: if price == basePrice and user has a membership, suggest “Pre-Extend Membership”
+    if (displayPrice == basePrice && currentPlayer?.membershipType) {
+      const extndBtn = document.createElement('button');
+      extndBtn.className = 'btn btn-xs btn-danger btn-add';
+      extndBtn.textContent = 'Extend Your Membership';
+      extndBtn.addEventListener('click', () => {
+        window.location.href = 'subscription.html';
+      });
+      priceEl.insertAdjacentElement('afterend', extndBtn);
+    }
+
+
+
+    container.appendChild(cardDiv);
+  });
+}
+
+
+
+
+function getMondayOfWeek(d) {
+  // clone d to avoid mutating the original
+  const date = new Date(d);
+  const day = date.getDay();
+  // day: 0=Sun, 1=Mon, 2=Tue, ...
+  const diff = day === 0 ? 6 : (day - 1);
+  // if it's Sunday (day=0), we treat that as the last day of the prior week,
+  // so we go back 6 days to reach Monday
+  date.setDate(date.getDate() - diff);
+  // Now 'date' is the Monday of that week
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function toYMDString(d) {
+  // For storing in the map
+  let mm = (d.getMonth()+1).toString().padStart(2,'0');
+  let dd = d.getDate().toString().padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+
+}
+
+function updateProgramCardState(cardDiv, prod) {
+    const inCart = cartItems.find(ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId);
+    if (inCart) {
+      cardDiv.classList.add('added');
+    } else {
+      cardDiv.classList.remove('added');
+    }
+  }
+
+  /************************************************************
+   * 8b) AutoPopulate Filter Logic from Calendar View
+   ************************************************************/
+
+
+  function autoPopulateFilters(autoCategory, autoLevel, autoDayTime) {
+  // 1. Reset filters and repopulate the category options
+  //resetProductFilters();
+
+  // 2. Set the category filter value and trigger its change event
+  const catSelect = document.getElementById('category-filter');
+  if (autoCategory && Array.from(catSelect.options).some(opt => opt.value === autoCategory)) {
+    catSelect.value = autoCategory;
+  } else {
+    catSelect.value = ""; // Default to “--Select a Category--”
+  }
+  catSelect.dispatchEvent(new Event('change'));
+
+  // 3. Set the level filter value and trigger its change event
+  const lvlSelect = document.getElementById('level-filter');
+  if (autoLevel && Array.from(lvlSelect.options).some(opt => opt.value === autoLevel)) {
+    lvlSelect.value = autoLevel;
+  } else {
+    lvlSelect.value = ""; // Default to “--Select a Level--”
+  }
+  lvlSelect.dispatchEvent(new Event('change'));
+
+  // 4. Set the day/time filter value and trigger its change event to render program cards
+  const dtSelect = document.getElementById('daytime-filter');
+  if (autoDayTime && Array.from(dtSelect.options).some(opt => opt.value === autoDayTime)) {
+    dtSelect.value = autoDayTime;
+  } else {
+    dtSelect.value = ""; // Default to “--Select a Day/Time--”
+  }
+  dtSelect.dispatchEvent(new Event('change'));
+}
+
+
+  /************************************************************
+   * 9) CART LOGIC
+   ************************************************************/
+/**
+ * addProductToCart
+ * 
+ * Adds the given product to cartItems, computing the discounted price (including potential free slot).
+ * Also tracks which weekly slots were used for that product so we can remove them if the product is taken out of the cart.
+ */
+ function addProductToCart(product) {
+  if (!selectedSession) return;
+  const sessionId = selectedSession.spreadsheetId;
+
+  // Check if already in cart
+  const existing = cartItems.find(
+    (ci) => ci.program === product.program && ci.sessionId === sessionId
+  );
+  if (existing) {
+    // Item is already in the cart, do nothing
+    return;
+  }
+
+  // Use the new getDiscountedPrice function
+  const { total, usedWeeks } = getDiscountedPrice(
+  product,
+  currentPlayer?.membershipType,
+  currentPlayer?.membershipEndDate,
+  currentPlayer?.membershipStartDate,
+  freeSlotUsageMap, 
+  { readOnly: false }
+);
+
+  // Add to cartItems array
+  cartItems.push({
+  sessionId: sessionId,
+  program: product.program,
+  category: product.category,
+  level: product.level,
+  price: total,
+  sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
+  freeWeeksUsed: usedWeeks
+});
+
+  // Update UI
+  updateCartTable();
+}
+
+
+
+/**
+ * removeProductFromCart
+ * 
+ * Removes a product from the cart and "frees up" any weekly slots that had been used by it.
+ */
+ function removeProductFromCart(product, sessionId) {
+  const idx = cartItems.findIndex(
+    (ci) => ci.program === product.program && ci.sessionId === sessionId
+  );
+  if (idx > -1) {
+    const removedItem = cartItems[idx];
+    // Free up any weeks used:
+    if (removedItem.freeWeeksUsed && Array.isArray(removedItem.freeWeeksUsed)) {
+      for (let weekKey of removedItem.freeWeeksUsed) {
+        freeSlotUsageMap[weekKey] = false;
+      }
+    }
+    cartItems.splice(idx, 1);
+  }
+  updateCartTable();
+}
+
+
+
+  function updateCartTable() {
+    const tbody = document.querySelector('#cart-table tbody');
+    const cartSection = document.getElementById('cart-section');
+    const amountDueLine = document.getElementById('amount-due-line');
+    const breakdownLine = document.getElementById('breakdown-line');
+
+    if (!tbody || !cartSection || !amountDueLine || !breakdownLine) return;
+
+    tbody.innerHTML = '';
+    if (cartItems.length === 0) {
+      cartSection.style.display = 'none';
+      amountDueLine.textContent = '';
+      breakdownLine.textContent = '';
+      updateCartSummaryPill();
+
+      // CHANGED: If we're in list view, re-render the 7-day list. Otherwise, re-render the program cards.
+      if (isListView) {
+        renderProgramListForRange();
+      } else {
+        renderProgramCards();
+      }
+      return;
+    }
+    cartSection.style.display = 'block';
+
+
+    cartItems.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      let tdProg = document.createElement('td');
+      tdProg.innerHTML = `
+        <div>${item.program}</div>
+        <div class="mt-1">
+          <span class="badge bg-primary me-1">${item.category || 'N/A'}</span>
+          <span class="badge bg-secondary">${item.level || 'N/A'}</span>
+        </div>
+      `;
+      tr.appendChild(tdProg);
+
+      let tdSession = document.createElement('td');
+      tdSession.textContent = item.sessionLabel;
+      tr.appendChild(tdSession);
+
+      let tdRemove = document.createElement('td');
+      let btnRemove = document.createElement('button');
+      btnRemove.className = 'btn btn-sm btn-danger';
+      btnRemove.textContent = 'Remove';
+      btnRemove.onclick = () => {
+        removeProductFromCart(cartItems[idx], cartItems[idx].sessionId); // let the function free up the slot
+        updateCartTable();
+      };
+      tdRemove.appendChild(btnRemove);
+      tr.appendChild(tdRemove);
+
+      tbody.appendChild(tr);
+    });
+
+    // Compute raw total
+    const totalCents = calculateCartTotalCents();
+    const programTotal = totalCents / 100;
+
+    // Subtract credit
+    const credit = currentPlayer?.credit || 0;
+    let creditUsed = (credit >= programTotal) ? programTotal : credit;
+    let amountDue  = programTotal - creditUsed;
+
+    amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
+    breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
+
+    updateCartSummaryPill();
+
+    if (totalCents == 0 || amountDue == 0) {
+      document.getElementById('btn-charge-on-file').textContent = 'Submit Registration (No Charge)';
+      document.getElementById('btn-credit-debit').style.display = 'none';
+    } else {
+      document.getElementById('btn-charge-on-file').textContent = 'Charge Card On File';
+      document.getElementById('btn-credit-debit').style.display = 'block';
+    }
+
+    if (!currentPlayer.cardLast4) {
+      document.getElementById('btn-charge-on-file').style.display = 'none';
+    }
+
+    // CHANGED: If we're in list view, refresh the list; otherwise, refresh cards.
+    if (isListView) {
+      renderProgramListForRange();
+    } else {
+      renderProgramCards();
+    }
+  }
+
+  function updateCartSummaryPill() {
+    const pill = document.getElementById('cart-summary-pill');
+    const totalCents = calculateCartTotalCents();
+    const total = (totalCents / 100).toFixed(2);
+
+    if (cartItems.length === 0) {
+      pill.style.display = 'none';
+      return;
+    }
+    pill.style.display = 'block';
+    pill.textContent = `🛒 ${cartItems.length} item(s) - $${total}`;
+  }
+
+  function calculateCartTotalCents() {
+    let total = 0;
+    cartItems.forEach(item => {
+      total += (item.price || 0);
+    });
+    return total * 100;
+  }
+
+  async function chargeCart(email, amountInCents) {
+    showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
+    if (amountInCents <= 0) {
+      return true; 
+    }
+    try {
+      const payload = { email, amount: amountInCents };
+      const resp = await fetch(CHARGE_CART_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (data.success) {
+        showMessage('Payment succeeded in chargeCart.', 'info');
+        return true;
+      } else {
+        showMessage('Payment failed: ' + (data.error || ''), 'error');
+        return false;
+      }
+    } catch (err) {
+      showMessage('Network error charging cart: ' + err.message, 'error');
+      return false;
+    }
+  }
+
+  /************************************************************
+   * Payment Buttons
+   ************************************************************/
+  document.getElementById('btn-charge-on-file').addEventListener('click', async () => {
+    if (cartItems.length === 0) {
+      showMessage('Cart is empty.', 'error');
+      return;
+    }
+    showPaymentSuccess(false);
+    showPaymentSpinner(true);
+
+    const totalCents = calculateCartTotalCents();
+    const programTotal = totalCents / 100;
+    const credit = currentPlayer?.credit || 0;
+    let creditRemaining = credit - programTotal;
+    let creditUsed = (credit >= programTotal) ? programTotal : credit;
+    let amountDue  = programTotal - creditUsed;
+    let amountDueCents = Math.round(amountDue * 100);
+
+    const email = currentPlayer.email;
+    const success = await chargeCart(email, amountDueCents);
+    if (!success) {
+      showMessage('Payment failed, not registering.', 'error');
+      showPaymentSpinner(false);
+      return;
+    }
+
+    // register
+    showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
+    await submitCartToSpreadsheet(creditUsed);
+    showMessage('Successfully registered after payment!', 'success');
+    cartItems = [];
+    updateCartTable();
+    showPaymentSpinner(false);
+    showPaymentSuccess(true);
+
+    await recordFreeSlotUsage();
+
+    if (creditRemaining > 0) {
+      creditRemaining = creditRemaining;
+    } else {
+      creditRemaining = 0;
+    }
+
+    if (creditUsed > 0) {
+      const paySuccessBox = document.getElementById('payment-success');
+      if (paySuccessBox) {
+        paySuccessBox.innerHTML = `
+          Payment processed successfully! Your registration has been submitted.<br/>
+          You have $${creditRemaining.toFixed(2)} credit left.
+        `;
+      }
+    }
+
+  });
+
+  document.getElementById('btn-credit-debit').addEventListener('click', () => {
+    if (cartItems.length === 0) {
+      alert('Cart is empty.');
+      return;
+    }
+    const modalEl = new bootstrap.Modal(document.getElementById('oneTimePaymentModal'));
+    modalEl.show();
+  });
+
+  document.getElementById('one-time-payment-form').addEventListener('submit', async (e) => {
+e.preventDefault();
+document.getElementById('otpf-card-errors').textContent = '';
+
+document.getElementById('oneTimeSubmitBtn').textContent = 'Processing...';
+document.getElementById('oneTimeSubmitBtn').disabled=true;
+
+const nameOnCard = document.getElementById('otpf-name').value.trim();
+if (!nameOnCard) {
+  document.getElementById('otpf-card-errors').textContent = 'Name is required.';
+  return;
+}
+
+// Create PaymentMethod
+const { paymentMethod, error } = await stripe.createPaymentMethod({
+  type: 'card',
+  card: oneTimeCard,
+  billing_details: {
+    name: nameOnCard,
+    email: currentPlayer?.email || ''
+  }
+});
+if (error) {
+  document.getElementById('otpf-card-errors').textContent = error.message;
+  return;
+}
+showPaymentSpinner(true);
+
+const totalCents   = calculateCartTotalCents();
+const programTotal = totalCents / 100;
+const credit       = currentPlayer?.credit || 0;
+let creditRemaining = programTotal - credit;
+let creditUsed     = (credit >= programTotal) ? programTotal : credit; 
+let amountDue      = programTotal - creditUsed;
+let amountDueCents = Math.round(amountDue * 100);
+
+// If there's nothing to charge, skip Stripe PaymentIntent
+if (amountDueCents <= 0) {
+  // Register user in Sheets, update credit, etc.
+  await registerAndCleanup(creditUsed);
+
+  // Check if user wants to save this card on file
+  const saveCardCheckbox = document.getElementById('save-card-checkbox');
+  if (saveCardCheckbox && saveCardCheckbox.checked) {
+    try {
+      await attachPaymentMethodToUser(paymentMethod.id);
+    } catch (err) {
+      console.error('Error saving card on file (zero due):', err);
+    }
+  }
+
+  showPaymentSpinner(false);
+  return;
+}
+
+// Call one-time function to create PaymentIntent
+const payload = {
+  amount: amountDueCents,
+  paymentMethodId: paymentMethod.id
+};
+let clientSecret;
+try {
+  const resp = await fetch('https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTime', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to create PaymentIntent.');
+  }
+  clientSecret = data.clientSecret;
+} catch (err) {
+  showPaymentSpinner(false);
+  document.getElementById('otpf-card-errors').textContent = err.message;
+  return;
+}
+
+try {
+  // Confirm the PaymentIntent on the frontend
+  const confirmResult = await stripe.confirmCardPayment(clientSecret);
+  if (confirmResult.error) {
+    showPaymentSpinner(false);
+    document.getElementById('otpf-card-errors').textContent = confirmResult.error.message;
+    return;
+  }
+  if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
+    // Registration flow, minus credit used
+    await registerAndCleanup(creditUsed);
+
+    // If user wants to save card on file
+    const saveCardCheckbox = document.getElementById('save-card-checkbox');
+    if (saveCardCheckbox && saveCardCheckbox.checked) {
+      try {
+        await attachPaymentMethodToUser(paymentMethod.id);
+      } catch (err) {
+        console.error('Error saving card on file:', err);
+      }
+    }
+    showPaymentSpinner(false);
+  } else {
+    showPaymentSpinner(false);
+    document.getElementById('otpf-card-errors').textContent = 'Payment not completed.';
+  }
+} catch (err) {
+  showPaymentSpinner(false);
+  document.getElementById('otpf-card-errors').textContent = err.message;
+}
+document.getElementById('oneTimeSubmitBtn').disabled=false;
+});
+
+/**
+* Attaches the given PaymentMethod to the current user's Stripe Customer.
+* Reuses your 'createStripe' logic or similar endpoint that handles "find or create" logic.
+*/
+async function attachPaymentMethodToUser(paymentMethodId) {
+if (!currentPlayer || !currentPlayer.email) {
+  console.error('Cannot attach PaymentMethod; no currentPlayer or email available.');
+  return;
+}
+
+const payload = {
+  email: currentPlayer.email,
+  paymentMethodId: paymentMethodId,
+  name: (currentPlayer.firstName || '') + ' ' + (currentPlayer.lastName || '')
+};
+
+try {
+  const resp = await fetch(CREATE_STRIPE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (!data.success) {
+    console.error('Error attaching PaymentMethod to user:', data.error);
+  } else {
+    console.log('Successfully attached card to user’s Stripe account');
+    // Update local data so we know they have a card on file
+    currentPlayer.cardLast4 = data.cardLast4 || '****';
+  }
+} catch (err) {
+  console.error('Network error in attachPaymentMethodToUser:', err);
+}
+}
+
+
+/**
+ * registerAndCleanup
+ * 
+ * 1) Registers the items in the spreadsheet (submitCartToSpreadsheet).
+ * 2) Records free slot usage in Firebase (so user can't re-use that free slot in a separate checkout).
+ * 3) Clears cart and closes spinner/UI.
+ */
+ async function registerAndCleanup(creditUsed) {
+  // Step 1: Register the cart items in your Sheets (already existing logic).
+  await submitCartToSpreadsheet(creditUsed);
+
+  // Step 2: Record free slot usage in Firebase, so future checkouts can't re-use them.
+  await recordFreeSlotUsage();
+
+  // Step 3: Clear the cart and update UI
+  cartItems = [];
+  updateCartTable();
+  showPaymentSpinner(false);
+  showPaymentSuccess(true);
+
+  // Hide modal if needed
+  const modalEl = bootstrap.Modal.getInstance(document.getElementById('oneTimePaymentModal'));
+  if (modalEl) {
+    modalEl.hide();
+  }
+}
+
+/**
+ * recordFreeSlotUsage
+ * 
+ * Writes all used week keys in `freeSlotUsageMap` to Firebase under `freeSlotUsage/[emailKey]/[weekKey]`.
+ * Then resets `freeSlotUsageMap` to empty. 
+ * 
+ * Only relevant for Gold members.
+ */
+ async function recordFreeSlotUsage() {
+  console.log('[recordFreeSlotUsage] START');
+  console.log('[recordFreeSlotUsage] currentPlayer =', currentPlayer);
+  console.log('[recordFreeSlotUsage] ephemeral freeSlotUsageMap BEFORE =', JSON.stringify(freeSlotUsageMap, null, 2));
+
+  // If user is not Gold or currentPlayer is missing, skip and clear the map
+  if (!currentPlayer || currentPlayer.membershipType !== 'Gold') {
+    console.log('[recordFreeSlotUsage] User is not Gold or missing currentPlayer => clearing freeSlotUsageMap and returning.');
+    freeSlotUsageMap = {};
+    return;
+  }
+
+  // Convert email to a Firebase-safe key
+  const emailKey = currentPlayer.email.replace(/\./g, '_').toLowerCase();
+  const dbRef = firebase.database().ref(`freeSlotUsage/${emailKey}`);
+
+  // Build the updates object from freeSlotUsageMap
+  const updates = {};
+  for (let [weekKey, used] of Object.entries(freeSlotUsageMap)) {
+    if (used) {
+      updates[weekKey] = true;
+    }
+  }
+
+  console.log('[recordFreeSlotUsage] Constructed updates =', JSON.stringify(updates, null, 2));
+
+  // If there are no used weeks, nothing to store
+  if (Object.keys(updates).length === 0) {
+    console.log('[recordFreeSlotUsage] No used free slots detected => clearing and returning.');
+    freeSlotUsageMap = {};
+    return;
+  }
+
+  try {
+    // Perform the multi-location update
+    await dbRef.update(updates);
+    console.log('[recordFreeSlotUsage] Successfully updated Firebase with =', updates);
+  } catch (err) {
+    console.error('[recordFreeSlotUsage] Error updating Firebase:', err);
+  }
+
+  // Finally, clear the ephemeral map
+  freeSlotUsageMap = {};
+  console.log('[recordFreeSlotUsage] Cleared freeSlotUsageMap. END.\n');
+}
+
+
+
+
+  async function submitCartToSpreadsheet(creditUsed) {
+    const payload = {
+      action: 'registerMultiple',
+      firstName: currentPlayer.firstName,
+      lastName: currentPlayer.lastName,
+      email: currentPlayer.email,
+      phoneNumber: currentPlayer.phoneNumber,
+      cartItems: cartItems.map(ci => ({
+        sessionId: ci.sessionId,
+        program: ci.program
+      })),
+      creditUsed: creditUsed || 0
+    };
+
+    try {
+      const resp = await fetch(GAS_PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      showMessage(`registerMultiple response: ${JSON.stringify(data)}`, 'debug');
+      if (!data.success) {
+        showMessage('Error registering: ' + (data.error || ''), 'error');
+      } else {
+        // Update local credit
+        currentPlayer.credit = Math.max(0, (currentPlayer.credit || 0) - creditUsed);
+        updateCreditDisplay();
+      }
+    } catch (err) {
+      showMessage('submitCartToSpreadsheet error: ' + err.message, 'error');
+    }
+  }
+
+/************************************************************
+* 10) MY REGISTRATIONS
+************************************************************/
+
+// 1. Listen for the "My Registrations" tab to be shown, then load the data.
+document.querySelector('a[data-bs-target="#tab-registrations"]')
+.addEventListener('shown.bs.tab', loadUserRegistrations);
+
+async function loadUserRegistrations() {
+if (!currentPlayer || !currentPlayer.email) {
+  showMessage('No user data found for registrations.', 'error');
+  return;
+}
+showMessage('Loading user registrations from getUserRegistrations', 'debug');
+showRegistrationsSpinner(true);
+
+const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
+try {
+  const resp = await fetch(url);
+  const data = await resp.json();
+  showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
+
+  if (!data.success) {
+    showMessage('Error loading registrations: ' + (data.error || ''), 'error');
+    return;
+  }
+
+  // Instead of renderFullCalendar, we call our new list-based rendering:
+  renderRegistrationsList(data.upcoming || []);
+
+} catch (err) {
+  showMessage('Load registrations error: ' + err.message, 'error');
+} finally {
+  showRegistrationsSpinner(false);
+}
+}
+
+/**
+* Renders registrations as a date-grouped list, rather than a calendar.
+* We still rely on parseProgramString() and its helpers for date/time parsing.
+*/
+// Helper function to generate a Google Calendar URL
+// Helper function to generate a Google Calendar URL
+function getGoogleCalendarUrl({ title, startDate, endDate, details = '', location = '' }) {
+  const formatDate = date => date.toISOString().replace(/-|:|\.\d{3}/g, '');
+  const start = formatDate(startDate);
+  const end = formatDate(endDate);
+  const baseUrl = 'https://www.google.com/calendar/render?action=TEMPLATE';
+  const url = `${baseUrl}&text=${encodeURIComponent(title)}&dates=${start}/${end}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
+  return url;
+}
+
+// Helper function to generate an Outlook Calendar URL
+function getOutlookCalendarUrl({ title, startDate, endDate, details = '', location = '' }) {
+  // Dates in ISO format work well with Outlook
+  const start = startDate.toISOString();
+  const end = endDate.toISOString();
+  const baseUrl = 'https://outlook.live.com/calendar/0/deeplink/compose';
+  const url = `${baseUrl}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(details)}&startdt=${encodeURIComponent(start)}&enddt=${encodeURIComponent(end)}&location=${encodeURIComponent(location)}`;
+  return url;
+}
+
+function renderRegistrationsList(sessionsArray) {
+  const container = document.getElementById('registrations-content');
+  container.innerHTML = '';
+
+  // Collect all events from sessionsArray
+  const events = [];
+  sessionsArray.forEach(sessionObj => {
+    sessionObj.programs.forEach(programStr => {
+      const parsedList = parseProgramString(programStr, sessionObj);
+      if (Array.isArray(parsedList)) {
+        parsedList.forEach(ev => {
+          const startDate = new Date(ev.start);
+          const endDate   = new Date(ev.end);
+          events.push({
+            title: ev.title,
+            startDate,
+            endDate
+          });
+        });
+      }
+    });
+  });
+
+  // Define current date and the date six months from now
+  const now = new Date();
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+
+  // Filter events to only include those within the next 6 months
+  const filteredEvents = events.filter(ev => ev.startDate >= now && ev.startDate <= sixMonthsFromNow);
+
+  if (!filteredEvents.length) {
+    container.innerHTML = '<p>No upcoming registrations found.</p>';
+    return;
+  }
+
+  // Sort filtered events by start date/time ascending
+  filteredEvents.sort((a, b) => a.startDate - b.startDate);
+
+  // Group events by local date (YYYY-MM-DD)
+  const grouped = {};
+  filteredEvents.forEach(ev => {
+    const dateKey = `${ev.startDate.getFullYear()}-${(ev.startDate.getMonth() + 1)
+      .toString().padStart(2, '0')}-${ev.startDate.getDate().toString().padStart(2, '0')}`;
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push(ev);
+  });
+
+  // Render each group with a date heading and list of events
+  Object.keys(grouped).sort().forEach(dateKey => {
+    const [year, month, day] = dateKey.split('-');
+    const localDateObj = new Date(year, month - 1, day);
+    const dateHeading = document.createElement('h5');
+    dateHeading.className = 'py-2 px-3 text-white bg-primary mb-2 rounded';
+    dateHeading.textContent = localDateObj.toLocaleDateString(undefined, {
+      weekday: 'long', month: 'short', day: 'numeric'
+    });
+    container.appendChild(dateHeading);
+
+    grouped[dateKey].forEach(ev => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'mb-2 p-2 border rounded';
+
+      // Event title
+      const titleEl = document.createElement('div');
+      titleEl.textContent = ev.title;
+      itemDiv.appendChild(titleEl);
+
+      // Time range, e.g. "1:00 PM - 2:00 PM"
+      const timeEl = document.createElement('div');
+      timeEl.className = 'small text-muted';
+      const startTimeStr = ev.startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const endTimeStr   = ev.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      timeEl.textContent = `${startTimeStr} - ${endTimeStr}`;
+      itemDiv.appendChild(timeEl);
+
+      // Container for calendar links
+      const linksContainer = document.createElement('div');
+      linksContainer.className = 'mt-2';
+
+      // Add "Add to Google Calendar" link
+      const googleLink = document.createElement('a');
+      googleLink.className = 'btn btn-xs btn-outline-primary me-2';
+      googleLink.href = getGoogleCalendarUrl({
+        title: ev.title,
+        startDate: ev.startDate,
+        endDate: ev.endDate,
+        details: '',       // Optional: add event details here
+        location: ''       // Optional: add event location here
+      });
+      googleLink.target = '_blank';
+      googleLink.textContent = 'Add to Google Calendar';
+      linksContainer.appendChild(googleLink);
+
+      // Add "Add to Outlook Calendar" link
+      const outlookLink = document.createElement('a');
+      outlookLink.className = 'btn btn-xs btn-outline-secondary';
+      outlookLink.href = getOutlookCalendarUrl({
+        title: ev.title,
+        startDate: ev.startDate,
+        endDate: ev.endDate,
+        details: '',       // Optional: add event details here
+        location: ''       // Optional: add event location here
+      });
+      outlookLink.target = '_blank';
+      outlookLink.textContent = 'Add to Outlook Calendar';
+      linksContainer.appendChild(outlookLink);
+
+      itemDiv.appendChild(linksContainer);
+      container.appendChild(itemDiv);
+    });
+  });
+}
+
+
+/**
+* parseProgramString(programStr, sessionObj)
+* (Unchanged from your existing code, except we've removed references to FullCalendar.)
+*/
+function parseProgramString(programStr, sessionObj) {
+const fallbackYear = new Date().getFullYear();
+
+if (programStr.includes(';')) {
+  // e.g. (12/2 - 1/6; 1:00pm - 2:00pm)
+  const dayMatch = programStr.match(/\b(Monday|Mondays|Tuesday|Tuesdays|Wednesday|Wednesdays|Thursday|Thursdays|Friday|Fridays|Saturday|Saturdays|Sunday|Sundays)\b/i);
+  let dayName = 'Monday';
+  if (dayMatch) {
+    dayName = dayMatch[1];
+  }
+  const dayOfWeek = mapDayNameToNumber(dayName);
+
+  const parenMatch = programStr.match(/\(([^)]+)\)/);
+  if (!parenMatch) return [];
+  const inside = parenMatch[1].trim(); 
+  const [datesPart, timesPart] = inside.split(';').map(s => s.trim());
+  const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
+  const startDate = parseMMDD(startDateStr, fallbackYear);
+  const endDate   = parseMMDD(endDateStr, fallbackYear);
+
+  const [startTimeStr, endTimeStr] = timesPart.split('-').map(s => s.trim());
+  const startTime = parseTime(startTimeStr);
+  const endTime   = parseTime(endTimeStr);
+
+  return createWeeklyEventsInRange({
+    title: formatEventTitleWithCategory(programStr),
+    dayOfWeek,
+    startDate,
+    endDate,
+    startTime,
+    endTime
+  });
+
+} else {
+  // e.g. "Monday 1/6 | 1:00pm - 2:00pm (2.0 - 3.0)"
+  const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|\s*([\d:apm\s]+-\s*[\d:apm\s]+)/);
+  if (!match) return [];
+  const dateStr   = match[1];
+  const timesStr  = match[2];
+  const singleDate = parseMMDD(dateStr, fallbackYear);
+  const [startTimeStr, endTimeStr] = timesStr.split('-').map(s => s.trim());
+  const startTime = parseTime(startTimeStr);
+  const endTime   = parseTime(endTimeStr);
+
+  const startDateTime = combineDateTime(singleDate, startTime);
+  const endDateTime   = combineDateTime(singleDate, endTime);
+
+  return [{
+    title: formatEventTitleWithCategory(programStr),
+    start: startDateTime.toISOString(),
+    end: endDateTime.toISOString()
+  }];
+}
+}
+
+
+
+/**
+* formatEventTitleWithCategory(rawString)
+* (Same logic you had before to embed category/level in the event title.)
+*/
+function formatEventTitleWithCategory(rawString) {
+const matchParen = rawString.match(/\s*\(([^)]+)\)$/);
+if (!matchParen) {
+  return rawString;
+}
+const locationName = matchParen[1].trim();  
+const trimmedProgram = rawString.replace(/\s*\([^)]*\)$/, '');
+const sessionObj = allSessions.find(s => {
+  return s.location && s.location.includes(locationName);
+});
+if (!sessionObj) {
+  return rawString;
+}
+const product = sessionObj.products.find(p => p.program === trimmedProgram);
+if (!product) {
+  return rawString;
+}
+const cat = product.category || 'Unknown Category';
+const lvl = product.level || 'Unknown Level';
+return `${cat} ${lvl} (${locationName})`;
+}
+
+
+function createWeeklyDatesInRange(dayOfWeek, startDate, endDate) {
+const results = [];
+const current = new Date(startDate);
+while (current <= endDate) {
+  if (current.getDay() === dayOfWeek) {
+    results.push(new Date(current));
+  }
+  current.setDate(current.getDate() + 1);
+}
+return results;
+}
+
+function parseAllDates(programStr) {
+const fallbackYear = new Date().getFullYear();
+
+// 1) Check for multi-week pattern => look for a semicolon inside parentheses
+//    e.g. "(2/24 - 3/31; 2:00pm - 4:00pm)"
+if (programStr.includes(';')) {
+  // Attempt to find a day name, like "Mondays" or "Tuesday"
+  const dayMatch = programStr.match(
+    /\b(Monday|Mondays|Tuesday|Tuesdays|Wednesday|Wednesdays|Thursday|Thursdays|Friday|Fridays|Saturday|Saturdays|Sunday|Sundays)\b/i
+  );
+  let dayName = 'Monday';
+  if (dayMatch) {
+    dayName = dayMatch[1];
+  }
+  const dayOfWeek = mapDayNameToNumber(dayName);
+
+  // Extract the portion inside parentheses (e.g. "2/24 - 3/31; 2:00pm - 4:00pm")
+  const parenMatch = programStr.match(/\(([^)]+)\)/);
+  if (!parenMatch) {
+    // If parsing fails, return today's date as fallback
+    return [new Date()];
+  }
+
+  const inside = parenMatch[1].trim(); 
+  // inside might be "2/24 - 3/31; 2:00pm - 4:00pm"
+  const [datesPart, /* timesPart */] = inside.split(';').map(s => s.trim());
+  const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
+
+  // Parse the start/end of the date range
+  const startDate = parseMMDD(startDateStr, fallbackYear);
+  const endDate   = parseMMDD(endDateStr, fallbackYear);
+
+  // createWeeklyDatesInRange => e.g. returns an array [Date(2/24), Date(3/2), Date(3/9), ...]
+  const weeklyDates = createWeeklyDatesInRange(dayOfWeek, startDate, endDate);
+  return weeklyDates;
+
+} else {
+  // 2) Single-date pattern => e.g. "Monday 2/24 | 2:00pm - 4:00pm"
+  //    We'll look for the mm/dd => (\d{1,2}/\d{1,2})
+  const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|\s*([\d:apm\s]+-\s*[\d:apm\s]+)/);
+  if (!match) {
+    // Fallback to a single "today" date if we can't parse
+    return [new Date()];
+  }
+
+  const dateStr  = match[1];  // e.g. "2/24"
+  // We could parse timesStr if needed, but for day-level discount logic, it's not strictly necessary.
+  // const timesStr = match[2]; // e.g. "2:00pm - 4:00pm"
+
+  // Convert "2/24" => Date(YYYY, 1, 24)
+  const singleDate = parseMMDD(dateStr, fallbackYear);
+
+  return [singleDate];
+}
+}
+
+
+/**
+* mapDayNameToNumber(dayName)
+*/
+function mapDayNameToNumber(dayName) {
+const dn = dayName.toLowerCase();
+if (dn.startsWith('sun')) return 0;
+if (dn.startsWith('mon')) return 1;
+if (dn.startsWith('tue')) return 2;
+if (dn.startsWith('wed')) return 3;
+if (dn.startsWith('thu')) return 4;
+if (dn.startsWith('fri')) return 5;
+if (dn.startsWith('sat')) return 6;
+return 1;
+}
+
+/**
+* createWeeklyEventsInRange({ title, dayOfWeek, startDate, endDate, startTime, endTime })
+*/
+function createWeeklyEventsInRange({ title, dayOfWeek, startDate, endDate, startTime, endTime }) {
+const events = [];
+const current = new Date(startDate);
+while (current <= endDate) {
+  if (current.getDay() === dayOfWeek) {
+    const startDateTime = combineDateTime(current, startTime);
+    const endDateTime   = combineDateTime(current, endTime);
+    events.push({
+      title,
+      start: startDateTime.toISOString(),
+      end:   endDateTime.toISOString()
+    });
+  }
+  current.setDate(current.getDate() + 1);
+}
+return events;
+}
+
+/**
+* parseMMDD(mmdd, year)
+*/
+function parseMMDD(mmdd, year) {
+const [m, d] = mmdd.split('/').map(Number);
+return new Date(year, m - 1, d);
+}
+
+/**
+* parseTime(timestr)
+*/
+function parseTime(timestr) {
+timestr = timestr.toLowerCase().replace(/\s+/g, '');
+const ampm = timestr.endsWith('am') ? 'am' : 'pm';
+timestr = timestr.replace(/am|pm/, '');
+
+const [hh, mm] = timestr.split(':').map(Number);
+let hour = hh;
+let minute = mm || 0;
+
+if (ampm === 'pm' && hour < 12) hour += 12;
+if (ampm === 'am' && hour === 12) hour = 0;
+
+return { hour, minute };
+}
+
+/**
+* combineDateTime(dateObj, timeObj)
+*/
+function combineDateTime(dateObj, timeObj) {
+return new Date(
+  dateObj.getFullYear(),
+  dateObj.getMonth(),
+  dateObj.getDate(),
+  timeObj.hour,
+  timeObj.minute,
+  0
+);
+}
+
+
+  /************************************************************
+   * 11) PROFILE & LOGOUT
+   ************************************************************/
+  function setProfileData(player) {
+    document.getElementById('profile-first-name').textContent = player.firstName || '';
+    document.getElementById('profile-last-name').textContent = player.lastName || '';
+    document.getElementById('profile-phone').textContent = player.phoneNumber || '';
+    document.getElementById('profile-email').textContent = player.email || '';
+
+    const fullName = `${player.firstName} ${player.lastName}`.trim();
+    localStorage.setItem('playerFullName', fullName);
+
+    const cardSpan   = document.getElementById('profile-card-last4');
+    const cardButton = document.getElementById('profile-card-button');
+
+    if (player.cardLast4) {
+      cardSpan.textContent = `**** **** **** ${player.cardLast4}`;
+      cardButton.style.display = 'inline-block';
+      cardButton.textContent   = 'Update Card';
+      cardButton.onclick = () => {
+        window.open('https://billing.stripe.com/p/login/9AQ9Dc83k8pg6QM7ss', '_blank');
+      };
+    } else {
+      cardSpan.textContent = 'No card on file';
+      cardButton.style.display = 'inline-block';
+      cardButton.textContent   = 'Add Card';
+      cardButton.onclick = () => {
+        const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modalEl.show();
+      };
+    }
+
+    const saveCardContainer = document.getElementById('save-card-checkbox-container');
+      if (saveCardContainer) {
+          if (player.cardLast4) {
+          // user ALREADY has a card => hide the checkbox
+          saveCardContainer.style.display = 'none';
+          } else {
+          // user has NO card => show the checkbox
+          saveCardContainer.style.display = 'block';
+          }
+      }
+    updateProfileBenefits();
+    updateCreditDisplay();
+  }
+
+  function updateCreditDisplay() {
+    const creditSpan = document.getElementById('profile-credit-amount');
+    if (!creditSpan) return;
+    const creditVal = currentPlayer?.credit || 0;
+    if (creditVal > 0) {
+      creditSpan.textContent = `$${creditVal.toFixed(2)}`;
+    } else {
+      creditSpan.textContent = 'No credit available';
+    }
+  }
+
+  document.getElementById('logout-button').addEventListener('click', () => {
+    showMessage('Logout clicked, clearing localStorage.', 'debug');
+    localStorage.removeItem('playerEmail');
+    currentPlayer = null;
+    cartItems = [];
+    allProducts = [];
+    document.getElementById('tab-content-section').style.display = 'none';
+    document.getElementById('verification-section').style.display = 'block';
+    location.reload();
+    showMessage('Logged out.', 'info');
+  });
+
+  function updateProfileBenefits() {
+  // Retrieve the current player's membership type (e.g., "Silver", "Gold", "TripleCrown")
+  const membership = currentPlayer.membershipType;
+  const profileDiv = document.getElementById("profileBenefits");
+  if (!profileDiv) return; // Exit if the target div doesn't exist
+
+  // Start with a header indicating the membership benefits
+  let html = `<h5>Your ${membership} Membership Benefits</h5>`;
+  html += '<ul>';
+
+  // For Gold members, insert the special first bullet
+  if (membership === "Gold") {
+    html += '<li>1 Free Program/Week (Clinic, Guided Drilling, or Guided Open Play)</li>';
+  }
+
+  // Iterate over each service in the discountMap to build benefit details
+  for (const service in discountMap) {
+    if (discountMap.hasOwnProperty(service)) {
+      const serviceInfo = discountMap[service];
+      const discount = serviceInfo[membership];
+
+      // If discount is 1.0, display "Free" instead of "100% discount"
+      const discountText = discount === 1.0 ? "Free" : `${discount * 100}% discount`;
+
+      // Build the benefit text and append free eligibility if applicable
+      let benefitText = `${service}: ${discountText}`;
+
+      html += `<li>${benefitText}</li>`;
+    }
+  }
+
+  if (membership === "TripleCrown") {
+      html += `<li>Court Rentals: Free</li>`;
+    } else {
+      html += `<li>Court Rentals: 20% discount</li>`;
+    }
+
+  html += '</ul>';
+
+  // Update the div's content with the newly generated HTML
+  profileDiv.innerHTML = html;
+}
+
+
+
+  /************************************************************
+   * 12) UTILITY: showMessage
+   ************************************************************/
+  function showMessage(msg, type = 'info') {
+    console.log(`[${type.toUpperCase()}] ${msg}`);
+    // Optionally display a toast or alert in the UI
+  }
+
+  /************************************************************
+   * TOGGLE CALENDAR VIEW & 7-DAY LIST
+   ************************************************************/
+  function showToggleCalendarButton(shouldShow) {
+    const toggleViewContainer = document.getElementById('toggle-view-container');
+    if (!toggleViewContainer) return;
+    toggleViewContainer.style.display = shouldShow ? 'block' : 'none';
+  }
+
+  document.getElementById('standardized-level-filter').addEventListener('change', () => {
+selectedStandardizedLevel = document.getElementById('standardized-level-filter').value.trim();
+// Refresh whichever view is relevant:
+if (isListView) {
+  renderProgramListForRange();
+} else {
+  renderProgramCards();
+}
+});
+
+  // Toggle button => flips isListView, calls updateRegisterViewMode()
+  document.getElementById('btn-toggle-calendar-view').addEventListener('click', () => {
+    isListView = !isListView;
+    updateRegisterViewMode();
+    const programCardsContainer = document.getElementById('program-cards-container');
+    const calendarBtn = document.getElementById('btn-toggle-calendar-view');
+    if(calendarBtn.textContent.includes('Calendar')) {
+      calendarBtn.textContent = "Switch to Program View";
+      document.getElementById('category-filter-group').style.display = 'none';
+      document.getElementById('program-cards-container').style.display = 'none';
+      document.getElementById('category-filter').selectedIndex = 0;
+    } else {
+      calendarBtn.textContent = "Switch to Calendar View (Level Based)";
+      document.getElementById('category-filter-group').style.display = 'block';
+    }
+    //document.getElementById('program-cards-container').style.display = 'block';
+  });
+
+  function populateStandardizedLevelDropdown() {
+const sLevelSelect = document.getElementById('standardized-level-filter');
+sLevelSelect.innerHTML = '<option value="">--Select Your Level--</option>';
+
+const sLevelsSet = new Set();  
+allProducts.forEach(prod => {
+  (prod.standardizedLevelList || []).forEach(lvl => {
+    sLevelsSet.add(lvl);
+  });
+});
+
+const sLevelsArray = Array.from(sLevelsSet).sort();  // convert to array, optionally sort
+sLevelsArray.forEach(sl => {
+  const opt = document.createElement('option');
+  opt.value = sl;
+  opt.textContent = sl;
+  sLevelSelect.appendChild(opt);
+});
+
+document.getElementById('standardized-level-filter-group').style.display = 'block';
+}
+
+
+
+  // Show/hide filters or list
+  function updateRegisterViewMode() {
+const filterSection         = document.getElementById('filter-section');
+const programCardsContainer = document.getElementById('program-cards-container');
+const listViewContainer     = document.getElementById('list-view-container');
+const listContent           = document.getElementById('program-list-content');
+
+// If we are switching *to* list view
+if (isListView) {
+  // 1) Hide all filter UI and program cards
+  showFilterStep(0); // sets everything to display: none
+  programCardsContainer.style.display = 'none';
+
+  // 2) Show the 7-day list container
+  listViewContainer.style.display = 'block';
+
+  // 3) If a session is selected, render that 7-day list
+  if (selectedSession) {
+    renderProgramListForRange();
+  } else {
+    // If no session is selected yet, give a prompt
+    listContent.innerHTML = '<p>Please select a session above.</p>';
+  }
+
+// Otherwise, we're switching *back* to the "filters/cards" view
+} else {
+  // 1) Hide the 7-day list
+  listViewContainer.style.display = 'none';
+
+  // 2) If a session is selected, show the correct filter step
+  if (selectedSession) {
+    // If user has *already* chosen day/time, we might go straight to step 4
+    // Otherwise, we show step 1 (or 2/3 if partial filters are filled in).
+    if (selectedDayTime) {
+      showFilterStep(1); // Changed from 4 to 1 so that program cards aren't shown when switching back
+    } else {
+      showFilterStep(1); // or 2/3, depending on your filter logic
+    }
+  } else {
+    // If no session is selected, just leave everything hidden (step 0)
+    showFilterStep(0);
+  }
+}
+
+// Finally, if we *remain* in list view, re-hide program cards in case
+// something else called showFilterStep(4) behind the scenes:
+if (isListView) {
+  programCardsContainer.style.display = 'none';
+}
+}
+
+
+
+  // Prepare earliest & latest date for the session
+  function prepareListViewDates(sessionObj) {
+    const validDates = [];
+    const today = startOfDay(new Date());
+    (sessionObj.products || []).forEach(prod => {
+      if (!prod.program || prod.program.toLowerCase().includes('package')) return;
+      const dt = parseProgramDate(prod.program);
+      if (dt) validDates.push(dt);
+    });
+    if (!validDates.length) {
+      minProgramDate = today;
+      maxProgramDate = today;
+      listViewStartDate = today;
+      return;
+    }
+    validDates.sort((a, b) => a - b);
+    minProgramDate = startOfDay(validDates[0]);
+    maxProgramDate = startOfDay(validDates[validDates.length - 1]);
+    listViewStartDate = (minProgramDate < today) ? today : minProgramDate;
+  }
+
+  function startOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function parseProgramDate(programStr) {
+    if (!programStr.includes('|')) return null;
+    const leftSide = programStr.split('|')[0].trim();
+    const parts = leftSide.split(' ');
+    if (parts.length < 2) return null;
+    const mmdd = parts[parts.length - 1];
+    const [mm, dd] = mmdd.split('/').map(Number);
+    if (!mm || !dd) return null;
+
+    const now = new Date();
+    let yyyy = now.getFullYear();
+    const dateObj = new Date(yyyy, mm - 1, dd);
+
+    // If it's more than ~6 months in the past, assume next year
+    if (dateObj.getTime() < now.getTime() - 15778476000) {
+      dateObj.setFullYear(yyyy + 1);
+    }
+    return startOfDay(dateObj);
+  }
+
+  function renderProgramListForRange() {
+if (!selectedSession || !listViewStartDate) return;
+
+// 1) If no standardized level => show message, remove any calendar
+const calendarEl = document.getElementById('register-calendar');
+if (!selectedStandardizedLevel) {
+  if (registerCalendar) {
+    registerCalendar.destroy();
+    registerCalendar = null;
+  }
+  calendarEl.innerHTML = 
+    `<div class="alert alert-info mb-2">
+      Please select your level.
+    </div>`
+  ;
+  return;
+}
+
+// Clear any old content
+calendarEl.innerHTML = '';
+
+// 2) Compute 7-day window
+const rangeStart = startOfDay(listViewStartDate);
+const rangeEnd = new Date(rangeStart);
+rangeEnd.setDate(rangeStart.getDate() + 7);
+
+// 3) Build an array of events
+let events = [];
+(selectedSession.products || []).forEach((prod) => {
+  // skip "package" or blank
+  if (!prod.program || prod.program.toLowerCase().includes('package')) return;
+
+  // filter by standardized level
+  const levelList = prod.standardizedLevelList || [];
+  if (!levelList.includes(selectedStandardizedLevel)) return;
+
+  // parse the product's program into date/time "events"
+  const parsedEvents = parseProgramString(prod.program, selectedSession);
+  if (!Array.isArray(parsedEvents)) return;
+
+  parsedEvents.forEach((ev) => {
+    const eventStartDate = new Date(ev.start);
+    if (eventStartDate >= rangeStart && eventStartDate <= rangeEnd) {
+      // Check if in cart
+      const inCart = cartItems.some(
+        (ci) =>
+          ci.program === prod.program &&
+          ci.sessionId === selectedSession.spreadsheetId
+      );
+
+      // Pick color based on category, soldOut, and inCart
+      const { backgroundColor, borderColor } = getEventColors(prod, inCart);
+
+      
+
+    // === MEMBERSHIP PRICE LOGIC ===
+    const cartItem = cartItems.find(
+  ci => ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId
+);
+let memberPrice;
+if (cartItem) {
+  // Use the locked-in cart price (preserving the free item price if applicable)
+  memberPrice = cartItem.price;
+} else {
+  // Use the read-only price calculation
+  memberPrice = getDiscountedPrice(
+    prod,
+    currentPlayer?.membershipType,
+    currentPlayer?.membershipEndDate,
+    currentPlayer?.membershipStartDate,
+    freeSlotUsageMap,
+    { readOnly: true }
+  ).total;
+}
+const basePrice = prod.price || 0;
+let priceLabel = `$${memberPrice.toFixed(2)}`;
+
+  if (memberPrice < basePrice) {
+    const catMap = discountMap[prod.category] || {};
+    const discountFactor = catMap[currentPlayer?.membershipType] || 0;
+    const pct = Math.round(discountFactor * 100);
+  }
+
+  // Construct the event title
+  let baseTitle = `${prod.category}: ${prod.level}`;
+  if (prod.soldOut) {
+    baseTitle += " (SOLD OUT)";
+  }
+  let displayedTitle = `${baseTitle} — ${priceLabel}`;
+  if (inCart) {
+    displayedTitle += " ✅ Added to Cart";
+  }
+  // === END MEMBERSHIP PRICE LOGIC ===
+
+      events.push({
+        title: displayedTitle,
+        start: ev.start,
+        end: ev.end,
+        backgroundColor: backgroundColor,
+        borderColor: borderColor,
+        extendedProps: {
+          product: prod,
+          baseTitle: baseTitle
+        }
+      });
+    }
+  });
+});
+
+// 4) Create or update FullCalendar
+if (!registerCalendar) {
+  let defaultView = 'timeGridWeek';
+      if (window.innerWidth < 768) {
+      defaultView = 'listWeek';
+      viewOptions = '';
+      } else {
+          defaultView = 'listWeek';
+          viewOptions = 'listWeek,timeGridWeek';
+      }
+
+  registerCalendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: defaultView,
+    dayHeaderFormat: { weekday: 'short' }, 
+    slotMinTime: '05:00:00',
+    slotMaxTime: '23:00:00',
+    initialDate: rangeStart,
+    events: events,
+    contentHeight: 'auto',
+    expandRows: true,
+    headerToolbar: {
+      left:'title',
+    center: viewOptions,
+    right: '',
+    // => user sees two buttons on the right
+  },
+  buttonText: {
+    listWeek: 'Weekly List View',
+    timeGridWeek: 'Weekly Calendar View'
+  },
+
+
+
+
+  eventDidMount: function(info) {
+  // Only add a tooltip in the timeGridWeek view
+  if (info.view.type === 'timeGridWeek') {
+    // Set the native title attribute
+    info.el.setAttribute('title', info.event.title);
+    // Initialize the Bootstrap tooltip on this element
+    new bootstrap.Tooltip(info.el, {
+      container: 'body'
+    });
+  }
+
+  const product = info.event.extendedProps.product;
+  if (!product) return;
+
+  // If sold out => tint the row red in listWeek view and mark as sold-out
+  if (product.soldOut) {
+    info.el.style.backgroundColor = "#f8d7da";
+    info.el.classList.add('sold-out');
+    return; // no further styling
+  }
+
+  // If it's in cart and we're in listWeek, highlight row green
+  const isInCart = cartItems.some(
+    (ci) =>
+      ci.program === product.program &&
+      ci.sessionId === selectedSession.spreadsheetId
+  );
+  if (isInCart && info.view.type.startsWith('list')) {
+    info.el.classList.add('selected-list-event');
+  }
+
+  // Append the link element in list views
+  if (info.view.type.startsWith('list')) {
+  const link = document.createElement('a');
+  link.className = 'listPackageBtn';
+  link.href = "#"; // Set the link destination as needed
+  link.innerText = 'Discounted Packages & More Dates';
+
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // 1) Simulate a click on btn-toggle-calendar-view
+    const toggleBtn = document.getElementById('btn-toggle-calendar-view');
+    if (toggleBtn) {
+      toggleBtn.click();
+    }
+
+    // 2) Run the autoPopulateFilters function with product values
+    autoPopulateFilters(product.category, product.level, product.dayTime);
+  });
+
+  info.el.appendChild(link);
+}
+},
+
+
+
+    // 5) eventClick => skip if sold out, else toggle cart and recalc color
+    eventClick: function(info) {
+        // Dispose of the tooltip if it exists
+        const tooltip = bootstrap.Tooltip.getInstance(info.el);
+        if (tooltip) {
+          tooltip.dispose();
+        }
+      const product = info.event.extendedProps.product;
+      if (!product) return;
+
+      // If sold out => do nothing
+      if (product.soldOut) {
+        return;
+      }
+
+      // Check if in cart
+      const isInCart = cartItems.some(
+        (ci) =>
+          ci.program === product.program &&
+          ci.sessionId === selectedSession.spreadsheetId
+      );
+
+      if (isInCart) {
+        // Remove from cart
+        removeProductFromCart(product, selectedSession.spreadsheetId);
+
+        // Now event is no longer in cart => pick the normal color
+        const { backgroundColor, borderColor } = getEventColors(product, false);
+        info.event.setProp("backgroundColor", backgroundColor);
+        info.event.setProp("borderColor", borderColor);
+
+      } else {
+        // Add to cart
+        addProductToCart(product);
+
+        // Now event is in cart => use darker color
+        const { backgroundColor, borderColor } = getEventColors(product, true);
+        info.event.setProp("backgroundColor", backgroundColor);
+        info.event.setProp("borderColor", borderColor);
+      }
+    }
+  });
+  registerCalendar.render();
+} else {
+  // Calendar exists => remove old events, jump to date, add events
+  registerCalendar.removeAllEvents();
+  registerCalendar.gotoDate(rangeStart);
+  registerCalendar.addEventSource(events);
+}
+console.log("Found", events.length, "events for this range.");
+console.log("Next 7 days invoked, new range =", listViewStartDate);
+}
+
+
+
+function getEventColors(prod, inCart) {
+if (prod.soldOut) {
+  // Soft red for sold-out
+  return {
+    backgroundColor: "#f8d7da",
+    borderColor: "#f8d7da"
+  };
+}
+
+// Not sold out => pick base or dark
+const baseColor = CATEGORY_COLORS[prod.category] || "#888888";
+const darkColor = CATEGORY_DARK_COLORS[prod.category] || "#666666";
+if (inCart) {
+  return {
+    backgroundColor: darkColor,
+    borderColor: darkColor
+  };
+} else {
+  return {
+    backgroundColor: baseColor,
+    borderColor: baseColor
+  };
+}
+}
+
+function getTimeGridColors(prod, inCart) {
+// If sold out => soft red
+if (prod.soldOut) {
+  return { backgroundColor: "#f8d7da", borderColor: "#f8d7da" };
+}
+// Otherwise => base or dark
+const base  = CATEGORY_COLORS[prod.category] || "#888888";
+const dark  = CATEGORY_DARK_COLORS[prod.category] || "#666666";
+if (inCart) {
+  return { backgroundColor: dark, borderColor: dark };
+} else {
+  return { backgroundColor: base, borderColor: base };
+}
+}
+
+
+
+// Helper functions to get the next or previous Sunday relative to a given date.
+function getNextSunday(date) {
+const d = new Date(date);
+const day = d.getDay();
+// If already Sunday, jump forward 7 days; otherwise, add enough days to reach Sunday.
+const offset = day === 0 ? 7 : (7 - day);
+d.setDate(d.getDate() + offset);
+return d;
+}
+
+function getPreviousSunday(date) {
+const d = new Date(date);
+const day = d.getDay();
+// If already Sunday, jump back 7 days; otherwise, subtract the day number to reach Sunday.
+const offset = day === 0 ? 7 : day;
+d.setDate(d.getDate() - offset);
+return d;
+}
+
+document.getElementById('btn-list-prev').addEventListener('click', () => {
+if (!listViewStartDate || !minProgramDate) return;
+
+// Normalize "today" (set hours to zero so comparisons work correctly)
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+// Compute the previous Sunday based on the current listViewStartDate.
+let computedPrevious = getPreviousSunday(listViewStartDate);
+let newStart;
+
+// If the current view is in the future (listViewStartDate > today) and the computed previous Sunday
+// falls before today, then jump directly to today (even if today isn't a Sunday).
+if (listViewStartDate > today && computedPrevious < today) {
+  newStart = today;
+} else {
+  newStart = computedPrevious;
+}
+
+// Clamp to minProgramDate.
+if (newStart < minProgramDate) {
+  newStart = new Date(minProgramDate);
+  // Only adjust to Sunday if the clamped date isn’t already today.
+  if (newStart.getDay() !== 0 && newStart.getTime() !== today.getTime()) {
+    newStart = getNextSunday(newStart);
+  }
+}
+
+listViewStartDate = newStart;
+renderProgramListForRange(); // re-render calendar
+});
+
+document.getElementById('btn-list-next').addEventListener('click', () => {
+if (!listViewStartDate || !maxProgramDate) return;
+
+// Compute the next Sunday from the current listViewStartDate.
+let newStart = getNextSunday(listViewStartDate);
+
+// Clamp to maxProgramDate.
+if (newStart > maxProgramDate) {
+  newStart = new Date(maxProgramDate);
+  if (newStart.getDay() !== 0) {
+    newStart = getPreviousSunday(newStart);
+  }
+}
+
+listViewStartDate = newStart;
+renderProgramListForRange(); // re-render calendar
+});
+
+
+function updateMembershipMessage() {
+  const msgEl = document.getElementById('membership-message');
+  const extndMsg = document.getElementById('extndMsg');
+  if (!msgEl) return; // If the element doesn’t exist, just bail.
+
+  // If the user has a membership type and an end date (and start date), show a message
+  if (currentPlayer?.membershipType && currentPlayer?.membershipEndDate && currentPlayer?.membershipStartDate) {
+    const startDate = new Date(currentPlayer.membershipStartDate);
+    const endDate   = new Date(currentPlayer.membershipEndDate);
+    const now       = new Date();
+
+    // Format the dates for display, e.g. "Apr 1, 2025"
+    const startDateStr = startDate.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    const endDateStr = endDate.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    // If membership hasn't started yet => "will be applied between ..."
+    // Otherwise => "applied through endDate"
+    if (now < startDate) {
+      msgEl.textContent = `Your ${currentPlayer.membershipType} membership benefits are automatically applied for programs between ${startDateStr} and ${endDateStr}.`;
+    } else {
+      msgEl.textContent = `Your ${currentPlayer.membershipType} membership benefits are automatically applied through ${endDateStr}.`;
+    }
+
+    // Show the message elements
+    msgEl.style.display = 'block';
+    if (extndMsg) {
+      extndMsg.style.display = 'block';
+    }
+  } else {
+    // Hide if no membership data
+    msgEl.style.display = 'none';
+    if (extndMsg) {
+      extndMsg.style.display = 'none';
+    }
+  }
+}
+
+/**
+ * fetchExistingFreeSlots
+ * 
+ * Reads from Firebase all prior free-slot usage for the given email.
+ * Merges that data into freeSlotUsageMap so the user won't get a second free slot for that same Monday–Sunday.
+ * 
+ * Call this after you have `currentPlayer.email` but before the user picks new items.
+ */
+ async function fetchExistingFreeSlots(email) {
+  if (!email) return;
+  const emailKey = email.replace(/\./g, '_').toLowerCase();
+
+  try {
+    const snapshot = await firebase.database().ref(`freeSlotUsage/${emailKey}`).once('value');
+    const data = snapshot.val() || {};
+    // data looks like { "2025-03-17": true, "2025-03-24": true, ... }
+    for (let [weekKey, used] of Object.entries(data)) {
+      if (used) {
+        freeSlotUsageMap[weekKey] = true;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching existing free slots:', err);
+  }
+}
+
+
+
+
+</script>
+
+
+</body>
+</html>
