@@ -1394,7 +1394,7 @@ setInterval(refreshData, 120000);
           window.__verificationCode = data.code;
           document.getElementById('code-entry').style.display = 'block';
           document.getElementById('verification-form').style.display = 'none';
-          showMessage(`(Debug) Verification code is: ${data.code}`, 'debug');
+          
         } else {
           alert('Error sending code: ' + (data.error || 'Unknown'));
         }
