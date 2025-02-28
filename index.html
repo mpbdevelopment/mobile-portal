@@ -1547,6 +1547,7 @@ try {
   await loadSessions();
   showSessionSpinner(false);
   showProfileSpinner(false);
+  uploadUserEmail();
 
   if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
     const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
@@ -1562,6 +1563,24 @@ try {
   showSessionSpinner(false);
 
 }
+}
+
+  async function uploadUserEmail() {
+  const email = localStorage.getItem("playerEmail");
+  
+  if (!email) {
+    console.log("No playerEmail found in localStorage.");
+    return;
+  }
+  
+  // Push the email to the 'users' collection in your Realtime Database
+  firebase.database().ref('users').push({ email })
+    .then(() => {
+      console.log("Email uploaded successfully!");
+    })
+    .catch((error) => {
+      console.error("Error uploading email:", error);
+    });
 }
 
 
