@@ -2952,6 +2952,7 @@ try {
 
   async function submitCartToSpreadsheet(creditUsed) {
     const partnerNameValue = document.getElementById('partner-name').value;
+    const playerMembership = currentPlayer.membershipType;
     const payload = {
       action: 'registerMultiple',
       firstName: currentPlayer.firstName,
