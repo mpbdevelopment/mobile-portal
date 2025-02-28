@@ -2967,7 +2967,8 @@ try {
       cartItemsIo: cartItems.map(ci => ({
         sessionId: ci.sessionId,
         program: ci.program + (ci.indoorOutdoor ? ' | ' + ci.indoorOutdoor : '')
-      }))
+      })),
+      membership: currentPlayer.membershipType
     };
 
     try {
