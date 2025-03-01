@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="theme-color" content="#0e2f7b" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MP Subscriptions Database Viewer</title>
+  <!-- Bootstrap 5 CSS (CDN) -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    /* Basic reset for responsiveness */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    /* Container styling */
+    .data-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .data-header {
+      background-color: #0e2f7b;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+    }
+    .data-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      background-color: #f5f5f5;
+    }
+    /* Bottom navigation bar styling */
+    .nav-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 56px;
+      padding-bottom: env(safe-area-inset-bottom);
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+    }
+    .nav-bottom .nav-link {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      color: #000;
+      cursor: pointer;
+    }
+    .nav-bottom .nav-link.active {
+      background-color: #0e2f7b;
+      color: #fff;
+      font-weight: 500;
+    }
+    /* Optional refresh button styling */
+    .refresh-btn {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="data-container">
+    <!-- Header -->
+    <div class="data-header">
+      <h4>MP Subscriptions Database Viewer</h4>
+    </div>
+    
+    <!-- Main Display Area -->
+    <div id="dataView" class="data-body">
+      <p>Select a section from the bottom navigation to view data.</p>
+    </div>
+  </div>
+  
+  <!-- Bottom Navigation -->
+  <nav class="nav nav-bottom">
+    <div id="nav-freeSlotUsage" class="nav-link active" onclick="selectSection('freeSlotUsage', this)">Free Slot Usage</div>
+    <div id="nav-subscriptions" class="nav-link" onclick="selectSection('subscriptions', this)">Subscriptions</div>
+    <div id="nav-users" class="nav-link" onclick="selectSection('users', this)">Users</div>
+  </nav>
+  
+  <!-- Optional Refresh Button -->
+  <button class="btn btn-primary refresh-btn" onclick="refreshData()">Refresh</button>
+  
+  <!-- Firebase SDKs (compat versions) -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
+  <!-- Bootstrap 5 JS (Optional for some components) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    /************************************************
+     * 1. Initialize Firebase with Your Config     *
+     ************************************************/
+    const firebaseConfig = {
+      apiKey: "AIzaSyDP2YjuFB8SiSJTsMH7yqGdyrMpiK05AEo",
+      authDomain: "mp-subscriptions.firebaseapp.com",
+      databaseURL: "https://mp-subscriptions-default-rtdb.firebaseio.com",
+      projectId: "mp-subscriptions",
+      storageBucket: "mp-subscriptions.firebasestorage.app",
+      messagingSenderId: "228607825379",
+      appId: "1:228607825379:web:02cddb56b0465cca603cd6",
+      measurementId: "G-8NXV5DBFZB"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Global variable to store the current section being viewed
+    let currentSection = "freeSlotUsage";
+
+    /**
+     * Loads data from the specified section of the database.
+     * For "users", we aggregate by email.
+     * For other sections, we render each record with editing capability.
+     */
+    function loadSection(section) {
+      const dataView = document.getElementById("dataView");
+      dataView.innerHTML = `<p>Loading ${section}...</p>`;
+      
+      db.ref(section).once("value")
+        .then((snapshot) => {
+          const data = snapshot.val();
+          if (data && typeof data === 'object') {
+            let accordionHtml = `<div class="accordion" id="accordionData">`;
+            let index = 0;
+            if (section === 'users') {
+              // For Users, aggregate by email.
+              let emailCounts = {};
+              Object.keys(data).forEach(key => {
+                const email = data[key].email || 'Unknown';
+                emailCounts[email] = (emailCounts[email] || 0) + 1;
+              });
+              Object.keys(emailCounts).forEach(email => {
+                const count = emailCounts[email];
+                accordionHtml += `
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-${index}">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}" aria-expanded="false" aria-controls="collapse-${index}">
+                        ${email}
+                      </button>
+                    </h2>
+                    <div id="collapse-${index}" class="accordion-collapse collapse" aria-labelledby="heading-${index}" data-bs-parent="#accordionData">
+                      <div class="accordion-body">
+                        <p>Count: ${count}</p>
+                      </div>
+                    </div>
+                  </div>`;
+                index++;
+              });
+            } else {
+              // For other sections, render each record with editing capability.
+              Object.keys(data).forEach(key => {
+                const record = data[key];
+                // Choose a header based on a common field if available.
+                const headerText = record.email || record.customerId || key;
+                // Build the static view (list items)
+                let listItems = '';
+                Object.keys(record).forEach(prop => {
+                  listItems += `<li class="list-group-item"><strong>${prop}:</strong> ${record[prop]}</li>`;
+                });
+                // Build the edit form fields.
+                let formFields = '';
+                Object.keys(record).forEach(prop => {
+                  if (prop === "startDate" || prop === "endDate") {
+                    // Convert to YYYY-MM-DD format if possible.
+                    let dateVal = "";
+                    try {
+                      let d = new Date(record[prop]);
+                      if(!isNaN(d)) {
+                        dateVal = d.toISOString().slice(0,10);
+                      }
+                    } catch(e) { dateVal = record[prop]; }
+                    formFields += `<div class="mb-3">
+                      <label for="${prop}-${index}" class="form-label">${prop}</label>
+                      <input type="date" class="form-control" id="${prop}-${index}" name="${prop}" value="${dateVal}">
+                    </div>`;
+                  } else if(prop === "active") {
+                    let checked = record[prop] ? "checked" : "";
+                    formFields += `<div class="mb-3 form-check">
+                      <input type="checkbox" class="form-check-input" id="${prop}-${index}" name="${prop}" ${checked}>
+                      <label class="form-check-label" for="${prop}-${index}">${prop}</label>
+                    </div>`;
+                  } else if(typeof record[prop] === "number") {
+                    formFields += `<div class="mb-3">
+                      <label for="${prop}-${index}" class="form-label">${prop}</label>
+                      <input type="number" class="form-control" id="${prop}-${index}" name="${prop}" value="${record[prop]}">
+                    </div>`;
+                  } else {
+                    formFields += `<div class="mb-3">
+                      <label for="${prop}-${index}" class="form-label">${prop}</label>
+                      <input type="text" class="form-control" id="${prop}-${index}" name="${prop}" value="${record[prop]}">
+                    </div>`;
+                  }
+                });
+                // Build the accordion item with static view and hidden edit form.
+                accordionHtml += `
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-${index}">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}" aria-expanded="false" aria-controls="collapse-${index}">
+                        ${headerText}
+                      </button>
+                    </h2>
+                    <div id="collapse-${index}" class="accordion-collapse collapse" aria-labelledby="heading-${index}" data-bs-parent="#accordionData">
+                      <div class="accordion-body">
+                        <div id="staticView-${index}">
+                          <ul class="list-group list-group-flush">
+                            ${listItems}
+                          </ul>
+                          <button class="btn btn-sm btn-secondary mt-2" onclick="editRecord('${section}', '${key}', ${index})">Edit</button>
+                        </div>
+                        <div id="editForm-${index}" style="display:none;">
+                          <form id="form-${index}">
+                            ${formFields}
+                            <input type="hidden" name="recordKey" value="${key}">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="updateRecord('${section}', '${key}', ${index})">Save</button>
+                            <button type="button" class="btn btn-sm btn-warning" onclick="cancelEdit(${index})">Cancel</button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </div>`;
+                index++;
+              });
+            }
+            accordionHtml += `</div>`;
+            dataView.innerHTML = accordionHtml;
+          } else {
+            dataView.innerHTML = `<p>No data available for ${section}.</p>`;
+          }
+        })
+        .catch((error) => {
+          console.error("Error loading data:", error);
+          dataView.innerHTML = `<p>Error loading data: ${error.message}</p>`;
+        });
+    }
+
+    /**
+     * Toggles to editing mode for a record.
+     */
+    function editRecord(section, recordKey, index) {
+      document.getElementById("staticView-" + index).style.display = "none";
+      document.getElementById("editForm-" + index).style.display = "block";
+    }
+
+    /**
+     * Cancels editing and returns to the static view.
+     */
+    function cancelEdit(index) {
+      document.getElementById("editForm-" + index).style.display = "none";
+      document.getElementById("staticView-" + index).style.display = "block";
+    }
+
+    /**
+     * Collects form data and updates the record in Firebase.
+     */
+    function updateRecord(section, recordKey, index) {
+      const form = document.getElementById("form-" + index);
+      const formData = new FormData(form);
+      let updatedData = {};
+      // Process each form field.
+      for (let pair of formData.entries()) {
+        let key = pair[0];
+        let value = pair[1];
+        if(key === "recordKey") continue;
+        if(key === "startDate" || key === "endDate") {
+          // Convert date value to ISO string.
+          const d = new Date(value);
+          updatedData[key] = !isNaN(d) ? d.toISOString() : value;
+        } else if(key === "active") {
+          // This will be handled below.
+          updatedData[key] = value;
+        } else {
+          // Convert number strings to numbers if applicable.
+          if(!isNaN(value) && value.trim() !== "") {
+            updatedData[key] = Number(value);
+          } else {
+            updatedData[key] = value;
+          }
+        }
+      }
+      // For checkboxes (active), handle separately.
+      const activeElem = document.getElementById("active-" + index);
+      if(activeElem) {
+        updatedData["active"] = activeElem.checked;
+      }
+      
+      // Update the record in Firebase.
+      db.ref(section + "/" + recordKey).update(updatedData)
+        .then(() => {
+          alert("Record updated successfully!");
+          loadSection(section);
+        })
+        .catch((error) => {
+          console.error("Error updating record:", error);
+          alert("Error updating record: " + error.message);
+        });
+    }
+
+    /**
+     * Sets the active nav link and loads the corresponding section.
+     */
+    function selectSection(section, element) {
+      currentSection = section;
+      document.querySelectorAll(".nav-bottom .nav-link").forEach(link => link.classList.remove("active"));
+      element.classList.add("active");
+      loadSection(section);
+    }
+
+    /**
+     * Refresh the current section data.
+     */
+    function refreshData() {
+      loadSection(currentSection);
+    }
+
+    // Load the default section on page load.
+    window.addEventListener("load", () => {
+      loadSection(currentSection);
+    });
+  </script>
+</body>
+</html>
