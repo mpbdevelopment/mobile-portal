@@ -2606,6 +2606,7 @@ function updateProgramCardState(cardDiv, prod) {
 
     if (totalCents == 0 || amountDue == 0) {
       document.getElementById('btn-charge-on-file').textContent = 'Submit Registration (No Charge)';
+      document.getElementById('btn-charge-on-file').style.display = 'block';
       document.getElementById('btn-credit-debit').style.display = 'none';
     } else {
       document.getElementById('btn-charge-on-file').textContent = 'Charge Card On File';
