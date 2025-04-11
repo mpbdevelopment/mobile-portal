@@ -77,7 +77,7 @@
       padding-bottom: env(safe-area-inset-bottom);
       background-color: #fff;
       border-top: 1px solid #ddd;
-      z-index: 999;
+      z-index: 1001;  /* Increase this to be higher than loading container */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -567,6 +567,172 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
   transform: rotate(0deg);
 }
 
+/* Add this to the style section */
+.nav-link .loading-indicator {
+  display: none;
+  width: 8px;
+  height: 8px;
+  background-color: #ffc107;
+  border-radius: 50%;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.nav-link.loading .loading-indicator {
+  display: block;
+}
+
+#register-tab-spinner {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 8px;
+  z-index: 1000;
+}
+
+#register-tab-error {
+  display: none;
+  text-align: center;
+  margin: 20px;
+}
+
+.loading-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 249, 250, 0.95);
+  backdrop-filter: blur(5px);
+  border-radius: 12px;
+  z-index: 1000;  /* Keep this below nav-bottom */
+  box-shadow: 0 8px 32px rgba(14, 47, 123, 0.15);
+}
+
+.loading-content {
+  text-align: center;
+  padding: 2rem;
+  border-radius: 12px;
+  background: transparent;
+  width: 100%;
+  max-width: 400px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.loading-title {
+  color: #0e2f7b;
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.loading-subtitle {
+  color: #666;
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 1.5rem 0;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background: #0e2f7b;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.pickleball-icon {
+  height: 40px;  /* Match header logo height */
+  margin-bottom: 1rem;
+  animation: bounce 2s infinite;
+}
+
+.pickleball-icon img {
+  height: 100%;
+  width: auto;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Update the register tab spinner */
+#register-tab-spinner {
+  display: none;
+}
+
+#register-tab-error {
+  display: none;
+  text-align: center;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(14, 47, 123, 0.1);
+  margin: 2rem auto;
+  max-width: 400px;
+}
+
+#register-tab-error .btn {
+  margin-top: 1rem;
+}
+
+header.text-white {
+  background-color: #0e2f7b;
+  z-index: 1001;  /* Match nav-bottom z-index */
+  position: relative;  /* Needed for z-index to work */
+}
+
+/* Add to style section */
+header {
+  position: relative;
+  z-index: 1001;
+  background-color: #0e2f7b;
+}
+
   </style>
 </head>
 <body class="bg-light">
@@ -719,8 +885,34 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
 
       <!-- REGISTER TAB -->
       <div class="tab-pane fade" id="tab-register" role="tabpanel">
-        <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
+
+                <!-- Add new spinner -->
+          <div id="register-tab-spinner" class="loading-container">
+            <div class="loading-content">
+              <div class="pickleball-icon">
+                <img src="icons/banner-logo.png" alt="Logo">
+              </div>
+              
+              <div class="loading-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+              </div>
+              <p class="loading-subtitle">Loading available sessions...</p>
+            </div>
+          </div>
           
+          <!-- Add error message container -->
+          <div id="register-tab-error" class="alert alert-warning">
+            <div class="pickleball-icon">
+              <img src="icons/banner-logo.png" alt="Logo">
+            </div>
+            <h4>Unable to Load Sessions</h4>
+            <p class="mb-3">We encountered an error while loading the available sessions. Please try again.</p>
+            <button class="btn btn-primary" onclick="retryLoadSessions()">Retry Loading</button>
+          </div>
+        <div class="bg-white p-3 rounded shadow-sm position-relative" id="register-container">
+
           <!-- Session Loading Spinner -->
           <div id="session-spinner">
             <div class="text-center">
@@ -877,6 +1069,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
       </a>
     <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-register" role="tab">
       <span class="d-block">Register</span>
+      <span class="loading-indicator"></span>
     </a>
     <a class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-registrations" role="tab">
       <span class="d-block">My Programs</span>
@@ -1072,7 +1265,7 @@ function forceRefreshIfFromSubscription() {
   // We'll keep a global array of "allProducts" for the chosen session
   let allProducts = [];
 
-  // Globals for the “Toggle Calendar View” / 7-day listing
+  // Globals for the "Toggle Calendar View" / 7-day listing
   let isListView = false;          // Tracks if we are currently in "list view"
   let listViewStartDate = null;    // Start date for the current 7-day range
   let minProgramDate = null;       // Earliest date in the selected session's programs
@@ -1454,10 +1647,8 @@ setInterval(refreshData, 120000);
     showProfileSpinner(true);
 
 try {
-  // 1) getPlayerInfo from GAS
-  const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(email)}`;
-  const playerResp = await fetch(playerUrl);
-  const playerData = await playerResp.json();
+  // 1) Get player info from Firebase instead of GAS
+  const playerData = await getPlayerInfoFromFirebase(email);
   showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
 
   if (!playerData.success || !playerData.player) {
@@ -1486,12 +1677,8 @@ try {
     showMessage('No Stripe customer found => Payment Profile needed', 'debug');
   }
 
-  // 3) Fetch user credit
-  const creditUrl = `${GET_CREDIT_URL}&email=${encodeURIComponent(email)}`;
-  const creditResp = await fetch(creditUrl);
-  const creditData = await creditResp.json();
-  showMessage(`creditData: ${JSON.stringify(creditData)}`, 'debug');
-  currentPlayer.credit = creditData.success ? (creditData.credit || 0) : 0;
+  // Remove credit fetch since it's now included in player data
+  showMessage(`Credit from Firebase: ${currentPlayer.credit}`, 'debug');
 
   // 4) Fetch membership from Firebase Realtime Database
   try {
@@ -1531,20 +1718,6 @@ try {
       }
     }
 
-
-    /* Only Allow Active Members to Use Forum
-    if (currentPlayer.membershipType) {
-      const now = new Date();
-      const startDate = new Date(membershipStart);
-      const endDate = new Date(membershipEnd);
-
-      // Only show the forum link if today is between the start and end dates (inclusive)
-      if (now >= startDate && now <= endDate) {
-        document.getElementById('home-link-forum').style.display = 'block';
-      }
-    }
-    */
-
     showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
   } catch (firebaseErr) {
     showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
@@ -1581,7 +1754,6 @@ try {
   showMessage('initiateValidationFlow error: ' + err.message, 'error');
   showProfileSpinner(false);
   showSessionSpinner(false);
-
 }
 }
 
@@ -2252,7 +2424,7 @@ if (!currentPlayer?.membershipType) {
     let displayPrice = 0;
 
     if (inCart) {
-      // If the item is already in the cart, show the “locked-in” price
+      // If the item is already in the cart, show the "locked-in" price
       displayPrice = cartItem.price;
     } else {
       // Otherwise, do a read-only price calculation so we don't consume another free slot
@@ -2329,7 +2501,7 @@ if (!currentPlayer?.membershipType) {
 
   // 2) If user is a member and this product is a "Package," check for partial coverage
   if (currentPlayer?.membershipType && prod.program.includes('Package')) {
-    // 3) Parse all the program’s dates
+    // 3) Parse all the program's dates
     const allDates = parseAllDates(prod.program);
     if (!allDates.length) return; // Can't parse => do nothing
 
@@ -2367,7 +2539,7 @@ if (!currentPlayer?.membershipType) {
     cardDiv.appendChild(addBtn);
     cardDiv.appendChild(addedControls);
 
-    // Existing logic: if price == basePrice and user has a membership, suggest “Pre-Extend Membership”
+    // Existing logic: if price == basePrice and user has a membership, suggest "Pre-Extend Membership"
     if (displayPrice == basePrice && currentPlayer?.membershipType) {
       const extndBtn = document.createElement('button');
       extndBtn.className = 'btn btn-xs btn-danger btn-add';
@@ -2431,7 +2603,7 @@ function updateProgramCardState(cardDiv, prod) {
   if (autoCategory && Array.from(catSelect.options).some(opt => opt.value === autoCategory)) {
     catSelect.value = autoCategory;
   } else {
-    catSelect.value = ""; // Default to “--Select a Category--”
+    catSelect.value = ""; // Default to "--Select a Category--"
   }
   catSelect.dispatchEvent(new Event('change'));
 
@@ -2440,7 +2612,7 @@ function updateProgramCardState(cardDiv, prod) {
   if (autoLevel && Array.from(lvlSelect.options).some(opt => opt.value === autoLevel)) {
     lvlSelect.value = autoLevel;
   } else {
-    lvlSelect.value = ""; // Default to “--Select a Level--”
+    lvlSelect.value = ""; // Default to "--Select a Level--"
   }
   lvlSelect.dispatchEvent(new Event('change'));
 
@@ -2449,7 +2621,7 @@ function updateProgramCardState(cardDiv, prod) {
   if (autoDayTime && Array.from(dtSelect.options).some(opt => opt.value === autoDayTime)) {
     dtSelect.value = autoDayTime;
   } else {
-    dtSelect.value = ""; // Default to “--Select a Day/Time--”
+    dtSelect.value = ""; // Default to "--Select a Day/Time--"
   }
   dtSelect.dispatchEvent(new Event('change'));
 }
@@ -2877,7 +3049,7 @@ try {
   if (!data.success) {
     console.error('Error attaching PaymentMethod to user:', data.error);
   } else {
-    console.log('Successfully attached card to user’s Stripe account');
+    console.log("Successfully attached card to user's Stripe account");
     // Update local data so we know they have a card on file
     currentPlayer.cardLast4 = data.cardLast4 || '****';
   }
@@ -4048,7 +4220,7 @@ if (listViewStartDate > today && computedPrevious < today) {
 // Clamp to minProgramDate.
 if (newStart < minProgramDate) {
   newStart = new Date(minProgramDate);
-  // Only adjust to Sunday if the clamped date isn’t already today.
+  // Only adjust to Sunday if the clamped date isn't already today.
   if (newStart.getDay() !== 0 && newStart.getTime() !== today.getTime()) {
     newStart = getNextSunday(newStart);
   }
@@ -4080,7 +4252,7 @@ renderProgramListForRange(); // re-render calendar
 function updateMembershipMessage() {
   const msgEl = document.getElementById('membership-message');
   const extndMsg = document.getElementById('extndMsg');
-  if (!msgEl) return; // If the element doesn’t exist, just bail.
+  if (!msgEl) return; // If the element doesn't exist, just bail.
 
   // If the user has a membership type and an end date (and start date), show a message
   if (currentPlayer?.membershipType && currentPlayer?.membershipEndDate && currentPlayer?.membershipStartDate) {
@@ -4148,8 +4320,222 @@ function updateMembershipMessage() {
   }
 }
 
+/**
+ * Fetches player info from Firebase using email
+ */
+async function getPlayerInfoFromFirebase(email) {
+    // Convert email to Firebase-safe key format - replace both . and @ with _
+    const emailKey = email.replace(/[.@]/g, '_').toLowerCase();
+    
+    try {
+        // Reference the players node and get the specific player
+        const snapshot = await firebase.database().ref(`players/${emailKey}`).once('value');
+        const playerData = snapshot.val();
+        
+        if (!playerData) {
+            return {
+                success: false,
+                error: 'Player not found'
+            };
+        }
 
+        return {
+            success: true,
+            player: {
+                firstName: playerData.firstName,
+                lastName: playerData.lastName,
+                email: playerData.email,
+                phoneNumber: playerData.phone,
+                credit: playerData.credit || 0  // Add credit from Firebase
+            }
+        };
+    } catch (err) {
+        console.error('Error fetching player from Firebase:', err);
+        return {
+            success: false,
+            error: err.message
+        };
+    }
+}
 
+// Add near the top with other state variables
+let isLoadingSessions = false;
+let sessionsLoadError = null;
+
+// Add new session management functions
+async function initializeSessionData() {
+  isLoadingSessions = true;
+  sessionsLoadError = null;
+  updateRegisterTabState();
+
+  try {
+    showMessage('Loading sessions from getSessions', 'debug');
+    const url = `${GAS_PROXY}?action=getSessions`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load sessions');
+    }
+
+    const sessionInfos = data.sessions || [];
+    const sessionPromises = sessionInfos.map(sess => fetchProgramsForSession(sess));
+    allSessions = await Promise.all(sessionPromises);
+    
+    // Now display them as cards
+    displaySessionCards(allSessions);
+    isLoadingSessions = false;
+    sessionsLoadError = null;
+  } catch (err) {
+    showMessage('Session load error: ' + err.message, 'error');
+    isLoadingSessions = false;
+    sessionsLoadError = err.message;
+  }
+  
+  updateRegisterTabState();
+}
+
+function updateRegisterTabState() {
+  const registerTab = document.querySelector('[data-bs-target="#tab-register"]');
+  const registerSpinner = document.getElementById('register-tab-spinner');
+  const registerError = document.getElementById('register-tab-error');
+  const sessionCards = document.getElementById('session-cards');
+
+  if (isLoadingSessions) {
+    registerTab.classList.add('loading');
+    registerSpinner.style.display = 'block';
+    registerError.style.display = 'none';
+    if (sessionCards) sessionCards.style.opacity = '0.5';
+  } else if (sessionsLoadError) {
+    registerTab.classList.remove('loading');
+    registerSpinner.style.display = 'none';
+    registerError.style.display = 'block';
+    if (sessionCards) sessionCards.style.opacity = '1';
+  } else {
+    registerTab.classList.remove('loading');
+    registerSpinner.style.display = 'none';
+    registerError.style.display = 'none';
+    if (sessionCards) sessionCards.style.opacity = '1';
+  }
+}
+
+async function retryLoadSessions() {
+  await initializeSessionData();
+}
+
+// Modify initiateValidationFlow to separate session loading
+async function initiateValidationFlow(email) {
+    document.getElementById('mainNav').classList.remove('d-none');
+    showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
+    showProfileSpinner(true);
+
+try {
+  // 1) Get player info from Firebase instead of GAS
+  const playerData = await getPlayerInfoFromFirebase(email);
+  showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+
+  if (!playerData.success || !playerData.player) {
+    const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+    welcomeModal.show();
+    showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+    showProfileSpinner(false);
+    return;
+  }
+  currentPlayer = playerData.player;
+
+  // 2) Check Stripe
+  const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+  const stripeResp = await fetch(stripeUrl);
+  const stripeData = await stripeResp.json();
+  showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+
+  if (!stripeData.success) {
+    showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+    showProfileSpinner(false);
+  }
+  if (stripeData.exists) {
+    currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+  } else {
+    showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+  }
+
+  // Remove credit fetch since it's now included in player data
+  showMessage(`Credit from Firebase: ${currentPlayer.credit}`, 'debug');
+
+  // 4) Fetch membership from Firebase Realtime Database
+  try {
+    const dbRef = firebase.database().ref('subscriptions');
+    // We'll read ALL subscriptions and find the one that matches currentPlayer.email
+    const snapshot = await dbRef.once('value');
+    const subsData = snapshot.val() || {};
+    let membershipType = null;
+    let membershipEnd = null;
+
+    Object.keys(subsData).forEach(key => {
+      const sub = subsData[key];
+      if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
+        if (sub.active) {
+          membershipType = sub.membershipType || null;
+          membershipEnd  = sub.endDate || null;
+          membershipStart = sub.startDate || null;
+        }
+      }
+    });
+    
+    currentPlayer.membershipType = membershipType;
+    currentPlayer.membershipEndDate = membershipEnd;
+    currentPlayer.membershipStartDate = membershipStart;
+
+    if (currentPlayer.membershipType) {
+      const now = new Date();
+      const endDate = new Date(membershipEnd);
+      if (endDate > now) {
+        document.getElementById('home-link-forum').style.display = 'block';
+      }
+    }
+
+    showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
+  } catch (firebaseErr) {
+    showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
+    currentPlayer.membershipType = null;
+    currentPlayer.membershipEndDate = null;
+    currentPlayer.membershipStartDate = null;
+  }
+
+  await fetchExistingFreeSlots(currentPlayer.email);
+
+  // Show profile and enable webapp
+  setProfileData(currentPlayer);
+  updateMembershipMessage();
+  showProfileSpinner(false);
+  uploadUserEmail();
+
+  // Start loading sessions in background
+  initializeSessionData();
+
+  if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
+    const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modalEl.show();
+  }
+  if (currentPlayer.firstName) {
+    document.getElementById('welcomeMsg').textContent = `Hey ${currentPlayer.firstName}! Welcome to our Montclair Pickelball Player Portal.`;
+  }
+  
+} catch (err) {
+  showMessage('initiateValidationFlow error: ' + err.message, 'error');
+  showProfileSpinner(false);
+}
+}
+
+// Add tab change listener to handle loading states
+document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
+  tab.addEventListener('shown.bs.tab', function (e) {
+    currentActiveTab = e.target.getAttribute('data-bs-target');
+    if (currentActiveTab === '#tab-register') {
+      updateRegisterTabState();
+    }
+  });
+});
 
 </script>
 
