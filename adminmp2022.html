@@ -11,7 +11,7 @@
     rel="stylesheet"
   />
   <style>
-    /* Basic reset for responsiveness */
+    /* Basic reset and container layout */
     html, body {
       margin: 0;
       padding: 0;
@@ -19,7 +19,6 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #f5f5f5;
     }
-    /* Container styling */
     .data-container {
       display: flex;
       flex-direction: column;
@@ -31,14 +30,24 @@
       color: #fff;
       padding: 1rem;
       text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .data-header h4 {
+      margin: 0;
+      flex: 1;
+    }
+    .data-header .btn {
+      margin: 0 0.5rem;
     }
     .data-body {
       flex: 1;
       overflow-y: auto;
-      padding: 1rem 1rem 5rem;
+      padding: 1rem;
+      padding-bottom: 5rem; /* space so last row is visible above bottom nav */
       background-color: #f5f5f5;
     }
-    /* Bottom navigation bar styling */
     .nav-bottom {
       position: fixed;
       bottom: 0;
@@ -64,85 +73,111 @@
       color: #fff;
       font-weight: 500;
     }
-    /* Optional refresh button styling */
     .refresh-btn {
       position: fixed;
       top: 1rem;
       right: 1rem;
     }
-    /* Table styling */
     table tr td, table tr th {
       vertical-align: middle;
+    }
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <div class="data-container">
-    <!-- Header -->
-    <div class="data-header">
-      <h4>MP Memberships Database Viewer</h4>
-    </div>
-
-    <!-- Main Display Area -->
-    <div id="dataView" class="data-body">
-      <p>Select a section from the bottom navigation to view data.</p>
-    </div>
+  <!-- Login Form (initially visible) -->
+  <div id="loginContainer" class="login-container">
+    <h4 class="text-center mb-4">Admin Login</h4>
+    <form id="loginForm">
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Login</button>
+    </form>
   </div>
 
-  <!-- Bottom Navigation -->
-  <nav class="nav nav-bottom">
-    <div id="nav-freeSlotUsage" class="nav-link active" onclick="selectSection('freeSlotUsage', this)">Free Slot Usage</div>
-    <!-- Notice the UI label is “Memberships” but the code references 'memberships' as the section name. -->
-    <div id="nav-memberships" class="nav-link" onclick="selectSection('memberships', this)">Memberships</div>
-    <div id="nav-users" class="nav-link" onclick="selectSection('users', this)">Users</div>
-  </nav>
+  <!-- Admin Dashboard (initially hidden) -->
+  <div id="adminDashboard" class="d-none">
+    <div class="data-container">
+      <!-- Header -->
+      <div class="data-header">
+        <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
+        <h4>MP Memberships Database Viewer</h4>
+        <div style="width: 80px;"></div> <!-- Spacer to balance the layout -->
+      </div>
 
-  <!-- Optional Refresh Button -->
-  <button class="btn btn-primary refresh-btn" onclick="refreshData()">Refresh</button>
+      <!-- Main Display Area -->
+      <div id="dataView" class="data-body">
+        <p>Select a section from the bottom navigation to view data.</p>
+      </div>
+    </div>
 
-  <!-- Bootstrap Modal for Adding New Membership -->
-  <div class="modal fade" id="addMembershipModal" tabindex="-1" aria-labelledby="addMembershipModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="addMembershipModalLabel">Add New Membership</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="addMembershipForm">
-            <div class="mb-3">
-              <label for="add-customerId" class="form-label">Customer ID</label>
-              <input type="text" class="form-control" id="add-customerId" name="customerId">
-            </div>
-            <div class="mb-3">
-              <label for="add-email" class="form-label">Email</label>
-              <input type="email" class="form-control" id="add-email" name="email">
-            </div>
-            <div class="mb-3">
-              <label for="add-membershipType" class="form-label">Membership Type</label>
-              <input type="text" class="form-control" id="add-membershipType" name="membershipType">
-            </div>
-            <div class="mb-3">
-              <label for="add-rate" class="form-label">Rate</label>
-              <input type="number" class="form-control" id="add-rate" name="rate">
-            </div>
-            <div class="mb-3">
-              <label for="add-startDate" class="form-label">Start Date</label>
-              <input type="date" class="form-control" id="add-startDate" name="startDate">
-            </div>
-            <div class="mb-3">
-              <label for="add-endDate" class="form-label">End Date</label>
-              <input type="date" class="form-control" id="add-endDate" name="endDate">
-            </div>
-            <div class="mb-3 form-check">
-              <input type="checkbox" class="form-check-input" id="add-active" name="active" checked>
-              <label class="form-check-label" for="add-active">Active</label>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" onclick="addMembership()">Add Membership</button>
+    <!-- Bottom Navigation -->
+    <nav class="nav nav-bottom">
+      <div id="nav-freeSlotUsage" class="nav-link active" onclick="selectSection('freeSlotUsage', this)">Free Slot Usage</div>
+      <div id="nav-memberships" class="nav-link" onclick="selectSection('memberships', this)">Memberships</div>
+      <div id="nav-users" class="nav-link" onclick="selectSection('users', this)">Users</div>
+    </nav>
+
+    <!-- Optional Refresh Button -->
+    <button class="btn btn-primary refresh-btn" onclick="refreshData()">Refresh</button>
+
+    <!-- Bootstrap Modal for Adding New Membership -->
+    <div class="modal fade" id="addMembershipModal" tabindex="-1" aria-labelledby="addMembershipModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addMembershipModalLabel">Add New Membership</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addMembershipForm">
+              <div class="mb-3">
+                <label for="add-customerId" class="form-label">Customer ID</label>
+                <input type="text" class="form-control" id="add-customerId" name="customerId">
+              </div>
+              <div class="mb-3">
+                <label for="add-email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="add-email" name="email">
+              </div>
+              <div class="mb-3">
+                <label for="add-membershipType" class="form-label">Membership Type</label>
+                <input type="text" class="form-control" id="add-membershipType" name="membershipType">
+              </div>
+              <div class="mb-3">
+                <label for="add-rate" class="form-label">Rate</label>
+                <input type="number" class="form-control" id="add-rate" name="rate">
+              </div>
+              <div class="mb-3">
+                <label for="add-startDate" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="add-startDate" name="startDate">
+              </div>
+              <div class="mb-3">
+                <label for="add-endDate" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="add-endDate" name="endDate">
+              </div>
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="add-active" name="active" checked>
+                <label class="form-check-label" for="add-active">Active</label>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="addMembership()">Add Membership</button>
+          </div>
         </div>
       </div>
     </div>
@@ -151,6 +186,7 @@
   <!-- Firebase SDKs (compat versions) -->
   <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-auth-compat.js"></script>
   <!-- Bootstrap 5 JS (for modal, etc.) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -170,43 +206,80 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
 
-    // Track the current section being viewed
+    // Check authentication state on page load
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in
+        document.getElementById('loginContainer').classList.add('d-none');
+        document.getElementById('adminDashboard').classList.remove('d-none');
+        loadSection(currentSection);
+      } else {
+        // User is signed out
+        document.getElementById('loginContainer').classList.remove('d-none');
+        document.getElementById('adminDashboard').classList.add('d-none');
+      }
+    });
+
+    // Handle login form submission
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .catch((error) => {
+          alert('Login failed: ' + error.message);
+        });
+    });
+
+    // Handle logout
+    function logout() {
+      auth.signOut()
+        .catch((error) => {
+          alert('Logout failed: ' + error.message);
+        });
+    }
+
     let currentSection = "freeSlotUsage";
+    let membershipData = null; // holds all 'subscriptions' data from Firebase
+
+    // We'll store references to some DOM elements so we can update only the table on search
+    let membershipsContainer = null;
+    let membershipSearchInput = null;
+    let activeCountSummaryEl = null;
+    let membershipTableBodyEl = null;
 
     /**
-     * Loads data from the specified section.
-     * - freeSlotUsage: same as original code (accordion).
-     * - users: aggregated by email.
-     * - memberships (UI name): actually reads from "subscriptions" node in Firebase.
+     * loadSection handles the user switching tabs (and refresh).
      */
     function loadSection(section) {
       const dataView = document.getElementById("dataView");
       dataView.innerHTML = `<p>Loading ${section}...</p>`;
 
-      // We map "memberships" in our UI to "subscriptions" in the DB.
+      // Map UI "memberships" to "subscriptions" in Firebase
       let dbPath = section;
       if (section === 'memberships') {
-        dbPath = 'subscriptions'; 
+        dbPath = 'subscriptions';
       }
 
+      // Get data once
       db.ref(dbPath).once("value")
-        .then((snapshot) => {
+        .then(snapshot => {
           const data = snapshot.val();
-          // Handle no data
           if (!data || typeof data !== 'object') {
             dataView.innerHTML = `<p>No data available for ${section}.</p>`;
             return;
           }
 
-          // "users" -> aggregated by email
+          // If section is "users"
           if (section === 'users') {
             let emailCounts = {};
             Object.keys(data).forEach(key => {
               const email = data[key].email || 'Unknown';
               emailCounts[email] = (emailCounts[email] || 0) + 1;
             });
-            // Simple list or aggregated display
             let html = `<h5>Aggregated Users By Email</h5>`;
             html += `<div class="list-group">`;
             for (const [email, count] of Object.entries(emailCounts)) {
@@ -220,11 +293,10 @@
             return;
           }
 
-          // "freeSlotUsage" -> keep original accordion approach
+          // If section is "freeSlotUsage"
           if (section === 'freeSlotUsage') {
             let accordionHtml = `<div class="accordion" id="accordionData">`;
             let index = 0;
-
             Object.keys(data).forEach(key => {
               const record = data[key];
               const headerText = record.email || record.customerId || key;
@@ -235,11 +307,13 @@
               accordionHtml += `
                 <div class="accordion-item">
                   <h2 class="accordion-header" id="heading-${index}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}" aria-expanded="false" aria-controls="collapse-${index}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapse-${index}" aria-expanded="false" aria-controls="collapse-${index}">
                       ${headerText}
                     </button>
                   </h2>
-                  <div id="collapse-${index}" class="accordion-collapse collapse" aria-labelledby="heading-${index}" data-bs-parent="#accordionData">
+                  <div id="collapse-${index}" class="accordion-collapse collapse"
+                       aria-labelledby="heading-${index}" data-bs-parent="#accordionData">
                     <div class="accordion-body">
                       <ul class="list-group list-group-flush">
                         ${listItems}
@@ -254,258 +328,308 @@
             return;
           }
 
-          // Otherwise, if section === 'memberships' -> table layout
-          if (section === 'memberships') {
-          // Summarize how many are active per membershipType
-          let membershipCounts = {};
-          const keys = Object.keys(data);
-          keys.forEach((key) => {
-            const record = data[key];
-            // Parse the rate as a number (in case it's stored as a string)
-            const rate = parseFloat(record.rate) || 0;
-
-            // Only count if active and rate > 0
-            if (record.active && rate > 0) {
-              const mType = record.membershipType || 'Unknown';
-              membershipCounts[mType] = (membershipCounts[mType] || 0) + 1;
-            }
-          });
-
-          // Build a short text summary
-          let countSummary = "Active Memberships (Paid): ";
-          let pairs = [];
-          for (const [type, count] of Object.entries(membershipCounts)) {
-            pairs.push(`${type}: ${count}`);
-          }
-          if (pairs.length === 0) {
-            countSummary += "None";
-          } else {
-            countSummary += pairs.join(", ");
-          }
-
-
-            // Build a table of memberships
-            let tableHtml = `
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5>${countSummary}</h5>
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addMembershipModal">
-                  Add Membership
-                </button>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-striped table-bordered align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Customer ID</th>
-                      <th>Email</th>
-                      <th>Membership Type</th>
-                      <th>Rate</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th>Active</th>
-                      <th style="width:120px;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-            `;
-
-            let index = 0;
-            keys.forEach((key) => {
-              const record = data[key] || {};
-              const customerId = record.customerId || "";
-              const email = record.email || "";
-              const membershipType = record.membershipType || "";
-              const rate = record.rate || "";
-              const startDateVal = (record.startDate && !isNaN(new Date(record.startDate))) 
-                                   ? new Date(record.startDate).toISOString().slice(0,10) 
-                                   : "";
-              const endDateVal = (record.endDate && !isNaN(new Date(record.endDate)))
-                                 ? new Date(record.endDate).toISOString().slice(0,10)
-                                 : "";
-              const active = record.active ? "checked" : "";
-
-              tableHtml += `
-                <tr id="row-${index}">
-                  <!-- Static Display Cells -->
-                  <td><span id="static-customerId-${index}">${customerId}</span></td>
-                  <td><span id="static-email-${index}">${email}</span></td>
-                  <td><span id="static-membershipType-${index}">${membershipType}</span></td>
-                  <td><span id="static-rate-${index}">${rate}</span></td>
-                  <td><span id="static-startDate-${index}">${startDateVal}</span></td>
-                  <td><span id="static-endDate-${index}">${endDateVal}</span></td>
-                  <td><span id="static-active-${index}">${record.active ? "Yes" : "No"}</span></td>
-                  <td>
-                    <button class="btn btn-sm btn-secondary" id="editBtn-${index}" 
-                            onclick="enterEditMode('${section}', '${key}', ${index})">
-                      Edit
-                    </button>
-                    <button class="btn btn-sm btn-primary d-none" id="saveBtn-${index}"
-                            onclick="updateRecord('${section}', '${key}', ${index})">
-                      Save
-                    </button>
-                    <button class="btn btn-sm btn-warning d-none" id="cancelBtn-${index}"
-                            onclick="cancelEdit(${index})">
-                      Cancel
-                    </button>
-                  </td>
-                </tr>
-                <!-- Hidden form row for inline editing -->
-                <tr id="editRow-${index}" class="d-none">
-                  <td>
-                    <input type="text" class="form-control" id="edit-customerId-${index}" value="${customerId}">
-                  </td>
-                  <td>
-                    <input type="email" class="form-control" id="edit-email-${index}" value="${email}">
-                  </td>
-                  <td>
-                    <input type="text" class="form-control" id="edit-membershipType-${index}" value="${membershipType}">
-                  </td>
-                  <td>
-                    <input type="number" class="form-control" id="edit-rate-${index}" value="${rate}">
-                  </td>
-                  <td>
-                    <input type="date" class="form-control" id="edit-startDate-${index}" value="${startDateVal}">
-                  </td>
-                  <td>
-                    <input type="date" class="form-control" id="edit-endDate-${index}" value="${endDateVal}">
-                  </td>
-                  <td>
-                    <input type="checkbox" class="form-check-input" id="edit-active-${index}" ${active}>
-                  </td>
-                  <td><!-- same action buttons, hidden in edit row --></td>
-                </tr>
-              `;
-              index++;
-            });
-
-            tableHtml += `
-                  </tbody>
-                </table>
-              </div>
-            `;
-            dataView.innerHTML = tableHtml;
-          }
+          // If section is "memberships", store data and render UI
+          membershipData = data; 
+          renderMembershipUI(); // create search bar + table layout
         })
-        .catch((error) => {
-          console.error("Error loading data:", error);
-          dataView.innerHTML = `<p>Error loading data: ${error.message}</p>`;
+        .catch(err => {
+          console.error("Error loading data:", err);
+          dataView.innerHTML = `<p>Error loading data: ${err.message}</p>`;
         });
     }
 
     /**
-     * Switch from static view to edit form (inline in the table).
+     * Render the static memberships UI (search bar, table structure) once,
+     * then use renderMembershipTable(...) to fill table rows.
+     */
+    function renderMembershipUI() {
+      const dataView = document.getElementById("dataView");
+      dataView.innerHTML = `
+        <div id="membershipsContainer">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 id="activeCountSummary"></h5>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                    data-bs-target="#addMembershipModal">
+              Add Membership
+            </button>
+          </div>
+          <div class="mt-3">
+            <label for="searchMembershipsInput" class="form-label fw-bold">Search Memberships</label>
+            <input type="text" class="form-control" id="searchMembershipsInput"
+                   placeholder="Type to search..." onkeyup="searchMemberships()">
+          </div>
+          <div class="table-responsive mt-3">
+            <table class="table table-striped table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Customer ID</th>
+                  <th>Email</th>
+                  <th>Membership Type</th>
+                  <th>Rate</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Active</th>
+                  <th style="width:120px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="membershipTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Grab references to these elements for re-use
+      membershipsContainer = document.getElementById("membershipsContainer");
+      membershipSearchInput = document.getElementById("searchMembershipsInput");
+      activeCountSummaryEl = document.getElementById("activeCountSummary");
+      membershipTableBodyEl = document.getElementById("membershipTableBody");
+
+      // Initial render of table rows
+      renderMembershipTable();
+    }
+
+    /**
+     * Renders the table rows + updates the active membership count,
+     * without re-rendering the search bar (so the typed text remains).
+     */
+    function renderMembershipTable(searchTerm = "") {
+      if (!membershipData) return;
+
+      const entries = Object.entries(membershipData);
+      const lowerSearch = searchTerm.toLowerCase().trim();
+
+      // Filter
+      const filtered = entries.filter(([key, record]) => {
+        if (!record) return false;
+        const {
+          customerId = "",
+          email = "",
+          membershipType = "",
+          rate = "",
+          startDate = "",
+          endDate = "",
+          active = false
+        } = record;
+
+        const combined = (
+          customerId +
+          email +
+          membershipType +
+          rate +
+          startDate +
+          endDate +
+          (active ? "yes" : "no")
+        ).toLowerCase();
+
+        return combined.includes(lowerSearch);
+      });
+
+      // Count active memberships with rate>0 among the filtered results
+      let membershipCounts = {};
+      filtered.forEach(([key, record]) => {
+        const rateVal = parseFloat(record.rate) || 0;
+        if (record.active && rateVal > 0) {
+          const mType = record.membershipType || "Unknown";
+          membershipCounts[mType] = (membershipCounts[mType] || 0) + 1;
+        }
+      });
+
+      // Build summary text
+      let pairs = Object.entries(membershipCounts).map(([type, count]) => `${type}: ${count}`);
+      let summaryText = "Active Memberships (rate > 0): ";
+      summaryText += pairs.length > 0 ? pairs.join(", ") : "None";
+      activeCountSummaryEl.textContent = summaryText;
+
+      // Build table rows
+      let htmlRows = "";
+      let index = 0;
+      filtered.forEach(([key, record]) => {
+        const {
+          customerId = "",
+          email = "",
+          membershipType = "",
+          rate = "",
+          startDate = "",
+          endDate = "",
+          active = false
+        } = record;
+
+        // Format date fields to YYYY-MM-DD if valid
+        const startDateVal = (startDate && !isNaN(new Date(startDate))) 
+          ? new Date(startDate).toISOString().slice(0,10) : "";
+        const endDateVal = (endDate && !isNaN(new Date(endDate)))
+          ? new Date(endDate).toISOString().slice(0,10) : "";
+        const activeStr = active ? "Yes" : "No";
+        const activeChecked = active ? "checked" : "";
+
+        htmlRows += `
+          <tr id="row-${index}">
+            <td><span id="static-customerId-${index}">${customerId}</span></td>
+            <td><span id="static-email-${index}">${email}</span></td>
+            <td><span id="static-membershipType-${index}">${membershipType}</span></td>
+            <td><span id="static-rate-${index}">${rate}</span></td>
+            <td><span id="static-startDate-${index}">${startDateVal}</span></td>
+            <td><span id="static-endDate-${index}">${endDateVal}</span></td>
+            <td><span id="static-active-${index}">${activeStr}</span></td>
+            <td>
+              <button class="btn btn-sm btn-secondary" id="editBtn-${index}" 
+                      onclick="enterEditMode('memberships', '${key}', ${index})">
+                Edit
+              </button>
+              <button class="btn btn-sm btn-primary d-none" id="saveBtn-${index}"
+                      onclick="updateRecord('memberships', '${key}', ${index})">
+                Save
+              </button>
+              <button class="btn btn-sm btn-warning d-none" id="cancelBtn-${index}"
+                      onclick="cancelEdit(${index})">
+                Cancel
+              </button>
+            </td>
+          </tr>
+          <!-- Hidden row for editing -->
+          <tr id="editRow-${index}" class="d-none">
+            <td>
+              <input type="text" class="form-control" id="edit-customerId-${index}" value="${customerId}">
+            </td>
+            <td>
+              <input type="email" class="form-control" id="edit-email-${index}" value="${email}">
+            </td>
+            <td>
+              <input type="text" class="form-control" id="edit-membershipType-${index}" value="${membershipType}">
+            </td>
+            <td>
+              <input type="number" class="form-control" id="edit-rate-${index}" value="${rate}">
+            </td>
+            <td>
+              <input type="date" class="form-control" id="edit-startDate-${index}" value="${startDateVal}">
+            </td>
+            <td>
+              <input type="date" class="form-control" id="edit-endDate-${index}" value="${endDateVal}">
+            </td>
+            <td>
+              <input type="checkbox" class="form-check-input" id="edit-active-${index}" ${activeChecked}>
+            </td>
+            <td></td>
+          </tr>
+        `;
+        index++;
+      });
+
+      membershipTableBodyEl.innerHTML = htmlRows;
+    }
+
+    /**
+     * Called onkeyup in the search input.
+     * Grabs the current value, then re-renders the table only (not the entire UI).
+     */
+    function searchMemberships() {
+      const term = membershipSearchInput.value || "";
+      renderMembershipTable(term);
+    }
+
+    /**
+     * Inline editing logic (same as before).
      */
     function enterEditMode(section, recordKey, index) {
-      document.getElementById("row-" + index).classList.add("table-warning"); // highlight row
-      // Hide the Edit button, show Save/Cancel
+      document.getElementById("row-" + index).classList.add("table-warning");
       document.getElementById("editBtn-" + index).classList.add("d-none");
       document.getElementById("saveBtn-" + index).classList.remove("d-none");
       document.getElementById("cancelBtn-" + index).classList.remove("d-none");
-      // Reveal the editing row
       document.getElementById("editRow-" + index).classList.remove("d-none");
     }
 
-    /**
-     * Cancel editing in a row
-     */
     function cancelEdit(index) {
-      // Un-highlight row
       document.getElementById("row-" + index).classList.remove("table-warning");
-      // Restore button states
       document.getElementById("editBtn-" + index).classList.remove("d-none");
       document.getElementById("saveBtn-" + index).classList.add("d-none");
       document.getElementById("cancelBtn-" + index).classList.add("d-none");
-      // Hide the editing row
       document.getElementById("editRow-" + index).classList.add("d-none");
     }
 
-    /**
-     * Collect form data from inline edit row and update the record in Firebase.
-     */
     function updateRecord(section, recordKey, index) {
-      // Gather data from inputs
-      const customerId = document.getElementById("edit-customerId-" + index).value;
-      const email = document.getElementById("edit-email-" + index).value;
-      const membershipType = document.getElementById("edit-membershipType-" + index).value;
+      const custId = document.getElementById("edit-customerId-" + index).value;
+      const emailVal = document.getElementById("edit-email-" + index).value;
+      const mType = document.getElementById("edit-membershipType-" + index).value;
       const rateVal = document.getElementById("edit-rate-" + index).value;
-      const startDateVal = document.getElementById("edit-startDate-" + index).value;
-      const endDateVal = document.getElementById("edit-endDate-" + index).value;
+      const sDate = document.getElementById("edit-startDate-" + index).value;
+      const eDate = document.getElementById("edit-endDate-" + index).value;
       const activeChecked = document.getElementById("edit-active-" + index).checked;
 
       let updatedData = {
-        customerId: customerId || "",
-        email: email || "",
-        membershipType: membershipType || "",
+        customerId: custId || "",
+        email: emailVal || "",
+        membershipType: mType || "",
         rate: rateVal ? Number(rateVal) : 0,
-        startDate: startDateVal ? new Date(startDateVal).toISOString() : "",
-        endDate: endDateVal ? new Date(endDateVal).toISOString() : "",
+        startDate: sDate ? new Date(sDate).toISOString() : "",
+        endDate: eDate ? new Date(eDate).toISOString() : "",
         active: activeChecked
       };
 
-      // We map 'memberships' to the 'subscriptions' node
       let dbPath = (section === 'memberships') ? 'subscriptions' : section;
-
       db.ref(dbPath + "/" + recordKey).update(updatedData)
         .then(() => {
-          alert("Membership updated successfully!");
-          // Reload the table
-          loadSection(section);
+          alert("Membership updated!");
+          // Update local data, re-render
+          membershipData[recordKey] = updatedData;
+          cancelEdit(index); // hide edit row
+          const term = membershipSearchInput.value || "";
+          renderMembershipTable(term);
         })
-        .catch((error) => {
+        .catch(error => {
           console.error("Error updating record:", error);
           alert("Error updating record: " + error.message);
         });
     }
 
     /**
-     * Adds a new membership (from the modal form).
-     * Still pushing to "subscriptions" node in DB.
+     * Adds a new membership, pushing to 'subscriptions'.
      */
     function addMembership() {
       const form = document.getElementById("addMembershipForm");
       const formData = new FormData(form);
-      let newRecord = {};
-      newRecord.customerId = formData.get("customerId") || "";
-      newRecord.email = formData.get("email") || "";
-      newRecord.membershipType = formData.get("membershipType") || "";
-      newRecord.rate = Number(formData.get("rate")) || 0;
 
-      let startDate = formData.get("startDate");
-      let endDate = formData.get("endDate");
-      if (startDate) {
-        let d = new Date(startDate);
-        newRecord.startDate = !isNaN(d) ? d.toISOString() : startDate;
-      } else {
-        newRecord.startDate = "";
-      }
-      if (endDate) {
-        let d = new Date(endDate);
-        newRecord.endDate = !isNaN(d) ? d.toISOString() : endDate;
-      } else {
-        newRecord.endDate = "";
-      }
-      newRecord.active = document.getElementById("add-active").checked;
+      let newRecord = {
+        customerId: formData.get("customerId") || "",
+        email: formData.get("email") || "",
+        membershipType: formData.get("membershipType") || "",
+        rate: parseFloat(formData.get("rate") || 0),
+        startDate: "",
+        endDate: "",
+        active: document.getElementById("add-active").checked
+      };
 
-      // We explicitly push to 'subscriptions'
+      const sDate = formData.get("startDate");
+      if (sDate) {
+        let d = new Date(sDate);
+        newRecord.startDate = !isNaN(d) ? d.toISOString() : sDate;
+      }
+      const eDate = formData.get("endDate");
+      if (eDate) {
+        let d = new Date(eDate);
+        newRecord.endDate = !isNaN(d) ? d.toISOString() : eDate;
+      }
+
       db.ref("subscriptions").push(newRecord)
-        .then(() => {
-          alert("Membership added successfully!");
-          // Reset form
+        .then(snap => {
+          alert("Membership added!");
           form.reset();
           // Close modal
           let modalEl = document.getElementById('addMembershipModal');
           let modal = bootstrap.Modal.getInstance(modalEl);
           modal.hide();
-          // Reload
-          loadSection("memberships");
+          // Insert new record into local membershipData
+          membershipData[snap.key] = newRecord;
+          // Re-render with current search
+          const term = membershipSearchInput?.value || "";
+          renderMembershipTable(term);
         })
-        .catch((error) => {
+        .catch(error => {
           alert("Error adding membership: " + error.message);
         });
     }
 
     /**
-     * Sets the active nav link and loads the corresponding section.
+     * Switch between sections.
      */
     function selectSection(section, element) {
       currentSection = section;
@@ -515,16 +639,17 @@
     }
 
     /**
-     * Refresh the current section data.
+     * Refresh current section data from DB.
      */
     function refreshData() {
       loadSection(currentSection);
     }
 
-    // Load the default section on page load.
+    // Initialize on page load
     window.addEventListener("load", () => {
       loadSection(currentSection);
     });
   </script>
 </body>
 </html>
+
