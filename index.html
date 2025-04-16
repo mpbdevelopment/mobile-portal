@@ -17,8 +17,10 @@
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js"></script>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 
   <!-- Stripe.js -->
   <script src="https://js.stripe.com/v3/"></script>
@@ -733,6 +735,60 @@ header {
   background-color: #0e2f7b;
 }
 
+.mini-dialogue {
+  position: relative;
+  background: #ffb347;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  width: fit-content;
+  min-width: 220px;
+  max-width: 320px;
+  margin-top: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  animation: pulseOrange 1.5s infinite;
+  z-index: 2;
+  text-align: center;
+}
+.mini-dialogue-arrow {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 12px solid #ffb347;
+}
+@keyframes pulseOrange {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,179,71,0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(255,179,71,0.15); }
+}
+
+.mini-dialogue.subtle-dialogue {
+  background: #ffe1b3;
+  color: #7a5a00;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.88rem;
+  min-width: 180px;
+  max-width: 260px;
+  margin-top: 32px;
+  box-shadow: 0 1px 4px rgba(255,179,71,0.10);
+  animation: pulseOrangeSubtle 2.2s infinite;
+  opacity: 0.92;
+}
+.mini-dialogue.subtle-dialogue .mini-dialogue-arrow {
+  border-bottom: 10px solid #ffe1b3;
+  top: -10px;
+}
+@keyframes pulseOrangeSubtle {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,179,71,0.18); }
+  50% { box-shadow: 0 0 0 6px rgba(255,179,71,0.08); }
+}
+
   </style>
 </head>
 <body class="bg-light">
@@ -754,31 +810,109 @@ header {
 
   <!-- EMAIL VERIFICATION SECTION (Only for first-time devices) -->
   <section id="verification-section" class="shadow-sm">
-    <h5>Verify Your Email to Login</h5>
-    <p>If you've ever played with Montclair Pickleball before, you already have a profile set up for you. If not, no worries! Enter your email and we'll help you get started.</p>
+    <h5>Welcome to Montclair Pickleball</h5>
+    <p>Please enter your email to get started.</p>
     <form id="verification-form">
       <div class="mb-3">
         <label for="verify-email-input" class="form-label">Email Address</label>
         <input type="text" class="form-control" id="verify-email-input" required />
       </div>
       <button id="verificationBtn" type="submit" class="btn btn-primary w-100 mb-2">
-        Send Verification Code
+        Continue
       </button>
-      <a href="registration.html" class="btn btn-secondary" style="display:none">Register New User</a>
     </form>
 
+    <!-- Email verification code entry -->
     <div id="code-entry" style="display: none;">
-      <p>Enter the 6-digit code we sent to your email:</p>
+      <div id="code-entry-loading" class="text-center mb-3">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Sending verification code...</p>
+      </div>
+      <div id="code-entry-form" style="display: none;">
+        <p>Enter the 6-digit code we sent to your email:</p>
+        <div class="mb-3">
+          <input type="text" class="form-control" id="verify-code-input" placeholder="123456" />
+        </div>
+        <div id="wrongCodeAlert" class="alert alert-danger" style="display:none" role="alert">
+          Invalid code. Please re-check your email or try again.
+        </div>
+        <button id="verify-code-button" class="btn btn-success w-100 mb-2">
+          Verify Code
+        </button>
+        <button id="verificationRefresh" class="btn btn-secondary w-100">Try Again</button>
+      </div>
+    </div>
+
+    <!-- Login options for existing users -->
+    <div id="login-options" style="display: none;">
+      <p class="text-muted small mb-3">Please choose how you would like to sign in</p>
+      <div class="d-grid gap-2">
+        <button id="btn-email-verify" class="btn btn-primary">
+          Login with Email Verification
+        </button>
+        <button id="btn-password-login" class="btn btn-outline-primary">
+          Login with Password
+        </button>
+      </div>
+      <div id="new-password-dialogue" class="mini-dialogue subtle-dialogue mt-4 mx-auto">
+        <div class="mini-dialogue-arrow"></div>
+        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login!</span>
+      </div>
+    </div>
+
+    <!-- Password login form -->
+    <form id="password-login-form" style="display: none;">
+      <h5 class="mb-3">Login with Password</h5>
       <div class="mb-3">
-        <input type="text" class="form-control" id="verify-code-input" placeholder="123456" />
+        <label for="login-email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="login-email" required />
       </div>
-      <div id="wrongCodeAlert" class="alert alert-danger" style="display:none" role="alert">
-        Invalid code. Please re-check your email or try again.
+      <div class="mb-3">
+        <label for="login-password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="login-password" required />
       </div>
-      <button id="verify-code-button" class="btn btn-success w-100 mb-2">
-        Verify Code
-      </button>
-      <button id="verificationRefresh" class="btn btn-secondary w-100">Try Again</button>
+      <div class="alert alert-danger" id="login-error" style="display: none;"></div>
+      <div class="alert alert-success" id="password-reset-success" style="display: none;">
+        Password reset email sent! Please check your inbox.
+      </div>
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary">Login</button>
+        <button type="button" class="btn btn-link" id="btn-forgot-password">Forgot Password?</button>
+        <button type="button" class="btn btn-link" id="btn-create-password">Don't have a password yet? Click here to add one</button>
+        <button type="button" class="btn btn-secondary" id="btn-back-to-options">Back</button>
+      </div>
+    </form>
+
+    <!-- Create password account form -->
+    <form id="create-password-form" style="display: none;">
+      <h5 class="mb-3">Create Password</h5>
+      <div class="mb-3">
+        <label for="create-email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="create-email" required readonly />
+      </div>
+      <div class="mb-3">
+        <label for="create-password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="create-password" required />
+      </div>
+      <div class="mb-3">
+        <label for="confirm-password" class="form-label">Confirm Password</label>
+        <input type="password" class="form-control" id="confirm-password" required />
+      </div>
+      <div class="alert alert-danger" id="create-error" style="display: none;"></div>
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary">Create Password</button>
+        <button type="button" class="btn btn-secondary" id="btn-back-from-create">Back to Login</button>
+      </div>
+    </form>
+
+    <!-- New user registration prompt -->
+    <div id="new-user-prompt" style="display: none;">
+      <h5 class="mb-3">New to Montclair Pickleball?</h5>
+      <p>We'll help you get started with a new account.</p>
+      <div class="d-grid gap-2">
+        <a href="registration.html" class="btn btn-primary">Create New Account</a>
+        <button type="button" class="btn btn-secondary" id="btn-back-to-email">Try Different Email</button>
+      </div>
     </div>
   </section>
 
@@ -1356,9 +1490,10 @@ if (profileTrigger) {
     measurementId: "G-8NXV5DBFZB"
   };
 
-
   // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.database();
 
   // We'll use this discount map (Option B: each category has membership-tier-specific discount factors)
   const discountMap = {
@@ -1554,66 +1689,48 @@ setInterval(refreshData, 120000);
   /************************************************************
    * 4) EMAIL VERIFICATION
    ************************************************************/
+  // Handle verification form submission
   document.getElementById('verification-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const rawInput = document.getElementById('verify-email-input').value.trim();
-    if (!rawInput) return;
+    const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
+    if (!emailInput) return;
     
     document.getElementById('verificationBtn').textContent = 'Processing...';
     document.getElementById('verificationBtn').disabled = true;
 
-    let isAdminLogin = false;
-    let adminEmail    = '';
-    let adminPassword = '';
-
-    if (rawInput.includes('?')) {
-      const parts = rawInput.split('?');
-      adminEmail    = parts[0].trim().toLowerCase();
-      adminPassword = parts[1].trim();
-      if (adminPassword === ADMIN_PASSWORD) {
-        isAdminLogin = true;
-      }
-    }
-
-    if (isAdminLogin) {
-      // Admin login bypass
-      showMessage('Admin login detected. Checking if user exists...', 'info');
-      const playerUrl = `${GAS_PROXY}?action=getPlayerInfo&email=${encodeURIComponent(adminEmail)}`;
-      try {
-        const playerResp = await fetch(playerUrl);
-        const playerData = await playerResp.json();
-        if (!playerData.success || !playerData.player) {
-          alert('Error: That email does not exist in the system.');
-          return;
+    try {
+      // Check if user exists in Firebase
+      const playerData = await getPlayerInfoFromFirebase(emailInput);
+      
+      if (playerData.success && playerData.player) {
+        // Existing user - update welcome message and show login options
+        const welcomeHeading = document.querySelector('#verification-section h5');
+        const welcomeParagraph = document.querySelector('#verification-section > p');
+        if (welcomeHeading && welcomeParagraph) {
+          welcomeHeading.textContent = `Welcome Back, ${playerData.player.firstName}!`;
+          welcomeParagraph.style.display = 'none';
         }
-        document.getElementById('verification-section').style.display = 'none';
-        document.getElementById('tab-content-section').style.display = 'block';
-        initiateValidationFlow(adminEmail);
-      } catch (err) {
-        alert('Network error checking player info: ' + err.message);
-        return;
+        
+        document.getElementById('verification-form').style.display = 'none';
+        document.getElementById('login-options').style.display = 'block';
+        
+        // Pre-fill email in login forms
+        document.getElementById('login-email').value = emailInput;
+        document.getElementById('create-email').value = emailInput;
+      } else {
+        // New user - show registration prompt
+        document.getElementById('verification-form').style.display = 'none';
+        // Hide the welcome message and email prompt
+        document.querySelector('#verification-section h5').style.display = 'none';
+        document.querySelector('#verification-section > p').style.display = 'none';
+        document.getElementById('new-user-prompt').style.display = 'block';
       }
-    } else {
-      // Normal user flow
-      const emailInput = rawInput.toLowerCase();
-      showMessage(`Sending verification code for email: ${emailInput}`, 'debug');
-
-      const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(emailInput)}`;
-      try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        if (data.success) {
-          window.__verificationCode = data.code;
-          document.getElementById('code-entry').style.display = 'block';
-          document.getElementById('verification-form').style.display = 'none';
-          
-        } else {
-          alert('Error sending code: ' + (data.error || 'Unknown'));
-        }
-      } catch (err) {
-        alert('Network error: ' + err.message);
-      }
+    } catch (err) {
+      alert('Error checking user: ' + err.message);
+    } finally {
+      document.getElementById('verificationBtn').textContent = 'Continue';
+      document.getElementById('verificationBtn').disabled = false;
     }
   });
 
@@ -3653,12 +3770,20 @@ return new Date(
     }
   }
 
-  document.getElementById('logout-button').addEventListener('click', () => {
+  document.getElementById('logout-button').addEventListener('click', async () => {
     showMessage('Logout clicked, clearing localStorage.', 'debug');
     localStorage.removeItem('playerEmail');
     currentPlayer = null;
     cartItems = [];
     allProducts = [];
+    
+    // Sign out of Firebase Auth
+    try {
+      await auth.signOut();
+    } catch (err) {
+      showMessage('Error signing out: ' + err.message, 'error');
+    }
+    
     document.getElementById('tab-content-section').style.display = 'none';
     document.getElementById('verification-section').style.display = 'block';
     location.reload();
@@ -4537,6 +4662,199 @@ document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
   });
 });
 
+// Handle email verification login option
+document.getElementById('btn-email-verify').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  
+  // Show verification screen immediately with loading state
+  document.getElementById('login-options').style.display = 'none';
+  document.getElementById('code-entry').style.display = 'block';
+  document.getElementById('code-entry-loading').style.display = 'block';
+  document.getElementById('code-entry-form').style.display = 'none';
+  
+  try {
+    const url = `${GAS_PROXY}?action=sendVerificationEmail&email=${encodeURIComponent(email)}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    
+    if (data.success) {
+      window.__verificationCode = data.code;
+      // Hide loading, show form
+      document.getElementById('code-entry-loading').style.display = 'none';
+      document.getElementById('code-entry-form').style.display = 'block';
+    } else {
+      alert('Error sending code: ' + (data.error || 'Unknown'));
+      // Go back to login options on error
+      document.getElementById('code-entry').style.display = 'none';
+      document.getElementById('login-options').style.display = 'block';
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message);
+    // Go back to login options on error
+    document.getElementById('code-entry').style.display = 'none';
+    document.getElementById('login-options').style.display = 'block';
+  }
+});
+
+// Handle password login
+document.getElementById('btn-password-login').addEventListener('click', () => {
+  document.getElementById('login-options').style.display = 'none';
+  document.getElementById('password-login-form').style.display = 'block';
+});
+
+document.getElementById('password-login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorDiv = document.getElementById('login-error');
+  
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    
+    // Store email and proceed with validation flow
+    localStorage.setItem('playerEmail', email);
+    document.getElementById('verification-section').style.display = 'none';
+    document.getElementById('tab-content-section').style.display = 'block';
+    initiateValidationFlow(email);
+  } catch (err) {
+    // Show user-friendly error with link to create password
+    if (err.code === 'auth/invalid-login-credentials' || 
+        err.code === 'auth/wrong-password' || 
+        err.code === 'auth/user-not-found') {
+      errorDiv.innerHTML = `Invalid password. If you haven't created a password for your account yet, <a href="#" class="alert-link" id="error-create-password">click here to create one</a>.`;
+      // Add click handler for the link
+      document.getElementById('error-create-password').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('btn-create-password').click();
+      });
+    } else {
+      errorDiv.textContent = err.message;
+    }
+    errorDiv.style.display = 'block';
+  }
+});
+
+// Handle create password account
+document.getElementById('btn-create-password').addEventListener('click', () => {
+  document.getElementById('password-login-form').style.display = 'none';
+  document.getElementById('create-password-form').style.display = 'block';
+  // Email field should be readonly and pre-filled
+  document.getElementById('create-email').value = document.getElementById('login-email').value;
+});
+
+document.getElementById('create-password-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const email = document.getElementById('create-email').value.trim();
+  const password = document.getElementById('create-password').value;
+  const confirmPassword = document.getElementById('confirm-password').value;
+  const errorDiv = document.getElementById('create-error');
+  
+  if (password !== confirmPassword) {
+    errorDiv.textContent = 'Passwords do not match';
+    errorDiv.style.display = 'block';
+    return;
+  }
+  
+  try {
+    // Create Firebase auth account
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+    
+    // Store email and proceed with validation flow
+    localStorage.setItem('playerEmail', email);
+    document.getElementById('verification-section').style.display = 'none';
+    document.getElementById('tab-content-section').style.display = 'block';
+    initiateValidationFlow(email);
+  } catch (err) {
+    errorDiv.textContent = err.message;
+    errorDiv.style.display = 'block';
+  }
+});
+
+// Handle forgot password
+document.getElementById('btn-forgot-password').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const forgotBtn = document.getElementById('btn-forgot-password');
+  const successDiv = document.getElementById('password-reset-success');
+  const errorDiv = document.getElementById('login-error');
+  
+  if (!email) {
+    errorDiv.textContent = 'Please enter your email address';
+    errorDiv.style.display = 'block';
+    successDiv.style.display = 'none';
+    return;
+  }
+  
+  try {
+    forgotBtn.disabled = true;
+    forgotBtn.textContent = 'Sending reset email...';
+    
+    await auth.sendPasswordResetEmail(email);
+    
+    // Show success message
+    successDiv.style.display = 'block';
+    errorDiv.style.display = 'none';
+    forgotBtn.textContent = 'Reset email sent!';
+  } catch (err) {
+    // Show error message
+    errorDiv.textContent = 'Error sending reset email: ' + err.message;
+    errorDiv.style.display = 'block';
+    successDiv.style.display = 'none';
+    forgotBtn.textContent = 'Forgot Password?';
+    forgotBtn.disabled = false;
+  }
+});
+
+// Handle back buttons
+document.getElementById('btn-back-to-options').addEventListener('click', () => {
+  document.getElementById('password-login-form').style.display = 'none';
+  document.getElementById('login-options').style.display = 'block';
+});
+
+document.getElementById('btn-back-from-create').addEventListener('click', () => {
+  document.getElementById('create-password-form').style.display = 'none';
+  document.getElementById('login-options').style.display = 'block';
+});
+
+document.getElementById('btn-back-to-email').addEventListener('click', () => {
+  document.getElementById('new-user-prompt').style.display = 'none';
+  document.getElementById('verification-form').style.display = 'block';
+  document.getElementById('verify-email-input').value = '';
+  // Restore the welcome heading and paragraph
+  const welcomeHeading = document.querySelector('#verification-section h5');
+  const welcomeParagraph = document.querySelector('#verification-section > p');
+  if (welcomeHeading) welcomeHeading.style.display = '';
+  if (welcomeParagraph) welcomeParagraph.style.display = '';
+});
+
+// Update the back button on create password form
+document.getElementById('btn-back-to-login').addEventListener('click', () => {
+  document.getElementById('create-password-form').style.display = 'none';
+  document.getElementById('password-login-form').style.display = 'block';
+});
+
+// iOS PWA Banner Logic
+function isIos() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+function isInStandaloneMode() {
+  return (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+function isSafari() {
+  const ua = window.navigator.userAgent;
+  return /safari/i.test(ua) && !/crios|fxios|chrome|android/i.test(ua);
+}
+function showIosPwaBannerIfNeeded() {
+  if (isIos() && isSafari() && !isInStandaloneMode()) {
+    var banner = document.getElementById('ios-pwa-banner');
+    if (banner) banner.style.display = 'block';
+  }
+}
+document.addEventListener('DOMContentLoaded', showIosPwaBannerIfNeeded);
+document.getElementById('ios-pwa-banner-close').addEventListener('click', function() {
+  document.getElementById('ios-pwa-banner').style.display = 'none';
+});
 </script>
 
 
