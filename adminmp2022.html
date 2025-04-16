@@ -211,10 +211,26 @@
     // Check authentication state on page load
     auth.onAuthStateChanged((user) => {
       if (user) {
-        // User is signed in
-        document.getElementById('loginContainer').classList.add('d-none');
-        document.getElementById('adminDashboard').classList.remove('d-none');
-        loadSection(currentSection);
+        // Normalize email for Firebase key
+        const safeEmail = user.email.replace(/\./g, '_');
+        db.ref('subscriptions/adminUsers/' + safeEmail).once('value')
+          .then(snapshot => {
+            if (snapshot.exists() && snapshot.val() === true) {
+              // User is an admin, show dashboard
+              document.getElementById('loginContainer').classList.add('d-none');
+              document.getElementById('adminDashboard').classList.remove('d-none');
+              loadSection(currentSection);
+            } else {
+              // User is not an admin, sign them out
+              auth.signOut();
+              alert('You do not have permission to access this page.');
+            }
+          })
+          .catch(error => {
+            console.error('Error checking admin status:', error);
+            auth.signOut();
+            alert('Error verifying admin status. Please try again later.');
+          });
       } else {
         // User is signed out
         document.getElementById('loginContainer').classList.remove('d-none');
@@ -229,6 +245,9 @@
       const password = document.getElementById('password').value;
 
       auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          // Login successful, the onAuthStateChanged handler will check admin status
+        })
         .catch((error) => {
           alert('Login failed: ' + error.message);
         });
