@@ -310,23 +310,67 @@
 
     .program-card {
       width: 100%;
-      max-width: 300px;
       border: 1px solid #ddd;
       border-radius: 5px;
       padding: 1rem;
       background: #fff;
       position: relative;
+      margin-bottom: 1rem;
     }
-    .program-card .program-name {
-      font-weight: 600;
+
+    /* Program card header styling */
+    .program-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
       margin-bottom: 0.5rem;
     }
+
+    /* Add media query for mobile devices */
+    @media (max-width: 768px) {
+      .program-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .program-header .badges {
+        margin-top: 0.25rem;
+      }
+
+      .program-name {
+        width: 100%;
+      }
+    }
+
+    .program-card .program-name {
+      font-weight: 600;
+      margin: 0;
+      flex-grow: 1;
+    }
+
+    .program-card .badges {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 768px) {
+      .program-card .badges {
+        justify-content: flex-start;
+        width: 100%;
+      }
+    }
+
     .program-card .program-price {
       font-size: 1.1rem;
       margin-bottom: 0.5rem;
     }
-    .program-card .badges {
-      margin-bottom: 0.5rem;
+
+    .badges .badge {
+      margin-bottom: 0;
+      margin-right: 0.25rem;
     }
 
     /* [CHANGED] "Added" state styling */
@@ -798,6 +842,7 @@ header {
   padding: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: 0 2px 8px rgba(14, 47, 123, 0.08);
+  width: 100%;
 }
 
 .date-group-header {
@@ -806,6 +851,7 @@ header {
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid #f0f0f0;
+  width: 100%;
 }
 
 .date-group-header h5 {
@@ -826,9 +872,10 @@ header {
 
 /* Program cards within date group */
 .program-cards-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
+  width: 100%;
 }
 
 .program-card {
@@ -5045,100 +5092,120 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
     });
     
     const filterSection = document.getElementById('filter-section');
-    filterSection.innerHTML = `
-      <div class="mb-4">
-        <!-- Top buttons row -->
-        <div class="d-flex gap-2 mb-3">
-          <button class="btn btn-outline-secondary flex-grow-1" type="button" id="clear-filters-btn">
-            <i class="bi bi-x-circle"></i> Clear All Filters
-          </button>
-          <button class="btn btn-outline-warning flex-grow-1" type="button" id="packages-toggle-btn">
-            <i class="bi bi-box"></i> Discounted Packages
-          </button>
-        </div>
+    
+    // Create a new container structure for the desktop layout
+    const container = document.createElement('div');
+    container.className = 'container-fluid px-0';
+    container.innerHTML = `
+      <div class="row">
+        <!-- Filters Column (Left Side) -->
+        <div class="col-12 col-md-3 mb-3">
+          <div class="card">
+            <div class="card-body p-3">
+              <!-- Clear Filters and Packages Buttons -->
+              <div class="d-grid gap-2 mb-3">
+                <button class="btn btn-outline-secondary w-100" type="button" id="clear-filters-btn">
+                  <i class="bi bi-x-circle"></i> Clear All Filters
+                </button>
+                <button class="btn btn-outline-warning w-100" type="button" id="packages-toggle-btn">
+                  <i class="bi bi-box"></i> Discounted Packages
+                </button>
+              </div>
 
-        <!-- Date Filter Section -->
-        <button class="btn btn-outline-primary w-100 mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#dateFiltersCollapse" aria-expanded="false">
-          <i class="bi bi-calendar"></i> Filter by Date
-          <span class="arrow float-end">&#9660;</span>
-        </button>
-        
-        <div class="collapse" id="dateFiltersCollapse">
-          <div class="card card-body mb-3">
-            <div id="date-filters" class="d-flex flex-column gap-2">
-              <div class="form-check">
-                <input class="form-check-input date-filter" type="radio" name="dateFilter" value="today" id="date-today">
-                <label class="form-check-label" for="date-today">Today</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input date-filter" type="radio" name="dateFilter" value="tomorrow" id="date-tomorrow">
-                <label class="form-check-label" for="date-tomorrow">Tomorrow</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input date-filter" type="radio" name="dateFilter" value="thisWeek" id="date-thisWeek">
-                <label class="form-check-label" for="date-thisWeek">This Week</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input date-filter" type="radio" name="dateFilter" value="nextWeek" id="date-nextWeek">
-                <label class="form-check-label" for="date-nextWeek">Next Week</label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input date-filter" type="radio" name="dateFilter" value="dateRange" id="date-range">
-                <label class="form-check-label" for="date-range">Date Range</label>
-              </div>
-              <div id="date-range-inputs" class="mt-2" style="display: none;">
-                <div class="mb-2">
-                  <label class="form-label small">Start Date:</label>
-                  <input type="date" id="date-range-start" class="form-control form-control-sm">
+              <!-- Date Filter Section -->
+              <div class="mb-3">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dateFiltersCollapse" aria-expanded="true">
+                  <i class="bi bi-calendar"></i> Filter by Date
+                  <span class="arrow float-end">&#9660;</span>
+                </button>
+                
+                <div class="collapse show" id="dateFiltersCollapse">
+                  <div id="date-filters" class="d-flex flex-column gap-2">
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="today" id="date-today">
+                      <label class="form-check-label" for="date-today">Today</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="tomorrow" id="date-tomorrow">
+                      <label class="form-check-label" for="date-tomorrow">Tomorrow</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="thisWeek" id="date-thisWeek">
+                      <label class="form-check-label" for="date-thisWeek">This Week</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="nextWeek" id="date-nextWeek">
+                      <label class="form-check-label" for="date-nextWeek">Next Week</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="dateRange" id="date-range">
+                      <label class="form-check-label" for="date-range">Date Range</label>
+                    </div>
+                    <div id="date-range-inputs" class="mt-2" style="display: none;">
+                      <div class="mb-2">
+                        <label class="form-label small">Start Date:</label>
+                        <input type="date" id="date-range-start" class="form-control form-control-sm">
+                      </div>
+                      <div>
+                        <label class="form-label small">End Date:</label>
+                        <input type="date" id="date-range-end" class="form-control form-control-sm">
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label class="form-label small">End Date:</label>
-                  <input type="date" id="date-range-end" class="form-control form-control-sm">
+              </div>
+
+              <!-- Level Filter Section -->
+              <div class="mb-3">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#levelFiltersCollapse" aria-expanded="true">
+                  <i class="bi bi-funnel"></i> Filter by Level
+                  <span class="arrow float-end">&#9660;</span>
+                </button>
+                
+                <div class="collapse show" id="levelFiltersCollapse">
+                  <div id="level-filters" class="d-flex flex-column gap-2">
+                    ${Array.from(levelSet).map(level => `
+                      <div class="form-check">
+                        <input class="form-check-input level-filter" type="checkbox" value="${level}" id="level-${level}">
+                        <label class="form-check-label" for="level-${level}">${level}</label>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category Filter Section -->
+              <div class="mb-3">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#categoryFiltersCollapse" aria-expanded="true">
+                  <i class="bi bi-funnel"></i> Filter by Category
+                  <span class="arrow float-end">&#9660;</span>
+                </button>
+                
+                <div class="collapse show" id="categoryFiltersCollapse">
+                  <div id="category-filters" class="d-flex flex-column gap-2">
+                    ${Array.from(categorySet).map(category => `
+                      <div class="form-check">
+                        <input class="form-check-input category-filter" type="checkbox" value="${category}" id="cat-${category}">
+                        <label class="form-check-label" for="cat-${category}">${category}</label>
+                      </div>
+                    `).join('')}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Level Filter Section -->
-        <button class="btn btn-outline-primary w-100 mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#levelFiltersCollapse" aria-expanded="false">
-          <i class="bi bi-funnel"></i> Filter by Level
-          <span class="arrow float-end">&#9660;</span>
-        </button>
-        
-        <div class="collapse" id="levelFiltersCollapse">
-          <div class="card card-body mb-3">
-            <div id="level-filters" class="d-flex flex-wrap gap-2">
-              ${Array.from(levelSet).map(level => `
-                <div class="form-check">
-                  <input class="form-check-input level-filter" type="checkbox" value="${level}" id="level-${level}">
-                  <label class="form-check-label" for="level-${level}">${level}</label>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-
-        <!-- Category Filter Section -->
-        <button class="btn btn-outline-primary w-100 mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#categoryFiltersCollapse" aria-expanded="false">
-          <i class="bi bi-funnel"></i> Filter by Category
-          <span class="arrow float-end">&#9660;</span>
-        </button>
-        
-        <div class="collapse" id="categoryFiltersCollapse">
-          <div class="card card-body">
-            <div id="category-filters" class="d-flex flex-wrap gap-2">
-              ${Array.from(categorySet).map(category => `
-                <div class="form-check">
-                  <input class="form-check-input category-filter" type="checkbox" value="${category}" id="cat-${category}">
-                  <label class="form-check-label" for="cat-${category}">${category}</label>
-                </div>
-              `).join('')}
-            </div>
-          </div>
+        <!-- Programs Column (Right Side) -->
+        <div class="col-12 col-md-9">
+          <div id="program-cards-container"></div>
         </div>
       </div>
     `;
+
+    // Clear and replace the filter section content
+    filterSection.innerHTML = '';
+    filterSection.appendChild(container);
     
     // Add event listeners for filters
     document.querySelectorAll('.level-filter, .category-filter').forEach(checkbox => {
@@ -5361,24 +5428,29 @@ function renderFilteredPrograms() {
 
   function displayProgramGroups(groups) {
     const container = document.getElementById('program-cards-container');
+    if (!container) return;  // Safety check
+    
     container.innerHTML = '';
     container.style.display = 'block';
 
     if (!groups.length) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <img src="icons/icon-192x192.png" alt="No programs found">
-          <h6>No Programs Found</h6>
-          <p>Try adjusting your filters to see more programs</p>
-        </div>
-      `;
-      return;
+        container.innerHTML = `
+            <div class="empty-state">
+                <img src="icons/icon-192x192.png" alt="No programs found">
+                <h6>No Programs Found</h6>
+                <p>Try adjusting your filters to see more programs</p>
+            </div>
+        `;
+        return;
     }
-    
+
     // Count total programs across all groups
     const totalPrograms = groups.reduce((sum, group) => sum + group.products.length, 0);
     let programsShown = 0;
     let shouldAddLoadMore = false;
+
+    // First, update the Applied Filters section
+    updateAppliedFilters();
 
     groups.forEach(group => {
         // Skip this group if we've already shown enough programs
@@ -5452,6 +5524,138 @@ function renderFilteredPrograms() {
     }
 }
 
+function updateAppliedFilters() {
+    const container = document.getElementById('program-cards-container');
+    if (!container) return;  // Safety check
+    
+    // Create Applied Filters section
+    const appliedFiltersSection = document.createElement('div');
+    appliedFiltersSection.className = 'mb-4';
+    
+    const activeFilters = [];
+    
+    // Check date filter
+    const selectedDate = document.querySelector('.date-filter:checked');
+    if (selectedDate) {
+        let dateText = '';
+        switch(selectedDate.value) {
+            case 'today':
+                dateText = 'Today';
+                break;
+            case 'tomorrow':
+                dateText = 'Tomorrow';
+                break;
+            case 'thisWeek':
+                dateText = 'This Week';
+                break;
+            case 'nextWeek':
+                dateText = 'Next Week';
+                break;
+            case 'dateRange':
+                const startDate = document.getElementById('date-range-start')?.value;
+                const endDate = document.getElementById('date-range-end')?.value;
+                if (startDate && endDate) {
+                    dateText = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+                } else if (startDate) {
+                    dateText = new Date(startDate).toLocaleDateString();
+                }
+                break;
+        }
+        if (dateText) {
+            activeFilters.push({ type: 'Date', value: dateText });
+        }
+    }
+    
+    // Check level filters
+    const selectedLevels = Array.from(document.querySelectorAll('.level-filter:checked'))
+        .map(cb => cb.value);
+    if (selectedLevels.length > 0) {
+        activeFilters.push({ type: 'Level', value: selectedLevels.join(', ') });
+    }
+    
+    // Check category filters
+    const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
+        .map(cb => cb.value);
+    if (selectedCategories.length > 0) {
+        activeFilters.push({ type: 'Category', value: selectedCategories.join(', ') });
+    }
+    
+    // Check packages filter
+    if (showOnlyPackages) {
+        activeFilters.push({ type: 'Special', value: 'Discounted Packages Only' });
+    }
+    
+    // If no filters are applied, don't show the section
+    if (activeFilters.length === 0) {
+        return;
+    }
+    
+    // Create the Applied Filters UI
+    appliedFiltersSection.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-funnel-fill"></i> Applied Filters</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    ${activeFilters.map(filter => `
+                        <span class="badge bg-primary">
+                            ${filter.type}: ${filter.value}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Insert at the top of the container
+    container.insertBefore(appliedFiltersSection, container.firstChild);
+}
+
+// Update renderFilteredPrograms to ensure programs are displayed
+function renderFilteredPrograms() {
+    const { selectedLevels, selectedCategories, selectedDate } = getSelectedFilters();
+    
+    // Filter products
+    let filtered = allProducts;
+
+    // Apply packages filter first if enabled
+    if (showOnlyPackages) {
+        filtered = filtered.filter(prod => prod.program.toLowerCase().includes('package'));
+    }
+    
+    // Apply level filter
+    if (selectedLevels.length > 0) {
+        filtered = filtered.filter(prod => 
+            prod.standardizedLevelList?.some(level => selectedLevels.includes(level))
+        );
+    }
+    
+    // Apply category filter
+    if (selectedCategories.length > 0) {
+        filtered = filtered.filter(prod => 
+            selectedCategories.includes(prod.category)
+        );
+    }
+    
+    // Apply date filter
+    if (selectedDate) {
+        const dateRange = getDateRange(selectedDate);
+        if (dateRange) {
+            filtered = filtered.filter(prod => {
+                const programDate = parseFirstDateFromProgram(prod.program);
+                if (!programDate) return false;
+                
+                // Compare using getTime() for precise comparison
+                return programDate.getTime() >= dateRange.start.getTime() && 
+                       programDate.getTime() <= dateRange.end.getTime();
+            });
+        }
+    }
+    
+    // Group and display - ensure this happens regardless of filter state
+    const groupedPrograms = groupProgramsByDate(filtered);
+    displayProgramGroups(groupedPrograms);
+}
+
   function createProgramCard(prod) {
     const cardDiv = document.createElement('div');
     cardDiv.className = 'program-card';
@@ -5464,9 +5668,37 @@ function renderFilteredPrograms() {
       cardDiv.classList.add('added');
     }
 
+    // Create header div to contain title and badges
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'program-header';
+
     const nameEl = document.createElement('div');
     nameEl.className = 'program-name';
     nameEl.textContent = prod.program;
+
+    const badgesEl = document.createElement('div');
+    badgesEl.className = 'badges';
+    const catBadge = document.createElement('span');
+    catBadge.className = 'badge bg-primary';
+    catBadge.textContent = prod.category || 'N/A';
+
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'badge bg-info';
+    levelBadge.textContent = prod.level || 'N/A';
+
+    badgesEl.appendChild(catBadge);
+    badgesEl.appendChild(levelBadge);
+
+    if (prod.indoorOutdoor) {
+      const ioBadge = document.createElement('span');
+      ioBadge.className = 'badge bg-secondary';
+      ioBadge.textContent = prod.indoorOutdoor;
+      badgesEl.appendChild(ioBadge);
+    }
+
+    // Add name and badges to header
+    headerDiv.appendChild(nameEl);
+    headerDiv.appendChild(badgesEl);
 
     const priceEl = document.createElement('div');
     priceEl.className = 'program-price';
@@ -5500,26 +5732,11 @@ function renderFilteredPrograms() {
     }
     priceEl.textContent = label;
 
-    const badgesEl = document.createElement('div');
-    badgesEl.className = 'badges';
-    const catBadge = document.createElement('span');
-    catBadge.className = 'badge bg-primary me-2';
-    catBadge.textContent = prod.category || 'N/A';
+    // Create buttons container for proper ordering
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'd-flex gap-2 align-items-center';
 
-    const levelBadge = document.createElement('span');
-    levelBadge.className = 'badge bg-info';
-    levelBadge.textContent = prod.level || 'N/A';
-
-    badgesEl.appendChild(catBadge);
-    badgesEl.appendChild(levelBadge);
-
-    if (prod.indoorOutdoor) {
-      const ioBadge = document.createElement('span');
-      ioBadge.className = 'badge bg-secondary';
-      ioBadge.textContent = prod.indoorOutdoor;
-      badgesEl.appendChild(ioBadge);
-    }
-
+    // Create Add to Cart button first
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-sm btn-success btn-add';
     if (displayPrice == 0) {
@@ -5529,7 +5746,7 @@ function renderFilteredPrograms() {
     } else if (nameEl.textContent.includes('Package')){
       addBtn.textContent = `Add to Cart`;
     } else if (pct2 > 0) {
-    addBtn.textContent = `Add to Cart (${pct2}% Off)`;
+      addBtn.textContent = `Add to Cart (${pct2}% Off)`;
     } else {
       addBtn.textContent = `Add to Cart`;
     }
@@ -5542,6 +5759,11 @@ function renderFilteredPrograms() {
     addBtn.addEventListener('click', () => {
       addProductToCart(prod);
       cardDiv.classList.add('added');
+      // Hide extend membership button when adding to cart
+      const extendBtn = cardDiv.querySelector('.btn-extend-membership');
+      if (extendBtn) {
+        extendBtn.style.display = 'none';
+      }
       if (currentPlayer?.membershipType && prod.program.includes('Package')) {
         const allDates = parseAllDates(prod.program);
         if (allDates.length) {
@@ -5557,6 +5779,19 @@ function renderFilteredPrograms() {
       }
     });
 
+    buttonsContainer.appendChild(addBtn);
+
+    // Create Extend Membership button after Add to Cart
+    if (displayPrice == basePrice && currentPlayer?.membershipType && !inCart) {
+      const extndBtn = document.createElement('button');
+      extndBtn.className = 'btn btn-sm btn-danger btn-extend-membership';
+      extndBtn.textContent = 'Extend Your Membership';
+      extndBtn.addEventListener('click', () => {
+        window.location.href = 'subscription.html';
+      });
+      buttonsContainer.appendChild(extndBtn);
+    }
+
     const addedControls = document.createElement('div');
     addedControls.className = 'added-controls';
     addedControls.innerHTML = `
@@ -5567,26 +5802,32 @@ function renderFilteredPrograms() {
     removeBtn.addEventListener('click', () => {
       removeProductFromCart(prod, selectedSession.spreadsheetId);
       cardDiv.classList.remove('added');
+      
+      // First check if an extend membership button already exists
+      const existingExtendBtn = buttonsContainer.querySelector('.btn-extend-membership');
+      
+      // Only create and append a new button if one doesn't already exist
+      if (!existingExtendBtn && displayPrice == basePrice && currentPlayer?.membershipType) {
+        const extndBtn = document.createElement('button');
+        extndBtn.className = 'btn btn-sm btn-danger btn-extend-membership';
+        extndBtn.textContent = 'Extend Your Membership';
+        extndBtn.addEventListener('click', () => {
+          window.location.href = 'subscription.html';
+        });
+        buttonsContainer.appendChild(extndBtn);
+      } else if (existingExtendBtn) {
+        // If button exists, just make it visible again
+        existingExtendBtn.style.display = '';
+      }
     });
 
-    cardDiv.appendChild(nameEl);
+    cardDiv.appendChild(headerDiv);
     cardDiv.appendChild(priceEl);
-    cardDiv.appendChild(badgesEl);
-    cardDiv.appendChild(addBtn);
+    cardDiv.appendChild(buttonsContainer);
     cardDiv.appendChild(addedControls);
 
-    if (displayPrice == basePrice && currentPlayer?.membershipType) {
-      const extndBtn = document.createElement('button');
-      extndBtn.className = 'btn btn-xs btn-danger btn-add';
-      extndBtn.textContent = 'Extend Your Membership';
-      extndBtn.addEventListener('click', () => {
-        window.location.href = 'subscription.html';
-      });
-      priceEl.insertAdjacentElement('afterend', extndBtn);
-    }
-
     return cardDiv;
-  }
+}
 
   // ... existing code ...
 
