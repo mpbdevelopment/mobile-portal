@@ -310,23 +310,67 @@
 
     .program-card {
       width: 100%;
-      max-width: 300px;
       border: 1px solid #ddd;
       border-radius: 5px;
       padding: 1rem;
       background: #fff;
       position: relative;
+      margin-bottom: 1rem;
     }
-    .program-card .program-name {
-      font-weight: 600;
+
+    /* Program card header styling */
+    .program-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
       margin-bottom: 0.5rem;
     }
+
+    /* Add media query for mobile devices */
+    @media (max-width: 768px) {
+      .program-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .program-header .badges {
+        margin-top: 0.25rem;
+      }
+
+      .program-name {
+        width: 100%;
+      }
+    }
+
+    .program-card .program-name {
+      font-weight: 600;
+      margin: 0;
+      flex-grow: 1;
+    }
+
+    .program-card .badges {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 768px) {
+      .program-card .badges {
+        justify-content: flex-start;
+        width: 100%;
+      }
+    }
+
     .program-card .program-price {
       font-size: 1.1rem;
       margin-bottom: 0.5rem;
     }
-    .program-card .badges {
-      margin-bottom: 0.5rem;
+
+    .badges .badge {
+      margin-bottom: 0;
+      margin-right: 0.25rem;
     }
 
     /* [CHANGED] "Added" state styling */
@@ -789,6 +833,135 @@ header {
   50% { box-shadow: 0 0 0 6px rgba(255,179,71,0.08); }
 }
 
+/* Add these styles in the <style> section */
+
+/* Date group styling */
+.date-group {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(14, 47, 123, 0.08);
+  width: 100%;
+}
+
+.date-group-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+  width: 100%;
+}
+
+.date-group-header h5 {
+  margin: 0;
+  color: #0e2f7b;
+  font-weight: 600;
+}
+
+.date-count-badge {
+  margin-left: auto;
+  background: #e8eef9;
+  color: #0e2f7b;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Program cards within date group */
+.program-cards-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;  /* Reduced from 1rem */
+  width: 100%;
+}
+
+.program-card {
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+  height: 100%;
+  margin-bottom: 0.5rem;  /* Reduced from 1rem */
+}
+
+.program-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(14, 47, 123, 0.12);
+}
+
+.program-card.added {
+  border-color: #28a745;
+  background-color: #f8fff9;
+}
+
+/* Filter section enhancements */
+#filter-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(14, 47, 123, 0.08);
+}
+
+.filter-group {
+  margin-bottom: 1rem;
+}
+
+.filter-group h6 {
+  color: #0e2f7b;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.form-check {
+  background: #f8f9fa;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  margin: 0;
+  transition: all 0.2s ease;
+}
+
+.form-check:hover {
+  background: #e8eef9;
+}
+
+.form-check-input:checked + .form-check-label {
+  color: #0e2f7b;
+  font-weight: 500;
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 12px;
+  margin: 2rem 0;
+}
+
+.empty-state img {
+  width: 120px;
+  margin-bottom: 1.5rem;
+  opacity: 0.7;
+}
+
+.empty-state h6 {
+  color: #0e2f7b;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #6c757d;
+  margin-bottom: 0;
+}
+
   </style>
 </head>
 <body class="bg-light">
@@ -856,7 +1029,7 @@ header {
       </div>
       <div id="new-password-dialogue" class="mini-dialogue subtle-dialogue mt-4 mx-auto">
         <div class="mini-dialogue-arrow"></div>
-        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login!</span>
+        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login! (This is now required to save your info for automatic login)</span>
       </div>
     </div>
 
@@ -1075,14 +1248,15 @@ header {
             <!-- Dynamically populated in loadSessions() -->
           </div>
 
+          <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
+          <a id="extndMsg" href="subscription.html" class="text-center mb-4" style="display:none;">You can expand your membership dates here.</a>
+
           <!-- [CHANGED] 2) Filter Section (Progressive) -->
           <div id="filter-section">
             <!-- We still use the same 3 filters, but they appear one at a time. -->
 
             <!-- [ADDED] Toggle Calendar/List Button & List-View Container (initially hidden) -->
             <div id="toggle-view-container" style="display: none;">
-                <h6 id="membership-message" class="text-center mb-0" style="display:none;"></h6>
-                <a id="extndMsg" href="subscription.html" class="text-center mb-4" style="display:none;">You can expand your membership dates here.</a>
                 <button id="btn-toggle-calendar-view" class="btn btn-outline-primary btn-sm mb-2 mt-7 mx-auto d-block">
                   Switch to Calendar View (Level Based)
                 </button>
@@ -1406,6 +1580,9 @@ function forceRefreshIfFromSubscription() {
   let maxProgramDate = null;       // Latest date in the selected session's programs
   let registerCalendar = null;
 
+   // Add at the top with other state variables
+  let showOnlyPackages = false;
+
   let currentActiveTab = '#tab-home'; // or whatever your default is
 
   document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tabLink => {
@@ -1599,7 +1776,8 @@ function refreshData() {
       if (isListView) {
         renderProgramListForRange();
       } else {
-        renderProgramCards();
+        // Use the new filtered rendering that maintains grouping and filters
+        renderFilteredPrograms();
       }
     })
     .catch(err => console.error("Error refreshing sessions:", err));
@@ -1614,15 +1792,19 @@ setInterval(refreshData, 120000);
    * 2) ON PAGE LOAD
    ************************************************************/
   window.addEventListener('DOMContentLoaded', () => {
-    const storedEmail = localStorage.getItem('playerEmail');
-    if (storedEmail) {
-      showMessage(`LocalStorage email found: ${storedEmail}`, 'debug');
-      document.getElementById('tab-content-section').style.display = 'block';
-      initiateValidationFlow(storedEmail);
-    } else {
-      showMessage('No stored email found; showing verification UI.', 'debug');
-      document.getElementById('verification-section').style.display = 'block';
-    }
+    // Set up Firebase Auth state listener
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // User is signed in
+        document.getElementById('tab-content-section').style.display = 'block';
+        document.getElementById('verification-section').style.display = 'none';
+        initiateValidationFlow(user.email);
+      } else {
+        // No user is signed in
+        document.getElementById('verification-section').style.display = 'block';
+        document.getElementById('tab-content-section').style.display = 'none';
+      }
+    });
   });
 
   /************************************************************
@@ -1740,16 +1922,19 @@ setInterval(refreshData, 120000);
   
 });
 
-  document.getElementById('verify-code-button').addEventListener('click', () => {
+  // Update the verify-code-button click handler
+  document.getElementById('verify-code-button').addEventListener('click', async () => {
     const userCode = document.getElementById('verify-code-input').value.trim();
     const actualCode = window.__verificationCode;
+    const email = document.getElementById('verify-email-input').value.trim().toLowerCase();
+    
     if (userCode === actualCode) {
-      const verifiedEmail = document.getElementById('verify-email-input').value.trim().toLowerCase();
-      localStorage.setItem('playerEmail', verifiedEmail);
-
+      // Hide verification section and show main content
       document.getElementById('verification-section').style.display = 'none';
       document.getElementById('tab-content-section').style.display = 'block';
-      initiateValidationFlow(verifiedEmail);
+      
+      // Proceed with validation flow
+      initiateValidationFlow(email);
     } else {
       document.getElementById('wrongCodeAlert').style.display = 'block';
     }
@@ -1759,137 +1944,139 @@ setInterval(refreshData, 120000);
    * 5) INITIATE VALIDATION FLOW (Players + Stripe + Credit)
    ************************************************************/
    async function initiateValidationFlow(email) {
+    if (!email) {
+      console.error('No email provided to initiateValidationFlow');
+      return;
+    }
+
     document.getElementById('mainNav').classList.remove('d-none');
     showMessage(`initiateValidationFlow for email: ${email}`, 'debug');
     showProfileSpinner(true);
 
-try {
-  // 1) Get player info from Firebase instead of GAS
-  const playerData = await getPlayerInfoFromFirebase(email);
-  showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
+    try {
+      // Get player info from Firebase
+      const playerData = await getPlayerInfoFromFirebase(email);
+      showMessage(`playerData: ${JSON.stringify(playerData)}`, 'debug');
 
-  if (!playerData.success || !playerData.player) {
-    const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
-    welcomeModal.show();
-    showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
-    showProfileSpinner(false);
-    return;
-  }
-  currentPlayer = playerData.player;
+      if (!playerData.success || !playerData.player) {
+        const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+        welcomeModal.show();
+        showMessage(`Error retrieving or invalid player: ${playerData.error}`, 'error');
+        showProfileSpinner(false);
+        return;
+      }
+      currentPlayer = playerData.player;
 
-  // 2) Check Stripe
-  const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
-  const stripeResp = await fetch(stripeUrl);
-  const stripeData = await stripeResp.json();
-  showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
+      // 2) Check Stripe
+      const stripeUrl = `${FIND_STRIPE_URL}?email=${encodeURIComponent(email)}`;
+      const stripeResp = await fetch(stripeUrl);
+      const stripeData = await stripeResp.json();
+      showMessage(`stripeData: ${JSON.stringify(stripeData)}`, 'debug');
 
-  if (!stripeData.success) {
-    showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
-    showProfileSpinner(false);
-    //return;
-  }
-  if (stripeData.exists) {
-    currentPlayer.cardLast4 = stripeData.cardLast4 || null;
-  } else {
-    showMessage('No Stripe customer found => Payment Profile needed', 'debug');
-  }
+      if (!stripeData.success) {
+        showMessage('Error checking Stripe: ' + (stripeData.error || ''), 'error');
+        showProfileSpinner(false);
+        //return;
+      }
+      if (stripeData.exists) {
+        currentPlayer.cardLast4 = stripeData.cardLast4 || null;
+      } else {
+        showMessage('No Stripe customer found => Payment Profile needed', 'debug');
+      }
 
-  // Remove credit fetch since it's now included in player data
-  showMessage(`Credit from Firebase: ${currentPlayer.credit}`, 'debug');
+      // Remove credit fetch since it's now included in player data
+      showMessage(`Credit from Firebase: ${currentPlayer.credit}`, 'debug');
 
-  // 4) Fetch membership from Firebase Realtime Database
-  try {
-    const dbRef = firebase.database().ref('subscriptions');
-    // We'll read ALL subscriptions and find the one that matches currentPlayer.email
-    const snapshot = await dbRef.once('value');
-    const subsData = snapshot.val() || {};
-    let membershipType = null;
-    let membershipEnd = null;
+      // 4) Fetch membership from Firebase Realtime Database
+      try {
+        const dbRef = firebase.database().ref('subscriptions');
+        // We'll read ALL subscriptions and find the one that matches currentPlayer.email
+        const snapshot = await dbRef.once('value');
+        const subsData = snapshot.val() || {};
+        let membershipType = null;
+        let membershipEnd = null;
 
-    // We search for a record with .email === currentPlayer.email
-    Object.keys(subsData).forEach(key => {
-      const sub = subsData[key];
-      if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
-        // Found a match
-        if (sub.active) {
-          membershipType = sub.membershipType || null;
-          membershipEnd  = sub.endDate || null;
-          membershipStart = sub.startDate || null;
+        // We search for a record with .email === currentPlayer.email
+        Object.keys(subsData).forEach(key => {
+          const sub = subsData[key];
+          if (sub && sub.email && sub.email.toLowerCase() === currentPlayer.email.toLowerCase()) {
+            // Found a match
+            if (sub.active) {
+              membershipType = sub.membershipType || null;
+              membershipEnd  = sub.endDate || null;
+              membershipStart = sub.startDate || null;
+            }
+          }
+        });
+
+        
+        currentPlayer.membershipType    = membershipType;
+        currentPlayer.membershipEndDate = membershipEnd;
+        currentPlayer.membershipStartDate = membershipStart;
+
+        //Only members can use forum. This is anyone with an unexpired membership
+        if (currentPlayer.membershipType) {
+          const now = new Date();
+          const endDate = new Date(membershipEnd);
+          
+          // Only show the forum link if membershipEnd is in the future
+          if (endDate > now) {
+            document.getElementById('home-link-forum').style.display = 'block';
+          }
         }
-      }
-    });
 
-    
-    currentPlayer.membershipType    = membershipType;
-    currentPlayer.membershipEndDate = membershipEnd;
-    currentPlayer.membershipStartDate = membershipStart;
-
-    //Only members can use forum. This is anyone with an unexpired membership
-    if (currentPlayer.membershipType) {
-      const now = new Date();
-      const endDate = new Date(membershipEnd);
-      
-      // Only show the forum link if membershipEnd is in the future
-      if (endDate > now) {
-        document.getElementById('home-link-forum').style.display = 'block';
+        showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
+      } catch (firebaseErr) {
+        showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
+        currentPlayer.membershipType = null;
+        currentPlayer.membershipEndDate = null;
+        currentPlayer.membershipStartDate = null;
       }
+
+      await fetchExistingFreeSlots(currentPlayer.email);
+
+      // Show profile
+      setProfileData(currentPlayer);
+
+      updateMembershipMessage();
+
+      // If no stripe => show modal
+
+      // Load sessions
+      showSessionSpinner(true);
+      await loadSessions();
+      showSessionSpinner(false);
+      showProfileSpinner(false);
+      uploadUserEmail();
+
+      if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
+        const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modalEl.show();
+      }
+      if (currentPlayer.firstName) {
+      document.getElementById('welcomeMsg').textContent = `Hey ${currentPlayer.firstName}! Welcome to our Montclair Pickelball Player Portal.`;
     }
-
-    showMessage(`Membership found: type=${membershipType}, end=${membershipEnd}`, 'debug');
-  } catch (firebaseErr) {
-    showMessage('Error fetching membership from Firebase: ' + firebaseErr.message, 'error');
-    currentPlayer.membershipType = null;
-    currentPlayer.membershipEndDate = null;
-    currentPlayer.membershipStartDate = null;
+      
+    } catch (err) {
+      showMessage('initiateValidationFlow error: ' + err.message, 'error');
+      showProfileSpinner(false);
+      showSessionSpinner(false);
+    }
   }
-
-  await fetchExistingFreeSlots(currentPlayer.email);
-
-  // Show profile
-  setProfileData(currentPlayer);
-
-  updateMembershipMessage();
-
-  // If no stripe => show modal
-
-  // Load sessions
-  showSessionSpinner(true);
-  await loadSessions();
-  showSessionSpinner(false);
-  showProfileSpinner(false);
-  uploadUserEmail();
-
-  if (!stripeData.exists && !document.referrer && !document.referrer.includes('subscription.html')) {
-    const modalEl = new bootstrap.Modal(document.getElementById('paymentModal'));
-    modalEl.show();
-  }
-  if (currentPlayer.firstName) {
-  document.getElementById('welcomeMsg').textContent = `Hey ${currentPlayer.firstName}! Welcome to our Montclair Pickelball Player Portal.`;
-}
-  
-} catch (err) {
-  showMessage('initiateValidationFlow error: ' + err.message, 'error');
-  showProfileSpinner(false);
-  showSessionSpinner(false);
-}
-}
 
   async function uploadUserEmail() {
-  const email = localStorage.getItem("playerEmail");
-  
-  if (!email) {
-    console.log("No playerEmail found in localStorage.");
+  const user = auth.currentUser;
+  if (!user || !user.email) {
+    console.log("No authenticated user found.");
     return;
   }
   
-  // Push the email to the 'users' collection in your Realtime Database
-  firebase.database().ref('users').push({ email })
-    .then(() => {
-      console.log("Email uploaded successfully!");
-    })
-    .catch((error) => {
-      console.error("Error uploading email:", error);
-    });
+  try {
+    await firebase.database().ref('users').push({ email: user.email });
+    console.log("Email uploaded successfully!");
+  } catch (error) {
+    console.error("Error uploading email:", error);
+  }
 }
 
 
@@ -2285,7 +2472,6 @@ sessions.forEach(sessionObj => {
 
   // Create a column for each session
   const colDiv = document.createElement('div');
-  // Adjust col sizes to your preference
   colDiv.classList.add('col-12','col-sm-6','col-md-4','col-lg-3','mb-3');
 
   // Card wrapper
@@ -2318,27 +2504,19 @@ sessions.forEach(sessionObj => {
 
   // Handle click => set selectedSession, then re-display
   selectBtn.addEventListener('click', () => {
+    // Update selectedSession first
     selectedSession = sessionObj;
-    allProducts     = sessionObj.products || [];
-
-    // Re-render the session cards so we highlight the new selection
+    
+    // Re-render the session cards to highlight the new selection
     displaySessionCards(sessions);
 
-    // Continue your existing logic
-    resetProductFilters();
-    prepareListViewDates(sessionObj);
-    populateStandardizedLevelDropdown();
+    // Use the new onSessionSelected function
+    onSessionSelected(sessionObj);
 
-    const progContainer = document.getElementById('program-cards-container');
-    progContainer.style.display = 'none';
-
-    if (isListView) {
-      showFilterStep(0);
-      updateRegisterViewMode();
-    } else {
-      showFilterStep(1);
-    }
-    showToggleCalendarButton(true);
+    // Hide the old filter groups that we're not using anymore
+    document.getElementById('category-filter-group').style.display = 'none';
+    document.getElementById('level-filter-group').style.display = 'none';
+    document.getElementById('daytime-filter-group').style.display = 'none';
   });
 
   // Assemble the card
@@ -2350,7 +2528,6 @@ sessions.forEach(sessionObj => {
 });
 
 if (!currentPlayer?.membershipType) {
-
  // Add the "Purchase a Membership!" card
  const purchaseCol = document.createElement('div');
   purchaseCol.classList.add('col-12', 'col-sm-6', 'col-md-4', 'col-lg-3', 'mb-3');
@@ -2369,7 +2546,6 @@ if (!currentPlayer?.membershipType) {
   purchaseBtn.classList.add('btn', 'btn-sm', 'btn-warning');
   purchaseBtn.textContent = 'Purchase';
 
-  // Attach your function here (you can customize this logic)
   purchaseBtn.addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = 'subscription.html';
@@ -2762,35 +2938,57 @@ function updateProgramCardState(cardDiv, prod) {
     (ci) => ci.program === product.program && ci.sessionId === sessionId
   );
   if (existing) {
-    // Item is already in the cart, do nothing
     return;
   }
 
   // Use the new getDiscountedPrice function
   const { total, usedWeeks } = getDiscountedPrice(
-  product,
-  currentPlayer?.membershipType,
-  currentPlayer?.membershipEndDate,
-  currentPlayer?.membershipStartDate,
-  freeSlotUsageMap, 
-  { readOnly: false }
-);
+    product,
+    currentPlayer?.membershipType,
+    currentPlayer?.membershipEndDate,
+    currentPlayer?.membershipStartDate,
+    freeSlotUsageMap, 
+    { readOnly: false }
+  );
 
   // Add to cartItems array
   cartItems.push({
-  sessionId: sessionId,
-  program: product.program,
-  category: product.category,
-  level: product.level,
-  price: total,
-  sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
-  freeWeeksUsed: usedWeeks,
-  indoorOutdoor: product.indoorOutdoor // store the indoorOutdoor tag
-});
+    sessionId: sessionId,
+    program: product.program,
+    category: product.category,
+    level: product.level,
+    price: total,
+    sessionLabel: `${selectedSession.location} - ${selectedSession.season}`,
+    freeWeeksUsed: usedWeeks,
+    indoorOutdoor: product.indoorOutdoor
+  });
 
-
-  // Update UI
+  // Update cart UI without affecting program display
   updateCartTable();
+  
+  // Instead of re-rendering everything, just update the specific card
+  const { selectedLevels, selectedCategories } = getSelectedFilters();
+  const shouldShowProduct = (!selectedLevels.length || product.standardizedLevelList?.some(level => selectedLevels.includes(level))) &&
+                          (!selectedCategories.length || selectedCategories.includes(product.category));
+  
+  if (shouldShowProduct) {
+    // Find and update the specific card
+    const cards = document.querySelectorAll('.program-card');
+    cards.forEach(card => {
+      const nameEl = card.querySelector('.program-name');
+      if (nameEl && nameEl.textContent === product.program) {
+        card.classList.add('added');
+        
+        // Update add button to show "Added" state
+        const addBtn = card.querySelector('.btn-add');
+        if (addBtn) addBtn.style.display = 'none';
+        
+        // Show remove controls
+        const addedControls = card.querySelector('.added-controls');
+        if (addedControls) addedControls.style.display = 'block';
+      }
+    });
+  }
 }
 
 
@@ -2814,7 +3012,33 @@ function updateProgramCardState(cardDiv, prod) {
     }
     cartItems.splice(idx, 1);
   }
+  
+  // Update cart UI without affecting program display
   updateCartTable();
+  
+  // Instead of re-rendering everything, just update the specific card
+  const { selectedLevels, selectedCategories } = getSelectedFilters();
+  const shouldShowProduct = (!selectedLevels.length || product.standardizedLevelList?.some(level => selectedLevels.includes(level))) &&
+                          (!selectedCategories.length || selectedCategories.includes(product.category));
+  
+  if (shouldShowProduct) {
+    // Find and update the specific card
+    const cards = document.querySelectorAll('.program-card');
+    cards.forEach(card => {
+      const nameEl = card.querySelector('.program-name');
+      if (nameEl && nameEl.textContent === product.program) {
+        card.classList.remove('added');
+        
+        // Show add button again
+        const addBtn = card.querySelector('.btn-add');
+        if (addBtn) addBtn.style.display = 'block';
+        
+        // Hide remove controls
+        const addedControls = card.querySelector('.added-controls');
+        if (addedControls) addedControls.style.display = 'none';
+      }
+    });
+  }
 }
 
 
@@ -2833,17 +3057,9 @@ function updateProgramCardState(cardDiv, prod) {
       amountDueLine.textContent = '';
       breakdownLine.textContent = '';
       updateCartSummaryPill();
-
-      // CHANGED: If we're in list view, re-render the 7-day list. Otherwise, re-render the program cards.
-      if (isListView) {
-        renderProgramListForRange();
-      } else {
-        renderProgramCards();
-      }
       return;
     }
     cartSection.style.display = 'block';
-
 
     cartItems.forEach((item, idx) => {
       const tr = document.createElement('tr');
@@ -2866,8 +3082,7 @@ function updateProgramCardState(cardDiv, prod) {
       btnRemove.className = 'btn btn-sm btn-danger';
       btnRemove.textContent = 'Remove';
       btnRemove.onclick = () => {
-        removeProductFromCart(cartItems[idx], cartItems[idx].sessionId); // let the function free up the slot
-        updateCartTable();
+        removeProductFromCart(cartItems[idx], cartItems[idx].sessionId);
       };
       tdRemove.appendChild(btnRemove);
       tr.appendChild(tdRemove);
@@ -2882,7 +3097,7 @@ function updateProgramCardState(cardDiv, prod) {
     // Subtract credit
     const credit = currentPlayer?.credit || 0;
     let creditUsed = (credit >= programTotal) ? programTotal : credit;
-    let amountDue  = programTotal - creditUsed;
+    let amountDue = programTotal - creditUsed;
 
     amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
     breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
@@ -2908,13 +3123,6 @@ function updateProgramCardState(cardDiv, prod) {
     } else {
       partnerNameDiv.style.display = "none";
     }
-
-    // CHANGED: If we're in list view, refresh the list; otherwise, refresh cards.
-    if (isListView) {
-      renderProgramListForRange();
-    } else {
-      renderProgramCards();
-    }
   }
 
   function updateCartSummaryPill() {
@@ -2927,7 +3135,7 @@ function updateProgramCardState(cardDiv, prod) {
       return;
     }
     pill.style.display = 'block';
-    pill.textContent = `🛒 ${cartItems.length} item(s) - $${total}`;
+    pill.textContent = `Checkout ${cartItems.length} item(s) - $${total}`;
   }
 
   function calculateCartTotalCents() {
@@ -2995,6 +3203,21 @@ function updateProgramCardState(cardDiv, prod) {
     showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
     await submitCartToSpreadsheet(creditUsed);
     showMessage('Successfully registered after payment!', 'success');
+    
+    // Calculate remaining credit
+    if (creditRemaining > 0) {
+      creditRemaining = creditRemaining;
+    } else {
+      creditRemaining = 0;
+    }
+
+    // Store cart items before clearing
+    const registeredPrograms = [...cartItems];
+    
+    // Show the success modal with registered programs
+    showSuccessModal(registeredPrograms, creditRemaining);
+
+    // Clear cart and update UI
     cartItems = [];
     updateCartTable();
     showPaymentSpinner(false);
@@ -3070,7 +3293,20 @@ if (amountDueCents <= 0) {
   // Register user in Sheets, update credit, etc.
   await registerAndCleanup(creditUsed);
 
-  // Check if user wants to save this card on file
+  // Calculate remaining credit
+  if (creditRemaining > 0) {
+    creditRemaining = creditRemaining;
+  } else {
+    creditRemaining = 0;
+  }
+
+  // Store cart items before clearing
+  const registeredPrograms = [...cartItems];
+  
+  // Show the success modal with registered programs
+  showSuccessModal(registeredPrograms, creditRemaining);
+
+  // If user wants to save card on file
   const saveCardCheckbox = document.getElementById('save-card-checkbox');
   if (saveCardCheckbox && saveCardCheckbox.checked) {
     try {
@@ -3118,6 +3354,19 @@ try {
   if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
     // Registration flow, minus credit used
     await registerAndCleanup(creditUsed);
+
+    // Calculate remaining credit
+    if (creditRemaining > 0) {
+      creditRemaining = creditRemaining;
+    } else {
+      creditRemaining = 0;
+    }
+
+    // Store cart items before clearing
+    const registeredPrograms = [...cartItems];
+    
+    // Show the success modal with registered programs
+    showSuccessModal(registeredPrograms, creditRemaining);
 
     // If user wants to save card on file
     const saveCardCheckbox = document.getElementById('save-card-checkbox');
@@ -3771,23 +4020,12 @@ return new Date(
   }
 
   document.getElementById('logout-button').addEventListener('click', async () => {
-    showMessage('Logout clicked, clearing localStorage.', 'debug');
-    localStorage.removeItem('playerEmail');
-    currentPlayer = null;
-    cartItems = [];
-    allProducts = [];
-    
-    // Sign out of Firebase Auth
     try {
       await auth.signOut();
+      // onAuthStateChanged will handle the UI updates
     } catch (err) {
       showMessage('Error signing out: ' + err.message, 'error');
     }
-    
-    document.getElementById('tab-content-section').style.display = 'none';
-    document.getElementById('verification-section').style.display = 'block';
-    location.reload();
-    showMessage('Logged out.', 'info');
   });
 
   function updateProfileBenefits() {
@@ -4662,7 +4900,7 @@ document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
   });
 });
 
-// Handle email verification login option
+// Update the email verification login option handler
 document.getElementById('btn-email-verify').addEventListener('click', async () => {
   const email = document.getElementById('login-email').value.trim();
   
@@ -4710,20 +4948,13 @@ document.getElementById('password-login-form').addEventListener('submit', async 
   const errorDiv = document.getElementById('login-error');
   
   try {
-    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-    
-    // Store email and proceed with validation flow
-    localStorage.setItem('playerEmail', email);
-    document.getElementById('verification-section').style.display = 'none';
-    document.getElementById('tab-content-section').style.display = 'block';
-    initiateValidationFlow(email);
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged will handle the rest
   } catch (err) {
-    // Show user-friendly error with link to create password
     if (err.code === 'auth/invalid-login-credentials' || 
         err.code === 'auth/wrong-password' || 
         err.code === 'auth/user-not-found') {
       errorDiv.innerHTML = `Invalid password. If you haven't created a password for your account yet, <a href="#" class="alert-link" id="error-create-password">click here to create one</a>.`;
-      // Add click handler for the link
       document.getElementById('error-create-password').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById('btn-create-password').click();
@@ -4758,14 +4989,8 @@ document.getElementById('create-password-form').addEventListener('submit', async
   }
   
   try {
-    // Create Firebase auth account
-    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-    
-    // Store email and proceed with validation flow
-    localStorage.setItem('playerEmail', email);
-    document.getElementById('verification-section').style.display = 'none';
-    document.getElementById('tab-content-section').style.display = 'block';
-    initiateValidationFlow(email);
+    await auth.createUserWithEmailAndPassword(email, password);
+    // onAuthStateChanged will handle the rest
   } catch (err) {
     errorDiv.textContent = err.message;
     errorDiv.style.display = 'block';
@@ -4834,29 +5059,1083 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
   document.getElementById('password-login-form').style.display = 'block';
 });
 
-// iOS PWA Banner Logic
-function isIos() {
-  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-}
-function isInStandaloneMode() {
-  return (window.navigator.standalone === true) || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-}
-function isSafari() {
-  const ua = window.navigator.userAgent;
-  return /safari/i.test(ua) && !/crios|fxios|chrome|android/i.test(ua);
-}
-function showIosPwaBannerIfNeeded() {
-  if (isIos() && isSafari() && !isInStandaloneMode()) {
-    var banner = document.getElementById('ios-pwa-banner');
-    if (banner) banner.style.display = 'block';
+  /************************************************************
+   * NEW PROGRAM GROUPING AND FILTERING FUNCTIONS
+   ************************************************************/
+  function parseFirstDateFromProgram(programStr) {
+    const fallbackYear = new Date().getFullYear();
+    
+    if (programStr.includes(';')) {
+      // Format: "(12/2 - 1/6; 1:00pm - 2:00pm)"
+      const match = programStr.match(/\((\d{1,2}\/\d{1,2})/);
+      if (match) {
+        const [month, day] = match[1].split('/').map(Number);
+        return new Date(fallbackYear, month - 1, day);
+      }
+    } else {
+      // Format: "Monday 1/6 | 1:00pm - 2:00pm"
+      const match = programStr.match(/(\d{1,2}\/\d{1,2})\s*\|/);
+      if (match) {
+        const [month, day] = match[1].split('/').map(Number);
+        return new Date(fallbackYear, month - 1, day);
+      }
+    }
+    return null;
   }
+
+  function groupProgramsByDate(products) {
+    const groups = {};
+    
+    products.forEach(product => {
+      const date = parseFirstDateFromProgram(product.program);
+      if (date) {
+        const dateKey = date.toISOString().split('T')[0];
+        if (!groups[dateKey]) {
+          groups[dateKey] = {
+            date: date,
+            products: []
+          };
+        }
+        groups[dateKey].products.push(product);
+      }
+    });
+    
+    // Sort dates
+    return Object.entries(groups)
+      .sort(([,a], [,b]) => a.date - b.date)
+      .map(([key, value]) => value);
+  }
+
+  function createFilterCheckboxes() {
+    // Create standardized level filters
+    const levelSet = new Set();
+    allProducts.forEach(prod => {
+      (prod.standardizedLevelList || []).forEach(level => levelSet.add(level));
+    });
+    
+    // Create category filters
+    const categorySet = new Set();
+    allProducts.forEach(prod => {
+      if (prod.category) categorySet.add(prod.category);
+    });
+    
+    const filterSection = document.getElementById('filter-section');
+    
+    // Create a new container structure for the desktop layout
+    const container = document.createElement('div');
+    container.className = 'container-fluid px-0';
+    container.innerHTML = `
+      <div class="row">
+        <!-- Filters Column (Left Side) -->
+        <div class="col-12 col-md-3 mb-3">
+          <div class="card">
+            <div class="card-body p-3">
+              <!-- Clear Filters and Packages Buttons -->
+              <div class="d-grid gap-2 mb-3">
+                <button class="btn btn-outline-secondary w-100" type="button" id="clear-filters-btn">
+                  <i class="bi bi-x-circle"></i> Clear All Filters
+                </button>
+                <button class="btn btn-outline-warning w-100" type="button" id="packages-toggle-btn">
+                  <i class="bi bi-box"></i> Discounted Packages
+                </button>
+              </div>
+
+              <!-- Level Filter Section -->
+              <div class="mb-3">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#levelFiltersCollapse" aria-expanded="true">
+                  <i class="bi bi-funnel"></i> Filter by Level
+                  <span class="arrow float-end">&#9660;</span>
+                </button>
+                
+                <div class="collapse show" id="levelFiltersCollapse">
+                  <div id="level-filters" class="d-flex flex-column gap-2">
+                    ${Array.from(levelSet).map(level => `
+                      <div class="form-check">
+                        <input class="form-check-input level-filter" type="checkbox" value="${level}" id="level-${level}">
+                        <label class="form-check-label" for="level-${level}">${level}</label>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category Filter Section -->
+              <div class="mb-3">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#categoryFiltersCollapse" aria-expanded="true">
+                  <i class="bi bi-funnel"></i> Filter by Category
+                  <span class="arrow float-end">&#9660;</span>
+                </button>
+                
+                <div class="collapse show" id="categoryFiltersCollapse">
+                  <div id="category-filters" class="d-flex flex-column gap-2">
+                    ${Array.from(categorySet).map(category => `
+                      <div class="form-check">
+                        <input class="form-check-input category-filter" type="checkbox" value="${category}" id="cat-${category}">
+                        <label class="form-check-label" for="cat-${category}">${category}</label>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Date Filter Section -->
+              <div class="mb-3">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dateFiltersCollapse" aria-expanded="true">
+                  <i class="bi bi-calendar"></i> Filter by Date
+                  <span class="arrow float-end">&#9660;</span>
+                </button>
+                
+                <div class="collapse show" id="dateFiltersCollapse">
+                  <div id="date-filters" class="d-flex flex-column gap-2">
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="today" id="date-today">
+                      <label class="form-check-label" for="date-today">Today</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="tomorrow" id="date-tomorrow">
+                      <label class="form-check-label" for="date-tomorrow">Tomorrow</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="thisWeek" id="date-thisWeek">
+                      <label class="form-check-label" for="date-thisWeek">This Week</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="nextWeek" id="date-nextWeek">
+                      <label class="form-check-label" for="date-nextWeek">Next Week</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input date-filter" type="radio" name="dateFilter" value="dateRange" id="date-range">
+                      <label class="form-check-label" for="date-range">Date Range</label>
+                    </div>
+                    <div id="date-range-inputs" class="mt-2" style="display: none;">
+                      <div class="mb-2">
+                        <label class="form-label small">Start Date:</label>
+                        <input type="date" id="date-range-start" class="form-control form-control-sm">
+                      </div>
+                      <div>
+                        <label class="form-label small">End Date:</label>
+                        <input type="date" id="date-range-end" class="form-control form-control-sm">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Programs Column (Right Side) -->
+        <div class="col-12 col-md-9">
+          <div id="program-cards-container"></div>
+        </div>
+      </div>
+    `;
+
+    // Clear and replace the filter section content
+    filterSection.innerHTML = '';
+    filterSection.appendChild(container);
+    
+    // Add event listeners for filters
+    document.querySelectorAll('.level-filter, .category-filter').forEach(checkbox => {
+      checkbox.addEventListener('change', renderFilteredPrograms);
+    });
+
+    // Add event listener for packages toggle
+    const packagesBtn = document.getElementById('packages-toggle-btn');
+    packagesBtn.addEventListener('click', () => {
+      showOnlyPackages = !showOnlyPackages;
+      packagesBtn.classList.toggle('btn-warning');
+      packagesBtn.classList.toggle('btn-outline-warning');
+      renderFilteredPrograms();
+    });
+
+    // Add event listener for date filters
+    document.querySelectorAll('.date-filter').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        // Show/hide date range inputs
+        const dateRangeInputs = document.getElementById('date-range-inputs');
+        dateRangeInputs.style.display = e.target.value === 'dateRange' ? 'block' : 'none';
+        
+        // Clear date range inputs when switching away from date range
+        if (e.target.value !== 'dateRange') {
+          document.getElementById('date-range-start').value = '';
+          document.getElementById('date-range-end').value = '';
+        }
+        
+        renderFilteredPrograms();
+      });
+    });
+
+    // Add event listeners for date range inputs
+    document.getElementById('date-range-start').addEventListener('change', renderFilteredPrograms);
+    document.getElementById('date-range-end').addEventListener('change', renderFilteredPrograms);
+
+    // Add event listener for Clear Filters button
+    document.getElementById('clear-filters-btn').addEventListener('click', () => {
+      // Clear date filters
+      document.querySelectorAll('.date-filter').forEach(radio => {
+        radio.checked = false;
+      });
+      
+      // Clear date range inputs
+      document.getElementById('date-range-inputs').style.display = 'none';
+      document.getElementById('date-range-start').value = '';
+      document.getElementById('date-range-end').value = '';
+      
+      // Clear level filters
+      document.querySelectorAll('.level-filter').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      
+      // Clear category filters
+      document.querySelectorAll('.category-filter').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+
+      // Reset packages toggle
+      showOnlyPackages = false;
+      const packagesBtn = document.getElementById('packages-toggle-btn');
+      packagesBtn.classList.remove('btn-warning');
+      packagesBtn.classList.add('btn-outline-warning');
+      
+      // Reset display limit
+      resetDisplayLimit();
+      
+      // Re-render programs
+      renderFilteredPrograms();
+    });
+
+    // Add event listeners for collapse arrows
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+      button.addEventListener('click', function() {
+        const arrow = this.querySelector('.arrow');
+        if (this.getAttribute('aria-expanded') === 'true') {
+          arrow.style.transform = 'rotate(180deg)';
+        } else {
+          arrow.style.transform = 'rotate(0deg)';
+        }
+      });
+    });
+
+    // Set min date for date pickers to today
+    const today = new Date().toISOString().split('T')[0];
+    const dateRangeStart = document.getElementById('date-range-start');
+    const dateRangeEnd = document.getElementById('date-range-end');
+    dateRangeStart.min = today;
+    dateRangeEnd.min = today;
+
+    // When start date changes, update end date min
+    dateRangeStart.addEventListener('change', function() {
+      dateRangeEnd.min = this.value;
+      if (dateRangeEnd.value && dateRangeEnd.value < this.value) {
+        dateRangeEnd.value = this.value;
+      }
+    });
 }
-document.addEventListener('DOMContentLoaded', showIosPwaBannerIfNeeded);
-document.getElementById('ios-pwa-banner-close').addEventListener('click', function() {
-  document.getElementById('ios-pwa-banner').style.display = 'none';
-});
+
+  function getSelectedFilters() {
+    const selectedLevels = Array.from(document.querySelectorAll('.level-filter:checked'))
+      .map(cb => cb.value);
+    const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
+      .map(cb => cb.value);
+    const selectedDate = document.querySelector('.date-filter:checked')?.value;
+    return { selectedLevels, selectedCategories, selectedDate };
+}
+
+function getDateRange(dateFilter) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Get the start of this week (Sunday)
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+    thisWeekStart.setHours(0, 0, 0, 0);
+    
+    // Get the end of this week (Saturday)
+    const thisWeekEnd = new Date(thisWeekStart);
+    thisWeekEnd.setDate(thisWeekStart.getDate() + 6);
+    thisWeekEnd.setHours(23, 59, 59, 999);
+    
+    // Get the start of next week (next Sunday)
+    const nextWeekStart = new Date(thisWeekEnd);
+    nextWeekStart.setDate(thisWeekEnd.getDate() + 1);
+    nextWeekStart.setHours(0, 0, 0, 0);
+    
+    // Get the end of next week (next Saturday)
+    const nextWeekEnd = new Date(nextWeekStart);
+    nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+    nextWeekEnd.setHours(23, 59, 59, 999);
+    
+    switch (dateFilter) {
+        case 'today': {
+            const endOfToday = new Date(today);
+            endOfToday.setHours(23, 59, 59, 999);
+            return { start: today, end: endOfToday };
+        }
+        case 'tomorrow': {
+            const endOfTomorrow = new Date(tomorrow);
+            endOfTomorrow.setHours(23, 59, 59, 999);
+            return { start: tomorrow, end: endOfTomorrow };
+        }
+        case 'thisWeek':
+            return { start: thisWeekStart, end: thisWeekEnd };
+        case 'nextWeek':
+            return { start: nextWeekStart, end: nextWeekEnd };
+        case 'dateRange': {
+            const startInput = document.getElementById('date-range-start');
+            const endInput = document.getElementById('date-range-end');
+            
+            if (!startInput.value) return null;
+            
+            // Create date at start of day (00:00:00)
+            const start = new Date(startInput.value + 'T00:00:00');
+            
+            let end;
+            if (endInput.value) {
+                // Create date at end of day (23:59:59.999)
+                end = new Date(endInput.value + 'T23:59:59.999');
+            } else {
+                // If no end date, use start date as end date (end of day)
+                end = new Date(start);
+                end.setHours(23, 59, 59, 999);
+            }
+            
+            return { start, end };
+        }
+        default:
+            return null;
+    }
+}
+
+function renderFilteredPrograms() {
+    const { selectedLevels, selectedCategories, selectedDate } = getSelectedFilters();
+    
+    // Filter products
+    let filtered = allProducts;
+
+    // Apply packages filter first if enabled
+    if (showOnlyPackages) {
+        filtered = filtered.filter(prod => prod.program.toLowerCase().includes('package'));
+    }
+    
+    // Apply level filter
+    if (selectedLevels.length > 0) {
+        filtered = filtered.filter(prod => 
+            prod.standardizedLevelList?.some(level => selectedLevels.includes(level))
+        );
+    }
+    
+    // Apply category filter
+    if (selectedCategories.length > 0) {
+        filtered = filtered.filter(prod => 
+            selectedCategories.includes(prod.category)
+        );
+    }
+    
+    // Apply date filter
+    if (selectedDate) {
+        const dateRange = getDateRange(selectedDate);
+        if (dateRange) {
+            filtered = filtered.filter(prod => {
+                const programDate = parseFirstDateFromProgram(prod.program);
+                if (!programDate) return false;
+                
+                // Compare using getTime() for precise comparison
+                return programDate.getTime() >= dateRange.start.getTime() && 
+                       programDate.getTime() <= dateRange.end.getTime();
+            });
+        }
+    }
+    
+    // Group and display
+    displayProgramGroups(groupProgramsByDate(filtered));
+}
+
+  function displayProgramGroups(groups) {
+    const container = document.getElementById('program-cards-container');
+    if (!container) return;  // Safety check
+    
+    container.innerHTML = '';
+    container.style.display = 'block';
+
+    if (!groups.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <img src="icons/icon-192x192.png" alt="No programs found">
+                <h6>No Programs Found</h6>
+                <p>Try adjusting your filters to see more programs</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Count total programs across all groups
+    const totalPrograms = groups.reduce((sum, group) => sum + group.products.length, 0);
+    let programsShown = 0;
+    let shouldAddLoadMore = false;
+
+    // First, update the Applied Filters section
+    updateAppliedFilters();
+
+    groups.forEach(group => {
+        // Skip this group if we've already shown enough programs
+        if (programsShown >= displayLimit) {
+            shouldAddLoadMore = true;
+            return;
+        }
+
+        // Create date group container
+        const dateGroup = document.createElement('div');
+        dateGroup.className = 'date-group';
+        
+        // Create header with date and count
+        const header = document.createElement('div');
+        header.className = 'date-group-header';
+        
+        const dateTitle = document.createElement('h5');
+        dateTitle.textContent = group.date.toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        const countBadge = document.createElement('span');
+        countBadge.className = 'date-count-badge';
+        countBadge.textContent = `${group.products.length} Program${group.products.length !== 1 ? 's' : ''}`;
+        
+        header.appendChild(dateTitle);
+        header.appendChild(countBadge);
+        dateGroup.appendChild(header);
+        
+        // Create program cards container
+        const cardsRow = document.createElement('div');
+        cardsRow.className = 'program-cards-row';
+        
+        // Sort products by start time before displaying
+        const sortedProducts = [...group.products].sort((a, b) => {
+            // Extract start times (assuming format "h:mm" or "hh:mm")
+            const getStartTime = (program) => {
+                const timeMatch = program.program.match(/\|\s*(\d{1,2}:\d{2}[ap]m)/i);
+                if (!timeMatch) {
+                    // For package format: (date range; start time - end time)
+                    const packageMatch = program.program.match(/;\s*(\d{1,2}:\d{2}[ap]m)/i);
+                    return packageMatch ? packageMatch[1] : "12:00am"; // fallback
+                }
+                return timeMatch[1];
+            };
+
+            // Convert time strings to comparable values (minutes since midnight)
+            const convertTimeToMinutes = (timeStr) => {
+                const [hourStr, minuteStr] = timeStr.replace(/[ap]m/i, '').split(':');
+                let hours = parseInt(hourStr);
+                const minutes = parseInt(minuteStr);
+                if (timeStr.toLowerCase().includes('pm') && hours < 12) hours += 12;
+                if (timeStr.toLowerCase().includes('am') && hours === 12) hours = 0;
+                return hours * 60 + minutes;
+            };
+
+            const aTime = convertTimeToMinutes(getStartTime(a));
+            const bTime = convertTimeToMinutes(getStartTime(b));
+            return aTime - bTime;
+        });
+        
+        // Only add programs up to the display limit
+        const remainingSlots = displayLimit - programsShown;
+        const productsToShow = sortedProducts.slice(0, remainingSlots);
+        
+        productsToShow.forEach(prod => {
+            const cardDiv = createProgramCard(prod);
+            cardsRow.appendChild(cardDiv);
+            programsShown++;
+        });
+
+        // If we didn't show all programs in this group, we'll need the Load More button
+        if (productsToShow.length < sortedProducts.length) {
+            shouldAddLoadMore = true;
+        }
+        
+        dateGroup.appendChild(cardsRow);
+        container.appendChild(dateGroup);
+    });
+
+    // Add Load More button if there are more programs to show
+    if (shouldAddLoadMore && programsShown < totalPrograms) {
+        const loadMoreContainer = document.createElement('div');
+        loadMoreContainer.className = 'text-center mt-4';
+        
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.className = 'btn btn-outline-primary';
+        loadMoreBtn.textContent = `Load More (${totalPrograms - programsShown} remaining)`;
+        
+        loadMoreBtn.addEventListener('click', () => {
+            displayLimit += 10;
+            renderFilteredPrograms();
+        });
+        
+        loadMoreContainer.appendChild(loadMoreBtn);
+        container.appendChild(loadMoreContainer);
+    }
+}
+
+function updateAppliedFilters() {
+    const container = document.getElementById('program-cards-container');
+    if (!container) return;  // Safety check
+    
+    // Create Applied Filters section
+    const appliedFiltersSection = document.createElement('div');
+    appliedFiltersSection.className = 'mb-4';
+    
+    const activeFilters = [];
+    
+    // Check date filter
+    const selectedDate = document.querySelector('.date-filter:checked');
+    if (selectedDate) {
+        let dateText = '';
+        switch(selectedDate.value) {
+            case 'today':
+                dateText = 'Today';
+                break;
+            case 'tomorrow':
+                dateText = 'Tomorrow';
+                break;
+            case 'thisWeek':
+                dateText = 'This Week';
+                break;
+            case 'nextWeek':
+                dateText = 'Next Week';
+                break;
+            case 'dateRange':
+                const startDate = document.getElementById('date-range-start')?.value;
+                const endDate = document.getElementById('date-range-end')?.value;
+                if (startDate && endDate) {
+                    dateText = `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
+                } else if (startDate) {
+                    dateText = new Date(startDate).toLocaleDateString();
+                }
+                break;
+        }
+        if (dateText) {
+            activeFilters.push({ type: 'Date', value: dateText });
+        }
+    }
+    
+    // Check level filters
+    const selectedLevels = Array.from(document.querySelectorAll('.level-filter:checked'))
+        .map(cb => cb.value);
+    if (selectedLevels.length > 0) {
+        activeFilters.push({ type: 'Level', value: selectedLevels.join(', ') });
+    }
+    
+    // Check category filters
+    const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
+        .map(cb => cb.value);
+    if (selectedCategories.length > 0) {
+        activeFilters.push({ type: 'Category', value: selectedCategories.join(', ') });
+    }
+    
+    // Check packages filter
+    if (showOnlyPackages) {
+        activeFilters.push({ type: 'Special', value: 'Discounted Packages Only' });
+    }
+    
+    // If no filters are applied, don't show the section
+    if (activeFilters.length === 0) {
+        return;
+    }
+    
+    // Create the Applied Filters UI
+    appliedFiltersSection.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-funnel-fill"></i> Applied Filters</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    ${activeFilters.map(filter => `
+                        <span class="badge bg-primary">
+                            ${filter.type}: ${filter.value}
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Insert at the top of the container
+    container.insertBefore(appliedFiltersSection, container.firstChild);
+}
+
+// Update renderFilteredPrograms to ensure programs are displayed
+function renderFilteredPrograms() {
+    const { selectedLevels, selectedCategories, selectedDate } = getSelectedFilters();
+    
+    // Filter products
+    let filtered = allProducts;
+
+    // Apply packages filter first if enabled
+    if (showOnlyPackages) {
+        filtered = filtered.filter(prod => prod.program.toLowerCase().includes('package'));
+    }
+    
+    // Apply level filter
+    if (selectedLevels.length > 0) {
+        filtered = filtered.filter(prod => 
+            prod.standardizedLevelList?.some(level => selectedLevels.includes(level))
+        );
+    }
+    
+    // Apply category filter
+    if (selectedCategories.length > 0) {
+        filtered = filtered.filter(prod => 
+            selectedCategories.includes(prod.category)
+        );
+    }
+    
+    // Apply date filter
+    if (selectedDate) {
+        const dateRange = getDateRange(selectedDate);
+        if (dateRange) {
+            filtered = filtered.filter(prod => {
+                const programDate = parseFirstDateFromProgram(prod.program);
+                if (!programDate) return false;
+                
+                // Compare using getTime() for precise comparison
+                return programDate.getTime() >= dateRange.start.getTime() && 
+                       programDate.getTime() <= dateRange.end.getTime();
+            });
+        }
+    }
+    
+    // Group and display - ensure this happens regardless of filter state
+    const groupedPrograms = groupProgramsByDate(filtered);
+    displayProgramGroups(groupedPrograms);
+}
+
+  function createProgramCard(prod) {
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'program-card';
+    
+    // Check if in cart
+    const inCart = cartItems.some(ci => 
+      ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId
+    );
+    if (inCart) {
+      cardDiv.classList.add('added');
+    }
+
+    // Create header div to contain title and badges
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'program-header';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'program-name';
+    nameEl.textContent = prod.program;
+
+    const badgesEl = document.createElement('div');
+    badgesEl.className = 'badges';
+    const catBadge = document.createElement('span');
+    catBadge.className = 'badge bg-primary';
+    catBadge.textContent = prod.category || 'N/A';
+
+    const levelBadge = document.createElement('span');
+    levelBadge.className = 'badge bg-info';
+    levelBadge.textContent = prod.level || 'N/A';
+
+    badgesEl.appendChild(catBadge);
+    badgesEl.appendChild(levelBadge);
+
+    if (prod.indoorOutdoor) {
+      const ioBadge = document.createElement('span');
+      ioBadge.className = 'badge bg-secondary';
+      ioBadge.textContent = prod.indoorOutdoor;
+      badgesEl.appendChild(ioBadge);
+    }
+
+    // Add name and badges to header
+    headerDiv.appendChild(nameEl);
+    headerDiv.appendChild(badgesEl);
+
+    const priceEl = document.createElement('div');
+    priceEl.className = 'program-price';
+
+    // Calculate price with membership benefits
+    let displayPrice = 0;
+    if (inCart) {
+      const cartItem = cartItems.find(ci => 
+        ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId
+      );
+      displayPrice = cartItem.price;
+    } else {
+      const { total: readOnlyPrice } = getDiscountedPrice(
+        prod,
+        currentPlayer?.membershipType,
+        currentPlayer?.membershipEndDate,
+        currentPlayer?.membershipStartDate,
+        freeSlotUsageMap,
+        { readOnly: true }
+      );
+      displayPrice = readOnlyPrice;
+    }
+
+    const basePrice = prod.price || 0;
+    let label = `$${displayPrice.toFixed(2)}`;
+    let pct2 = 0;
+    if (displayPrice < basePrice) {
+      const catMap = discountMap[prod.category] || {};
+      const discountFactor = catMap[currentPlayer?.membershipType] || 0;
+      pct2 = Math.round(discountFactor * 100);
+    }
+    priceEl.textContent = label;
+
+    // Create buttons container for proper ordering
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'd-flex gap-2 align-items-center';
+
+    // Create Add to Cart button first
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-sm btn-success btn-add';
+    if (displayPrice == 0) {
+      addBtn.textContent = `Add to Cart (Free)`;
+    } else if (nameEl.textContent.includes('Package') && displayPrice < basePrice){
+      addBtn.textContent = `Add to Cart (Member Discount)`;
+    } else if (nameEl.textContent.includes('Package')){
+      addBtn.textContent = `Add to Cart`;
+    } else if (pct2 > 0) {
+      addBtn.textContent = `Add to Cart (${pct2}% Off)`;
+    } else {
+      addBtn.textContent = `Add to Cart`;
+    }
+
+    if (prod.soldOut) {
+      addBtn.disabled = true;
+      nameEl.innerHTML = `<s>${prod.program}</s> (Sold Out)`;
+    }
+
+    addBtn.addEventListener('click', () => {
+      addProductToCart(prod);
+      cardDiv.classList.add('added');
+      // Hide extend membership button when adding to cart
+      const extendBtn = cardDiv.querySelector('.btn-extend-membership');
+      if (extendBtn) {
+        extendBtn.style.display = 'none';
+      }
+      if (currentPlayer?.membershipType && prod.program.includes('Package')) {
+        const allDates = parseAllDates(prod.program);
+        if (allDates.length) {
+          const membershipEnd = new Date(currentPlayer?.membershipEndDate || '');
+          if (!isNaN(membershipEnd.getTime())) {
+            const hasFullPriceDay = allDates.some(dateObj => dateObj > membershipEnd);
+            if (hasFullPriceDay) {
+              const alertModalEl = new bootstrap.Modal(document.getElementById('creditAlertModal'));
+              alertModalEl.show();
+            }
+          }
+        }
+      }
+    });
+
+    buttonsContainer.appendChild(addBtn);
+
+    // Create Extend Membership button after Add to Cart
+    if (displayPrice == basePrice && currentPlayer?.membershipType && !inCart) {
+      const extndBtn = document.createElement('button');
+      extndBtn.className = 'btn btn-sm btn-danger btn-extend-membership';
+      extndBtn.textContent = 'Extend Your Membership';
+      extndBtn.addEventListener('click', () => {
+        window.location.href = 'subscription.html';
+      });
+      buttonsContainer.appendChild(extndBtn);
+    }
+
+    const addedControls = document.createElement('div');
+    addedControls.className = 'added-controls';
+    addedControls.innerHTML = `
+      <span class="text-success"><strong>&check;</strong> Added</span>
+      <button class="btn btn-sm btn-outline-danger ms-2">Remove</button>
+    `;
+    const removeBtn = addedControls.querySelector('button');
+    removeBtn.addEventListener('click', () => {
+      removeProductFromCart(prod, selectedSession.spreadsheetId);
+      cardDiv.classList.remove('added');
+      
+      // First check if an extend membership button already exists
+      const existingExtendBtn = buttonsContainer.querySelector('.btn-extend-membership');
+      
+      // Only create and append a new button if one doesn't already exist
+      if (!existingExtendBtn && displayPrice == basePrice && currentPlayer?.membershipType) {
+        const extndBtn = document.createElement('button');
+        extndBtn.className = 'btn btn-sm btn-danger btn-extend-membership';
+        extndBtn.textContent = 'Extend Your Membership';
+        extndBtn.addEventListener('click', () => {
+          window.location.href = 'subscription.html';
+        });
+        buttonsContainer.appendChild(extndBtn);
+      } else if (existingExtendBtn) {
+        // If button exists, just make it visible again
+        existingExtendBtn.style.display = '';
+      }
+    });
+
+    cardDiv.appendChild(headerDiv);
+    cardDiv.appendChild(priceEl);
+    cardDiv.appendChild(buttonsContainer);
+    cardDiv.appendChild(addedControls);
+
+    return cardDiv;
+}
+
+  // ... existing code ...
+
+  // Also update the session selection handler to use the new rendering
+  function onSessionSelected(sessionObj) {
+    selectedSession = sessionObj;
+    allProducts = sessionObj.products || [];
+    
+    // Show filters and all programs immediately
+    const filterSection = document.getElementById('filter-section');
+    filterSection.style.display = 'block';
+    
+    // Reset display limit when changing sessions
+    resetDisplayLimit();
+    
+    // Create filter checkboxes
+    createFilterCheckboxes();
+    
+    // Display all programs grouped by date
+    renderFilteredPrograms();
+  }
+
+  // Add a function to reset the display limit
+  function resetDisplayLimit() {
+    displayLimit = 30;
+  }
+
+ 
+
+  // Update clear filters to also reset packages toggle
+  document.getElementById('clear-filters-btn')?.addEventListener('click', () => {
+    // ... existing clear filter code ...
+    
+    // Reset packages toggle
+    showOnlyPackages = false;
+    const packagesBtn = document.getElementById('packages-toggle-btn');
+    packagesBtn.classList.remove('btn-warning');
+    packagesBtn.classList.add('btn-outline-warning');
+    
+    // Reset display limit
+    resetDisplayLimit();
+    
+    // Re-render programs
+    renderFilteredPrograms();
+  });
 </script>
 
+<!-- Add this new modal structure before the closing body tag -->
+<!-- Registration Success Modal -->
+<div class="modal fade" id="registrationSuccessModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white position-sticky top-0">
+        <h5 class="modal-title">Registration Successful!</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <div class="alert alert-success mb-3">
+          <p class="mb-1">Your registration has been submitted successfully!</p>
+          <p class="mb-1" id="success-credit-message"></p>
+          <p class="mb-0"><i>New registrations may take a couple minutes to appear under My Programs</i></p>
+        </div>
+        
+        <h6 class="mb-3">Your Registered Programs:</h6>
+        <div id="success-programs-list" class="list-group mb-3">
+          <!-- Programs will be inserted here -->
+        </div>
+      </div>
+      
+      <div class="modal-footer position-sticky bottom-0 bg-white border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Add these styles to your existing style section */
+#registrationSuccessModal .modal-content {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#registrationSuccessModal .modal-header {
+  z-index: 1;
+}
+
+#registrationSuccessModal .modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+#registrationSuccessModal .modal-footer {
+  z-index: 1;
+}
+
+/* Optional: Style the scrollbar for webkit browsers */
+#registrationSuccessModal .modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+#registrationSuccessModal .modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+#registrationSuccessModal .modal-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+#registrationSuccessModal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+</style>
+
+<script>
+// Add this new function to handle showing the success modal
+function showSuccessModal(registeredPrograms, creditRemaining) {
+  const modal = new bootstrap.Modal(document.getElementById('registrationSuccessModal'));
+  const programsList = document.getElementById('success-programs-list');
+  const creditMessage = document.getElementById('success-credit-message');
+  
+  // Clear previous content
+  programsList.innerHTML = '';
+  
+  // Add each registered program
+  registeredPrograms.forEach(program => {
+    const programDiv = document.createElement('div');
+    programDiv.className = 'list-group-item';
+    
+    // Format the title to include Category and Level
+    const formattedTitle = `${program.category} ${program.level}: ${program.program}`;
+    
+    // Create program title and details
+    const titleEl = document.createElement('h6');
+    titleEl.className = 'mb-1';
+    titleEl.textContent = formattedTitle;
+    
+    // Create session label
+    const sessionEl = document.createElement('p');
+    sessionEl.className = 'mb-2 text-muted small';
+    sessionEl.textContent = program.sessionLabel;
+    
+    // Create calendar links container
+    const linksDiv = document.createElement('div');
+    linksDiv.className = 'd-flex gap-2';
+    
+    // Parse program date/time
+    const parsedEvents = parseProgramString(program.program);
+    if (parsedEvents && parsedEvents.length > 0) {
+      const event = parsedEvents[0];
+      
+      // Set location based on session
+      let location;
+      if (program.sessionLabel.includes('Fair Lawn')) {
+        location = "Montclair Pickleball Bergen County, 21-05 Morlot Ave., Fair Lawn, NJ";
+      } else if (program.sessionLabel.includes('Caldwell')) {
+        location = "Caldwell University";
+      } else {
+        // Default location as fallback
+        location = "Montclair Pickleball Bergen County, 21-05 Morlot Ave., Fair Lawn, NJ";
+      }
+      
+      // Use the same formatted title for calendar events
+      const calendarTitle = formattedTitle;
+
+      // Check if this is a package (has multiple weeks)
+      const isPackage = program.program.toLowerCase().includes('package');
+      let calendarOptions = {
+        title: calendarTitle,
+        startDate: new Date(event.start),
+        endDate: new Date(event.end),
+        details: `Category: ${program.category}\nLevel: ${program.level}`,
+        location: location
+      };
+
+      // For packages, add recurrence information
+      if (isPackage) {
+        // Parse the package details
+        const packageMatch = program.program.match(/(\d+)\s+Week.*\((\d{1,2}\/\d{1,2})\s*-\s*(\d{1,2}\/\d{1,2});\s*(\d{1,2}:\d{2}(?:am|pm))\s*-\s*(\d{1,2}:\d{2}(?:am|pm))\)/i);
+        
+        if (packageMatch) {
+          const numWeeks = parseInt(packageMatch[1]);
+          const startDateStr = packageMatch[2];
+          const endDateStr = packageMatch[3];
+          
+          // Add recurrence info to calendar details
+          calendarOptions.details += `\nThis is a ${numWeeks}-week package that repeats weekly.`;
+          
+          // For Google Calendar, we'll add RRULE
+          const googleRrule = `RRULE:FREQ=WEEKLY;COUNT=${numWeeks}`;
+          calendarOptions.googleRrule = googleRrule;
+          
+          // For Outlook, we'll specify the series end date
+          const seriesEndDate = new Date(event.end);
+          seriesEndDate.setDate(seriesEndDate.getDate() + (7 * (numWeeks - 1)));
+          calendarOptions.outlookSeriesEndDate = seriesEndDate;
+        }
+      }
+      
+      // Google Calendar link
+      const googleLink = document.createElement('a');
+      googleLink.href = getGoogleCalendarUrl(calendarOptions);
+      googleLink.className = 'btn btn-sm btn-outline-primary';
+      googleLink.target = '_blank';
+      googleLink.textContent = 'Add to Google Calendar';
+      
+      // Outlook Calendar link
+      const outlookLink = document.createElement('a');
+      outlookLink.href = getOutlookCalendarUrl(calendarOptions);
+      outlookLink.className = 'btn btn-sm btn-outline-secondary';
+      outlookLink.target = '_blank';
+      outlookLink.textContent = 'Add to Outlook Calendar';
+      
+      linksDiv.appendChild(googleLink);
+      linksDiv.appendChild(outlookLink);
+    }
+    
+    // Assemble the program item
+    programDiv.appendChild(titleEl);
+    programDiv.appendChild(sessionEl);
+    programDiv.appendChild(linksDiv);
+    programsList.appendChild(programDiv);
+  });
+  
+  // Update credit message if applicable
+  if (creditRemaining > 0) {
+    creditMessage.textContent = `You have $${creditRemaining.toFixed(2)} credit remaining.`;
+  } else {
+    creditMessage.textContent = '';
+  }
+
+  // Add event listener for when modal is hidden
+  const modalElement = document.getElementById('registrationSuccessModal');
+  modalElement.addEventListener('hidden.bs.modal', function () {
+    // Re-render the programs to reset their state
+    renderFilteredPrograms();
+  }, { once: true }); // Use once: true so the listener is automatically removed after firing
+  
+  // Show the modal
+  modal.show();
+}
+
+// ... existing code ...
+</script>
+
+</body>
+</html>
 
 </body>
 </html>
