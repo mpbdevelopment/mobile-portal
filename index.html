@@ -1029,7 +1029,7 @@ header {
       </div>
       <div id="new-password-dialogue" class="mini-dialogue subtle-dialogue mt-4 mx-auto">
         <div class="mini-dialogue-arrow"></div>
-        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login! (This is now required to save your info for automatic login)</span>
+        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login!</span>
       </div>
     </div>
 
@@ -6001,6 +6001,90 @@ function renderFilteredPrograms() {
 #registrationSuccessModal .modal-body::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  /* Remove padding from main containers */
+  .container-fluid {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .col-12 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Adjust card padding on mobile */
+  .program-card {
+    padding: 0.75rem;
+    border-radius: 0;
+    margin-bottom: 0.5rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .program-card .program-name {
+    font-size: 0.95rem;
+    line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    width: 100%;
+  }
+
+  /* Adjust date group styling on mobile */
+  .date-group {
+    border-radius: 0;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Adjust filter section on mobile */
+  #filter-section .card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* Make badges more compact and wrap properly on mobile */
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+    white-space: normal;
+    text-align: left;
+    height: auto;
+    line-height: 1.2;
+  }
+
+  .program-card .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Make price and buttons more compact */
+  .program-price {
+    font-size: 1rem;
+    margin: 0.5rem 0;
+  }
+
+  .btn-add, .btn-extend-membership {
+    font-size: 0.9rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  /* Ensure filter section extends full width */
+  #filter-section {
+    margin-left: -15px;
+    margin-right: -15px;
+  }
+}
 </style>
 
 <script>
@@ -6133,9 +6217,6 @@ function showSuccessModal(registeredPrograms, creditRemaining) {
 
 // ... existing code ...
 </script>
-
-</body>
-</html>
 
 </body>
 </html>
