@@ -1029,7 +1029,7 @@ header {
       </div>
       <div id="new-password-dialogue" class="mini-dialogue subtle-dialogue mt-4 mx-auto">
         <div class="mini-dialogue-arrow"></div>
-        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login! (This is now required to save your info for automatic login)</span>
+        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login!</span>
       </div>
     </div>
 
@@ -2997,26 +2997,48 @@ function updateProgramCardState(cardDiv, prod) {
  * removeProductFromCart
  * 
  * Removes a product from the cart and "frees up" any weekly slots that had been used by it.
- * Then updates all displayed cards to reflect new prices based on free slot availability.
  */
-function removeProductFromCart(prod, sessionId) {
-    // Remove the item from cartItems array
-    cartItems = cartItems.filter(item => 
-        !(item.program === prod.program && item.sessionId === sessionId)
-    );
-    
-    // Update cart UI
-    updateCartUI();
-    
-    // Re-render all program cards to reflect updated free slot availability
-    if (isListView) {
-        renderProgramListForRange();
-    } else {
-        renderFilteredPrograms();
+ function removeProductFromCart(product, sessionId) {
+  const idx = cartItems.findIndex(
+    (ci) => ci.program === product.program && ci.sessionId === sessionId
+  );
+  if (idx > -1) {
+    const removedItem = cartItems[idx];
+    // Free up any weeks used:
+    if (removedItem.freeWeeksUsed && Array.isArray(removedItem.freeWeeksUsed)) {
+      for (let weekKey of removedItem.freeWeeksUsed) {
+        freeSlotUsageMap[weekKey] = false;
+      }
     }
-    
-    // Save updated cart to localStorage
-    localStorage.setItem('cartItems', JSON.stringify(cartItems));
+    cartItems.splice(idx, 1);
+  }
+  
+  // Update cart UI without affecting program display
+  updateCartTable();
+  
+  // Instead of re-rendering everything, just update the specific card
+  const { selectedLevels, selectedCategories } = getSelectedFilters();
+  const shouldShowProduct = (!selectedLevels.length || product.standardizedLevelList?.some(level => selectedLevels.includes(level))) &&
+                          (!selectedCategories.length || selectedCategories.includes(product.category));
+  
+  if (shouldShowProduct) {
+    // Find and update the specific card
+    const cards = document.querySelectorAll('.program-card');
+    cards.forEach(card => {
+      const nameEl = card.querySelector('.program-name');
+      if (nameEl && nameEl.textContent === product.program) {
+        card.classList.remove('added');
+        
+        // Show add button again
+        const addBtn = card.querySelector('.btn-add');
+        if (addBtn) addBtn.style.display = 'block';
+        
+        // Hide remove controls
+        const addedControls = card.querySelector('.added-controls');
+        if (addedControls) addedControls.style.display = 'none';
+      }
+    });
+  }
 }
 
 
@@ -5699,16 +5721,12 @@ function renderFilteredPrograms() {
 
     // Calculate price with membership benefits
     let displayPrice = 0;
-    let pct2 = 0;
-    
     if (inCart) {
-      // If in cart, use the locked-in price
       const cartItem = cartItems.find(ci => 
         ci.program === prod.program && ci.sessionId === selectedSession.spreadsheetId
       );
       displayPrice = cartItem.price;
     } else {
-      // Do a read-only price calculation that considers current free slot usage
       const { total: readOnlyPrice } = getDiscountedPrice(
         prod,
         currentPlayer?.membershipType,
@@ -5722,6 +5740,7 @@ function renderFilteredPrograms() {
 
     const basePrice = prod.price || 0;
     let label = `$${displayPrice.toFixed(2)}`;
+    let pct2 = 0;
     if (displayPrice < basePrice) {
       const catMap = discountMap[prod.category] || {};
       const discountFactor = catMap[currentPlayer?.membershipType] || 0;
@@ -5774,13 +5793,6 @@ function renderFilteredPrograms() {
           }
         }
       }
-      
-      // After adding to cart, re-render all cards to update prices
-      if (isListView) {
-        renderProgramListForRange();
-      } else {
-        renderFilteredPrograms();
-      }
     });
 
     buttonsContainer.appendChild(addBtn);
@@ -5805,6 +5817,24 @@ function renderFilteredPrograms() {
     const removeBtn = addedControls.querySelector('button');
     removeBtn.addEventListener('click', () => {
       removeProductFromCart(prod, selectedSession.spreadsheetId);
+      cardDiv.classList.remove('added');
+      
+      // First check if an extend membership button already exists
+      const existingExtendBtn = buttonsContainer.querySelector('.btn-extend-membership');
+      
+      // Only create and append a new button if one doesn't already exist
+      if (!existingExtendBtn && displayPrice == basePrice && currentPlayer?.membershipType) {
+        const extndBtn = document.createElement('button');
+        extndBtn.className = 'btn btn-sm btn-danger btn-extend-membership';
+        extndBtn.textContent = 'Extend Your Membership';
+        extndBtn.addEventListener('click', () => {
+          window.location.href = 'subscription.html';
+        });
+        buttonsContainer.appendChild(extndBtn);
+      } else if (existingExtendBtn) {
+        // If button exists, just make it visible again
+        existingExtendBtn.style.display = '';
+      }
     });
 
     cardDiv.appendChild(headerDiv);
