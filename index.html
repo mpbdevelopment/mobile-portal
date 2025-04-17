@@ -1029,7 +1029,7 @@ header {
       </div>
       <div id="new-password-dialogue" class="mini-dialogue subtle-dialogue mt-4 mx-auto">
         <div class="mini-dialogue-arrow"></div>
-        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login! (This is now required to save your info for automatic login)</span>
+        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login!</span>
       </div>
     </div>
 
@@ -3186,9 +3186,8 @@ function updateProgramCardState(cardDiv, prod) {
     const totalCents = calculateCartTotalCents();
     const programTotal = totalCents / 100;
     const credit = currentPlayer?.credit || 0;
-    let creditRemaining = credit - programTotal;
     let creditUsed = (credit >= programTotal) ? programTotal : credit;
-    let amountDue  = programTotal - creditUsed;
+    let amountDue = programTotal - creditUsed;
     let amountDueCents = Math.round(amountDue * 100);
 
     const email = currentPlayer.email;
@@ -3199,48 +3198,8 @@ function updateProgramCardState(cardDiv, prod) {
       return;
     }
 
-    // register
-    showMessage('Payment succeeded (or $0 due), now registering items...', 'info');
-    await submitCartToSpreadsheet(creditUsed);
-    showMessage('Successfully registered after payment!', 'success');
-    
-    // Calculate remaining credit
-    if (creditRemaining > 0) {
-      creditRemaining = creditRemaining;
-    } else {
-      creditRemaining = 0;
-    }
-
-    // Store cart items before clearing
-    const registeredPrograms = [...cartItems];
-    
-    // Show the success modal with registered programs
-    showSuccessModal(registeredPrograms, creditRemaining);
-
-    // Clear cart and update UI
-    cartItems = [];
-    updateCartTable();
-    showPaymentSpinner(false);
-    showPaymentSuccess(true);
-
-    await recordFreeSlotUsage();
-
-    if (creditRemaining > 0) {
-      creditRemaining = creditRemaining;
-    } else {
-      creditRemaining = 0;
-    }
-
-    if (creditUsed > 0) {
-      const paySuccessBox = document.getElementById('payment-success');
-      if (paySuccessBox) {
-        paySuccessBox.innerHTML = `
-          Payment processed successfully! Your registration has been submitted.<br/>
-          You have $${creditRemaining.toFixed(2)} credit left.
-        `;
-      }
-    }
-
+    // Payment succeeded, now register and cleanup
+    await registerAndCleanup(creditUsed);
   });
 
   document.getElementById('btn-credit-debit').addEventListener('click', () => {
@@ -3253,120 +3212,44 @@ function updateProgramCardState(cardDiv, prod) {
   });
 
   document.getElementById('one-time-payment-form').addEventListener('submit', async (e) => {
-e.preventDefault();
-document.getElementById('otpf-card-errors').textContent = '';
+  e.preventDefault();
+  document.getElementById('otpf-card-errors').textContent = '';
 
-document.getElementById('oneTimeSubmitBtn').textContent = 'Processing...';
-document.getElementById('oneTimeSubmitBtn').disabled=true;
+  document.getElementById('oneTimeSubmitBtn').textContent = 'Processing...';
+  document.getElementById('oneTimeSubmitBtn').disabled = true;
 
-const nameOnCard = document.getElementById('otpf-name').value.trim();
-if (!nameOnCard) {
-  document.getElementById('otpf-card-errors').textContent = 'Name is required.';
-  return;
-}
-
-// Create PaymentMethod
-const { paymentMethod, error } = await stripe.createPaymentMethod({
-  type: 'card',
-  card: oneTimeCard,
-  billing_details: {
-    name: nameOnCard,
-    email: currentPlayer?.email || ''
-  }
-});
-if (error) {
-  document.getElementById('otpf-card-errors').textContent = error.message;
-  return;
-}
-showPaymentSpinner(true);
-
-const totalCents   = calculateCartTotalCents();
-const programTotal = totalCents / 100;
-const credit       = currentPlayer?.credit || 0;
-let creditRemaining = programTotal - credit;
-let creditUsed     = (credit >= programTotal) ? programTotal : credit; 
-let amountDue      = programTotal - creditUsed;
-let amountDueCents = Math.round(amountDue * 100);
-
-// If there's nothing to charge, skip Stripe PaymentIntent
-if (amountDueCents <= 0) {
-  // Register user in Sheets, update credit, etc.
-  await registerAndCleanup(creditUsed);
-
-  // Calculate remaining credit
-  if (creditRemaining > 0) {
-    creditRemaining = creditRemaining;
-  } else {
-    creditRemaining = 0;
-  }
-
-  // Store cart items before clearing
-  const registeredPrograms = [...cartItems];
-  
-  // Show the success modal with registered programs
-  showSuccessModal(registeredPrograms, creditRemaining);
-
-  // If user wants to save card on file
-  const saveCardCheckbox = document.getElementById('save-card-checkbox');
-  if (saveCardCheckbox && saveCardCheckbox.checked) {
-    try {
-      await attachPaymentMethodToUser(paymentMethod.id);
-    } catch (err) {
-      console.error('Error saving card on file (zero due):', err);
-    }
-  }
-
-  showPaymentSpinner(false);
-  return;
-}
-
-// Call one-time function to create PaymentIntent
-const payload = {
-  amount: amountDueCents,
-  paymentMethodId: paymentMethod.id
-};
-let clientSecret;
-try {
-  const resp = await fetch('https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTime', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const data = await resp.json();
-  if (!data.success) {
-    throw new Error(data.error || 'Failed to create PaymentIntent.');
-  }
-  clientSecret = data.clientSecret;
-} catch (err) {
-  showPaymentSpinner(false);
-  document.getElementById('otpf-card-errors').textContent = err.message;
-  return;
-}
-
-try {
-  // Confirm the PaymentIntent on the frontend
-  const confirmResult = await stripe.confirmCardPayment(clientSecret);
-  if (confirmResult.error) {
-    showPaymentSpinner(false);
-    document.getElementById('otpf-card-errors').textContent = confirmResult.error.message;
+  const nameOnCard = document.getElementById('otpf-name').value.trim();
+  if (!nameOnCard) {
+    document.getElementById('otpf-card-errors').textContent = 'Name is required.';
     return;
   }
-  if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
-    // Registration flow, minus credit used
-    await registerAndCleanup(creditUsed);
 
-    // Calculate remaining credit
-    if (creditRemaining > 0) {
-      creditRemaining = creditRemaining;
-    } else {
-      creditRemaining = 0;
+  // Create PaymentMethod
+  const { paymentMethod, error } = await stripe.createPaymentMethod({
+    type: 'card',
+    card: oneTimeCard,
+    billing_details: {
+      name: nameOnCard,
+      email: currentPlayer?.email || ''
     }
+  });
+  if (error) {
+    document.getElementById('otpf-card-errors').textContent = error.message;
+    return;
+  }
+  showPaymentSpinner(true);
 
-    // Store cart items before clearing
-    const registeredPrograms = [...cartItems];
-    
-    // Show the success modal with registered programs
-    showSuccessModal(registeredPrograms, creditRemaining);
+  const totalCents = calculateCartTotalCents();
+  const programTotal = totalCents / 100;
+  const credit = currentPlayer?.credit || 0;
+  let creditUsed = (credit >= programTotal) ? programTotal : credit;
+  let amountDue = programTotal - creditUsed;
+  let amountDueCents = Math.round(amountDue * 100);
+
+  // If there's nothing to charge, skip Stripe PaymentIntent
+  if (amountDueCents <= 0) {
+    // Register user in Sheets, update credit, etc.
+    await registerAndCleanup(creditUsed);
 
     // If user wants to save card on file
     const saveCardCheckbox = document.getElementById('save-card-checkbox');
@@ -3374,19 +3257,69 @@ try {
       try {
         await attachPaymentMethodToUser(paymentMethod.id);
       } catch (err) {
-        console.error('Error saving card on file:', err);
+        console.error('Error saving card on file (zero due):', err);
       }
     }
-    showPaymentSpinner(false);
-  } else {
-    showPaymentSpinner(false);
-    document.getElementById('otpf-card-errors').textContent = 'Payment not completed.';
+
+    document.getElementById('oneTimeSubmitBtn').disabled = false;
+    return;
   }
-} catch (err) {
-  showPaymentSpinner(false);
-  document.getElementById('otpf-card-errors').textContent = err.message;
-}
-document.getElementById('oneTimeSubmitBtn').disabled=false;
+
+  // Call one-time function to create PaymentIntent
+  const payload = {
+    amount: amountDueCents,
+    paymentMethodId: paymentMethod.id
+  };
+  let clientSecret;
+  try {
+    const resp = await fetch('https://merry-rugelach-c028d1.netlify.app/.netlify/functions/chargeOneTime', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to create PaymentIntent.');
+    }
+    clientSecret = data.clientSecret;
+  } catch (err) {
+    showPaymentSpinner(false);
+    document.getElementById('otpf-card-errors').textContent = err.message;
+    document.getElementById('oneTimeSubmitBtn').disabled = false;
+    return;
+  }
+
+  try {
+    // Confirm the PaymentIntent on the frontend
+    const confirmResult = await stripe.confirmCardPayment(clientSecret);
+    if (confirmResult.error) {
+      showPaymentSpinner(false);
+      document.getElementById('otpf-card-errors').textContent = confirmResult.error.message;
+      document.getElementById('oneTimeSubmitBtn').disabled = false;
+      return;
+    }
+    if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
+      // Registration flow, minus credit used
+      await registerAndCleanup(creditUsed);
+
+      // If user wants to save card on file
+      const saveCardCheckbox = document.getElementById('save-card-checkbox');
+      if (saveCardCheckbox && saveCardCheckbox.checked) {
+        try {
+          await attachPaymentMethodToUser(paymentMethod.id);
+        } catch (err) {
+          console.error('Error saving card on file:', err);
+        }
+      }
+    } else {
+      showPaymentSpinner(false);
+      document.getElementById('otpf-card-errors').textContent = 'Payment not completed.';
+    }
+  } catch (err) {
+    showPaymentSpinner(false);
+    document.getElementById('otpf-card-errors').textContent = err.message;
+  }
+  document.getElementById('oneTimeSubmitBtn').disabled = false;
 });
 
 /**
@@ -3430,22 +3363,32 @@ try {
  * 
  * 1) Registers the items in the spreadsheet (submitCartToSpreadsheet).
  * 2) Records free slot usage in Firebase (so user can't re-use that free slot in a separate checkout).
- * 3) Clears cart and closes spinner/UI.
+ * 3) Shows success modal with registered programs and remaining credit.
+ * 4) Clears cart and closes spinner/UI.
  */
- async function registerAndCleanup(creditUsed) {
-  // Step 1: Register the cart items in your Sheets (already existing logic).
+async function registerAndCleanup(creditUsed) {
+  // Step 1: Register the cart items in your Sheets
   await submitCartToSpreadsheet(creditUsed);
 
-  // Step 2: Record free slot usage in Firebase, so future checkouts can't re-use them.
+  // Step 2: Record free slot usage in Firebase
   await recordFreeSlotUsage();
 
-  // Step 3: Clear the cart and update UI
+  // Step 3: Calculate remaining credit and store registered programs
+  const credit = currentPlayer?.credit || 0;
+  const programTotal = calculateCartTotalCents() / 100;
+  let creditRemaining = Math.max(0, credit - programTotal);
+  const registeredPrograms = [...cartItems];
+
+  // Step 4: Show success modal
+  showSuccessModal(registeredPrograms, creditRemaining);
+
+  // Step 5: Clear cart and update UI
   cartItems = [];
   updateCartTable();
   showPaymentSpinner(false);
   showPaymentSuccess(true);
 
-  // Hide modal if needed
+  // Hide payment modal if needed
   const modalEl = bootstrap.Modal.getInstance(document.getElementById('oneTimePaymentModal'));
   if (modalEl) {
     modalEl.hide();
@@ -3460,7 +3403,7 @@ try {
  * 
  * Only relevant for Gold members.
  */
- async function recordFreeSlotUsage() {
+async function recordFreeSlotUsage() {
   console.log('[recordFreeSlotUsage] START');
   console.log('[recordFreeSlotUsage] currentPlayer =', currentPlayer);
   console.log('[recordFreeSlotUsage] ephemeral freeSlotUsageMap BEFORE =', JSON.stringify(freeSlotUsageMap, null, 2));
