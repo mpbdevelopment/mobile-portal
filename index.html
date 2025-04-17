@@ -3365,6 +3365,7 @@ try {
  * 2) Records free slot usage in Firebase (so user can't re-use that free slot in a separate checkout).
  * 3) Shows success modal with registered programs and remaining credit.
  * 4) Clears cart and closes spinner/UI.
+ * 5) Refreshes free slot data to ensure UI is up-to-date.
  */
 async function registerAndCleanup(creditUsed) {
   // Step 1: Register the cart items in your Sheets
@@ -3387,6 +3388,17 @@ async function registerAndCleanup(creditUsed) {
   updateCartTable();
   showPaymentSpinner(false);
   showPaymentSuccess(true);
+
+  // Step 6: Re-fetch free slot data to ensure UI is up-to-date
+  if (currentPlayer?.membershipType === 'Gold') {
+    await fetchExistingFreeSlots(currentPlayer.email);
+    // Re-render the programs to reflect updated free slot availability
+    if (isListView) {
+      renderProgramListForRange();
+    } else {
+      renderFilteredPrograms();
+    }
+  }
 
   // Hide payment modal if needed
   const modalEl = bootstrap.Modal.getInstance(document.getElementById('oneTimePaymentModal'));
@@ -3444,9 +3456,9 @@ async function recordFreeSlotUsage() {
     console.error('[recordFreeSlotUsage] Error updating Firebase:', err);
   }
 
-  // Finally, clear the ephemeral map
-  freeSlotUsageMap = {};
-  console.log('[recordFreeSlotUsage] Cleared freeSlotUsageMap. END.\n');
+  // Instead of clearing the map, keep the recorded slots marked as used
+  // This ensures the UI immediately reflects the used slots
+  console.log('[recordFreeSlotUsage] Keeping used slots in local map. END.\n');
 }
 
 
