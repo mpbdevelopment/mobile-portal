@@ -2963,31 +2963,27 @@ function updateProgramCardState(cardDiv, prod) {
     indoorOutdoor: product.indoorOutdoor
   });
 
-  // Update cart UI without affecting program display
+  // Update cart UI and re-render all programs
   updateCartTable();
-  
-  // Instead of re-rendering everything, just update the specific card
-  const { selectedLevels, selectedCategories } = getSelectedFilters();
-  const shouldShowProduct = (!selectedLevels.length || product.standardizedLevelList?.some(level => selectedLevels.includes(level))) &&
-                          (!selectedCategories.length || selectedCategories.includes(product.category));
-  
-  if (shouldShowProduct) {
-    // Find and update the specific card
-    const cards = document.querySelectorAll('.program-card');
-    cards.forEach(card => {
-      const nameEl = card.querySelector('.program-name');
-      if (nameEl && nameEl.textContent === product.program) {
-        card.classList.add('added');
-        
-        // Update add button to show "Added" state
-        const addBtn = card.querySelector('.btn-add');
-        if (addBtn) addBtn.style.display = 'none';
-        
-        // Show remove controls
-        const addedControls = card.querySelector('.added-controls');
-        if (addedControls) addedControls.style.display = 'block';
+  if (isListView) {
+    renderProgramListForRange();
+  } else {
+    renderFilteredPrograms();
+  }
+
+  // Check for package membership coverage
+  if (currentPlayer?.membershipType && product.program.includes('Package')) {
+    const allDates = parseAllDates(product.program);
+    if (allDates.length) {
+      const membershipEnd = new Date(currentPlayer?.membershipEndDate || '');
+      if (!isNaN(membershipEnd.getTime())) {
+        const hasFullPriceDay = allDates.some(dateObj => dateObj > membershipEnd);
+        if (hasFullPriceDay) {
+          const alertModalEl = new bootstrap.Modal(document.getElementById('creditAlertModal'));
+          alertModalEl.show();
+        }
       }
-    });
+    }
   }
 }
 
@@ -3013,31 +3009,12 @@ function updateProgramCardState(cardDiv, prod) {
     cartItems.splice(idx, 1);
   }
   
-  // Update cart UI without affecting program display
+  // Update cart UI and re-render all programs
   updateCartTable();
-  
-  // Instead of re-rendering everything, just update the specific card
-  const { selectedLevels, selectedCategories } = getSelectedFilters();
-  const shouldShowProduct = (!selectedLevels.length || product.standardizedLevelList?.some(level => selectedLevels.includes(level))) &&
-                          (!selectedCategories.length || selectedCategories.includes(product.category));
-  
-  if (shouldShowProduct) {
-    // Find and update the specific card
-    const cards = document.querySelectorAll('.program-card');
-    cards.forEach(card => {
-      const nameEl = card.querySelector('.program-name');
-      if (nameEl && nameEl.textContent === product.program) {
-        card.classList.remove('added');
-        
-        // Show add button again
-        const addBtn = card.querySelector('.btn-add');
-        if (addBtn) addBtn.style.display = 'block';
-        
-        // Hide remove controls
-        const addedControls = card.querySelector('.added-controls');
-        if (addedControls) addedControls.style.display = 'none';
-      }
-    });
+  if (isListView) {
+    renderProgramListForRange();
+  } else {
+    renderFilteredPrograms();
   }
 }
 
@@ -3057,6 +3034,13 @@ function updateProgramCardState(cardDiv, prod) {
       amountDueLine.textContent = '';
       breakdownLine.textContent = '';
       updateCartSummaryPill();
+      
+      // Re-render all programs when cart becomes empty
+      if (isListView) {
+        renderProgramListForRange();
+      } else {
+        renderFilteredPrograms();
+      }
       return;
     }
     cartSection.style.display = 'block';
