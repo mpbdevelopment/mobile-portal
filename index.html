@@ -5121,6 +5121,10 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
     
     const filterSection = document.getElementById('filter-section');
     
+    // Check if we're on mobile - only check once at creation time
+    const isMobile = window.innerWidth < 768;
+    const defaultCollapseState = isMobile ? '' : 'show';
+    
     // Create a new container structure for the desktop layout
     const container = document.createElement('div');
     container.className = 'container-fluid px-0';
@@ -5142,12 +5146,12 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
 
               <!-- Level Filter Section -->
               <div class="mb-3">
-                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#levelFiltersCollapse" aria-expanded="true">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#levelFiltersCollapse" aria-expanded="${!isMobile}">
                   <i class="bi bi-funnel"></i> Filter by Level
-                  <span class="arrow float-end">&#9660;</span>
+                  <span class="arrow float-end" style="transform: ${isMobile ? 'rotate(0deg)' : 'rotate(180deg)'}">&#9660;</span>
                 </button>
                 
-                <div class="collapse show" id="levelFiltersCollapse">
+                <div class="collapse ${defaultCollapseState}" id="levelFiltersCollapse">
                   <div id="level-filters" class="d-flex flex-column gap-2">
                     ${Array.from(levelSet).map(level => `
                       <div class="form-check">
@@ -5161,12 +5165,12 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
 
               <!-- Category Filter Section -->
               <div class="mb-3">
-                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#categoryFiltersCollapse" aria-expanded="true">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#categoryFiltersCollapse" aria-expanded="${!isMobile}">
                   <i class="bi bi-funnel"></i> Filter by Category
-                  <span class="arrow float-end">&#9660;</span>
+                  <span class="arrow float-end" style="transform: ${isMobile ? 'rotate(0deg)' : 'rotate(180deg)'}">&#9660;</span>
                 </button>
                 
-                <div class="collapse show" id="categoryFiltersCollapse">
+                <div class="collapse ${defaultCollapseState}" id="categoryFiltersCollapse">
                   <div id="category-filters" class="d-flex flex-column gap-2">
                     ${Array.from(categorySet).map(category => `
                       <div class="form-check">
@@ -5180,12 +5184,12 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
 
               <!-- Date Filter Section -->
               <div class="mb-3">
-                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dateFiltersCollapse" aria-expanded="true">
+                <button class="btn btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dateFiltersCollapse" aria-expanded="${!isMobile}">
                   <i class="bi bi-calendar"></i> Filter by Date
-                  <span class="arrow float-end">&#9660;</span>
+                  <span class="arrow float-end" style="transform: ${isMobile ? 'rotate(0deg)' : 'rotate(180deg)'}">&#9660;</span>
                 </button>
                 
-                <div class="collapse show" id="dateFiltersCollapse">
+                <div class="collapse ${defaultCollapseState}" id="dateFiltersCollapse">
                   <div id="date-filters" class="d-flex flex-column gap-2">
                     <div class="form-check">
                       <input class="form-check-input date-filter" type="radio" name="dateFilter" value="today" id="date-today">
