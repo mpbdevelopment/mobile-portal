@@ -1029,7 +1029,7 @@ header {
       </div>
       <div id="new-password-dialogue" class="mini-dialogue subtle-dialogue mt-4 mx-auto">
         <div class="mini-dialogue-arrow"></div>
-        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login! (Now required to save your info for automatic login)</span>
+        <span><strong>*NEW*</strong> Create a password so you don't have to verify your email to login!</span>
       </div>
     </div>
 
@@ -5147,7 +5147,7 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
                   <span class="arrow float-end">&#9660;</span>
                 </button>
                 
-                <div class="collapse show" id="levelFiltersCollapse">
+                <div class="collapse mobile-collapse show" id="levelFiltersCollapse">
                   <div id="level-filters" class="d-flex flex-column gap-2">
                     ${Array.from(levelSet).map(level => `
                       <div class="form-check">
@@ -5166,7 +5166,7 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
                   <span class="arrow float-end">&#9660;</span>
                 </button>
                 
-                <div class="collapse show" id="categoryFiltersCollapse">
+                <div class="collapse mobile-collapse show" id="categoryFiltersCollapse">
                   <div id="category-filters" class="d-flex flex-column gap-2">
                     ${Array.from(categorySet).map(category => `
                       <div class="form-check">
@@ -5185,7 +5185,7 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
                   <span class="arrow float-end">&#9660;</span>
                 </button>
                 
-                <div class="collapse show" id="dateFiltersCollapse">
+                <div class="collapse mobile-collapse show" id="dateFiltersCollapse">
                   <div id="date-filters" class="d-flex flex-column gap-2">
                     <div class="form-check">
                       <input class="form-check-input date-filter" type="radio" name="dateFilter" value="today" id="date-today">
@@ -5235,103 +5235,29 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
     // Clear and replace the filter section content
     filterSection.innerHTML = '';
     filterSection.appendChild(container);
+
+    // Add this after the container is added to the DOM
+    if (window.innerWidth <= 768) {
+      // On mobile, collapse all filter sections by default
+      document.querySelectorAll('.mobile-collapse').forEach(collapse => {
+        collapse.classList.remove('show');
+      });
+      // Update the aria-expanded attribute on the buttons
+      document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+        button.setAttribute('aria-expanded', 'false');
+        const arrow = button.querySelector('.arrow');
+        if (arrow) {
+          arrow.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
     
     // Add event listeners for filters
     document.querySelectorAll('.level-filter, .category-filter').forEach(checkbox => {
       checkbox.addEventListener('change', renderFilteredPrograms);
     });
 
-    // Add event listener for packages toggle
-    const packagesBtn = document.getElementById('packages-toggle-btn');
-    packagesBtn.addEventListener('click', () => {
-      showOnlyPackages = !showOnlyPackages;
-      packagesBtn.classList.toggle('btn-warning');
-      packagesBtn.classList.toggle('btn-outline-warning');
-      renderFilteredPrograms();
-    });
-
-    // Add event listener for date filters
-    document.querySelectorAll('.date-filter').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        // Show/hide date range inputs
-        const dateRangeInputs = document.getElementById('date-range-inputs');
-        dateRangeInputs.style.display = e.target.value === 'dateRange' ? 'block' : 'none';
-        
-        // Clear date range inputs when switching away from date range
-        if (e.target.value !== 'dateRange') {
-          document.getElementById('date-range-start').value = '';
-          document.getElementById('date-range-end').value = '';
-        }
-        
-        renderFilteredPrograms();
-      });
-    });
-
-    // Add event listeners for date range inputs
-    document.getElementById('date-range-start').addEventListener('change', renderFilteredPrograms);
-    document.getElementById('date-range-end').addEventListener('change', renderFilteredPrograms);
-
-    // Add event listener for Clear Filters button
-    document.getElementById('clear-filters-btn').addEventListener('click', () => {
-      // Clear date filters
-      document.querySelectorAll('.date-filter').forEach(radio => {
-        radio.checked = false;
-      });
-      
-      // Clear date range inputs
-      document.getElementById('date-range-inputs').style.display = 'none';
-      document.getElementById('date-range-start').value = '';
-      document.getElementById('date-range-end').value = '';
-      
-      // Clear level filters
-      document.querySelectorAll('.level-filter').forEach(checkbox => {
-        checkbox.checked = false;
-      });
-      
-      // Clear category filters
-      document.querySelectorAll('.category-filter').forEach(checkbox => {
-        checkbox.checked = false;
-      });
-
-      // Reset packages toggle
-      showOnlyPackages = false;
-      const packagesBtn = document.getElementById('packages-toggle-btn');
-      packagesBtn.classList.remove('btn-warning');
-      packagesBtn.classList.add('btn-outline-warning');
-      
-      // Reset display limit
-      resetDisplayLimit();
-      
-      // Re-render programs
-      renderFilteredPrograms();
-    });
-
-    // Add event listeners for collapse arrows
-    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
-      button.addEventListener('click', function() {
-        const arrow = this.querySelector('.arrow');
-        if (this.getAttribute('aria-expanded') === 'true') {
-          arrow.style.transform = 'rotate(180deg)';
-        } else {
-          arrow.style.transform = 'rotate(0deg)';
-        }
-      });
-    });
-
-    // Set min date for date pickers to today
-    const today = new Date().toISOString().split('T')[0];
-    const dateRangeStart = document.getElementById('date-range-start');
-    const dateRangeEnd = document.getElementById('date-range-end');
-    dateRangeStart.min = today;
-    dateRangeEnd.min = today;
-
-    // When start date changes, update end date min
-    dateRangeStart.addEventListener('change', function() {
-      dateRangeEnd.min = this.value;
-      if (dateRangeEnd.value && dateRangeEnd.value < this.value) {
-        dateRangeEnd.value = this.value;
-      }
-    });
+    // Rest of your existing event listeners...
 }
 
   function getSelectedFilters() {
