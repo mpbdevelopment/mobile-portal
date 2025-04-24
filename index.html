@@ -3912,6 +3912,7 @@ return new Date(
 
     const fullName = `${player.firstName} ${player.lastName}`.trim();
     localStorage.setItem('playerFullName', fullName);
+    localStorage.setItem('playerEmail', player.email);
 
     const cardSpan   = document.getElementById('profile-card-last4');
     const cardButton = document.getElementById('profile-card-button');
