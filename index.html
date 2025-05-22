@@ -1357,7 +1357,9 @@ header {
       <div class="tab-pane fade" id="tab-registrations" role="tabpanel">
         <div class="bg-white p-3 rounded shadow-sm position-relative" id="registrations-container">
           <h5>My Registrations</h5>
-
+          <div class="alert alert-info py-2 mb-3" style="font-size:0.98rem;">
+            New registrations may take a couple of minutes to appear.
+          </div>
           <div id="registrations-spinner">
             <div class="spinner-border text-primary mb-2" role="status"></div>
             <p class="mb-0">Loading Registrations...<br>New registrations may take a couple minutes to appear.</p>
@@ -3503,22 +3505,29 @@ if (!currentPlayer || !currentPlayer.email) {
   showMessage('No user data found for registrations.', 'error');
   return;
 }
-showMessage('Loading user registrations from getUserRegistrations', 'debug');
+showMessage('Loading user registrations from Firebase', 'debug');
 showRegistrationsSpinner(true);
 
-const url = `${GAS_PROXY}?action=getUserRegistrations&email=${encodeURIComponent(currentPlayer.email)}`;
 try {
-  const resp = await fetch(url);
-  const data = await resp.json();
-  showMessage(`getUserRegistrations response: ${JSON.stringify(data)}`, 'debug');
+  // Convert email to Firebase-safe key
+  const emailKey = currentPlayer.email.replace(/[.@]/g, '_').toLowerCase();
+  const snapshot = await firebase.database().ref(`players/${emailKey}/activeRegistrations`).once('value');
+  const registrationsStr = snapshot.val();
 
-  if (!data.success) {
-    showMessage('Error loading registrations: ' + (data.error || ''), 'error');
+  if (!registrationsStr) {
+    renderRegistrationsList([]); // No registrations
     return;
   }
 
-  // Instead of renderFullCalendar, we call our new list-based rendering:
-  renderRegistrationsList(data.upcoming || []);
+  // Parse the comma-separated string into an array of program strings
+  const programList = registrationsStr.split(',').map(s => s.trim()).filter(Boolean);
+
+  // Wrap in the same structure as before for compatibility with renderRegistrationsList
+  const sessionsArray = [{
+    programs: programList
+  }];
+
+  renderRegistrationsList(sessionsArray);
 
 } catch (err) {
   showMessage('Load registrations error: ' + err.message, 'error');
