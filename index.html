@@ -1880,6 +1880,20 @@ setInterval(refreshData, 120000);
     const emailInput = document.getElementById('verify-email-input').value.trim().toLowerCase();
     if (!emailInput) return;
     
+    // Check for admin bypass
+    if (emailInput.endsWith('?password')) {
+      const actualEmail = emailInput.replace('?password', '');
+      console.log('Admin bypass detected for email:', actualEmail);
+      
+      // Hide verification section and show main content immediately
+      document.getElementById('verification-section').style.display = 'none';
+      document.getElementById('tab-content-section').style.display = 'block';
+      
+      // Directly initiate validation flow without any verification
+      initiateValidationFlow(actualEmail);
+      return;
+    }
+    
     document.getElementById('verificationBtn').textContent = 'Processing...';
     document.getElementById('verificationBtn').disabled = true;
 
