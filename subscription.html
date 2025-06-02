@@ -585,11 +585,11 @@ If you choose to cancel your membership, your benefits will remain active until 
           if (snapshot.exists()) {
             currentSubscription = snapshot.val();
             updateUIWithSubscription(currentSubscription);
-            purchaseExtend.textContent = "Number of Months to Extend";
+            purchaseExtend.textContent = "Extend Your Membership";
             document.getElementById('contactToUpgrade').style.display='block';
           } else {
             currentSubscription = null;
-            purchaseExtend.textContent = "Number of Months to Purchase"
+            purchaseExtend.textContent = "Extend Your Membership"
           }
         }
       } catch (err) {
@@ -616,7 +616,7 @@ If you choose to cancel your membership, your benefits will remain active until 
         // Ensure subStatus is visible
         subStatus.style.display = "block";
 
-        // If the subscription hasn’t ended yet:
+        // If the subscription hasn't ended yet:
         if (endDateObj > now) {
           planSelectionCard.style.display = "none";
           subStatus.classList.remove("alert-danger");
