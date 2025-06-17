@@ -1184,8 +1184,9 @@ header {
             <p><strong>Credit:</strong> <span id="profile-credit-amount">No credit available</span></p>
             
             <div id="profileBenefits"></div>
-
+            <button id="enablePush" class="btn btn-primary w-100 mt-3">Enable Push Notifications</button>
             <button id="logout-button" class="btn btn-danger w-100 mt-3">Logout</button>
+            
           </div>
         </div>
       </div>
@@ -6188,7 +6189,43 @@ function showSuccessModal(registeredPrograms, creditRemaining) {
   modal.show();
 }
 
-// ... existing code ...
+/* main.js */
+const publicKey =
+  'BPFQpd8eY-5RM1ozJNoNfzYpisrJIDJpmjeSEDKnLSyYQzBoKYuV_jVT0Aw47nhtA1tNzQpjtNQu2FzTXgRy09A';
+
+document.getElementById('enablePush').addEventListener('click', enablePush);
+
+async function enablePush() {
+  /* 1 · Permission */
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { alert('Notifications blocked'); return; }
+
+  /* 2 · Register the SW (if not already) */
+  const swReg = await navigator.serviceWorker.register('/service-worker.js');
+
+  /* 3 · Subscribe */
+  const sub = await swReg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlB64ToUint8Array(publicKey)
+  });
+
+  /* 4 · Persist on server */
+  await fetch('/.netlify/functions/saveSubscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sub)
+  });
+
+  alert('Push enabled!  You can close this tab.');
+}
+
+/* helper: Base64-URL → Uint8Array */
+function urlB64ToUint8Array(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const bin = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...bin].map(c => c.charCodeAt(0)));
+}
+
 </script>
 
 </body>
