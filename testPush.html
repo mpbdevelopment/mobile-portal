@@ -37,7 +37,7 @@
       if (await Notification.requestPermission() !== 'granted')
         return alert('Permission denied');
 
-      const reg = await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.register('/service-worker.js');
 
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
