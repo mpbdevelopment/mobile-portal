@@ -2474,8 +2474,6 @@ try {
   return { total, usedWeeks };
 }
 
-
-
 function displaySessionCards(sessions) {
 const container = document.getElementById('session-cards');
 container.innerHTML = '';
@@ -2491,7 +2489,8 @@ sessions.forEach(sessionObj => {
     if (sessionObj.location.includes('Galloway') || sessionObj.location.includes('Atlantic')) {
     return;
   }
-  const label = `${sessionObj.location} - ${sessionObj.season}`;
+  //const label = `${sessionObj.location} - ${sessionObj.season}`;
+  const label = `${sessionObj.displayName}`;
 
   // Create a column for each session
   const colDiv = document.createElement('div');
