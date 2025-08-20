@@ -1336,6 +1336,23 @@ header {
           
             <div id="amount-due-line"></div>
             <div id="breakdown-line"></div>
+            <div id="donation-summary-line" class="mt-1"></div>
+            <div id="total-charge-line" class="fw-bold"></div>
+
+            <!-- Donation section -->
+            <div id="donation-section" class="mt-3">
+              <label class="form-label"><strong>Add a donation to support our charity, <a href="https://www.thepaddleproject.org" target="_blank" rel="noopener">The Paddle Project</a>.</strong></label>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-success btn-sm" id="donate-5">+$5</button>
+                <button type="button" class="btn btn-outline-success btn-sm" id="donate-10">+$10</button>
+                <button type="button" class="btn btn-outline-success btn-sm" id="donate-20">+$20</button>
+                <div class="input-group" style="width: 200px;">
+                  <span class="input-group-text">$</span>
+                  <input type="number" min="0" step="1" class="form-control" id="donation-amount" placeholder="Custom" />
+                </div>
+              </div>
+              <div class="form-text">Your donation will be processed with your purchase. 100% of proceeds go to The Paddle Project. Learn more at <a href="https://www.thepaddleproject.org" target="_blank" rel="noopener">www.thepaddleproject.org</a>.</div>
+            </div>
           
             <!-- TWO buttons -->
             <div class="d-flex gap-2 mt-3">
@@ -3047,6 +3064,8 @@ function updateProgramCardState(cardDiv, prod) {
     const cartSection = document.getElementById('cart-section');
     const amountDueLine = document.getElementById('amount-due-line');
     const breakdownLine = document.getElementById('breakdown-line');
+    const donationSummaryLine = document.getElementById('donation-summary-line');
+    const totalChargeLine = document.getElementById('total-charge-line');
 
     if (!tbody || !cartSection || !amountDueLine || !breakdownLine) return;
 
@@ -3055,6 +3074,8 @@ function updateProgramCardState(cardDiv, prod) {
       cartSection.style.display = 'none';
       amountDueLine.textContent = '';
       breakdownLine.textContent = '';
+      if (donationSummaryLine) donationSummaryLine.textContent = '';
+      if (totalChargeLine) totalChargeLine.textContent = '';
       updateCartSummaryPill();
       
       // Re-render all programs when cart becomes empty
@@ -3105,8 +3126,16 @@ function updateProgramCardState(cardDiv, prod) {
     let creditUsed = (credit >= programTotal) ? programTotal : credit;
     let amountDue = programTotal - creditUsed;
 
-    amountDueLine.textContent = `Amount Due: $${amountDue.toFixed(2)}`;
+    amountDueLine.textContent = `Amount Due (Program): $${amountDue.toFixed(2)}`;
     breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
+
+    // Donation summary and total charge
+    const donationCents = getDonationCents();
+    const donationDollars = (donationCents / 100).toFixed(2);
+    if (donationSummaryLine) donationSummaryLine.textContent = donationCents > 0 ? `Donation: $${donationDollars}` : '';
+    const grandTotalCents = Math.max(0, Math.round(amountDue * 100)) + donationCents;
+    const grandTotal = (grandTotalCents / 100).toFixed(2);
+    if (totalChargeLine) totalChargeLine.textContent = `Total to be charged: $${grandTotal}`;
 
     updateCartSummaryPill();
 
@@ -3114,7 +3143,7 @@ function updateProgramCardState(cardDiv, prod) {
       document.getElementById('btn-charge-on-file').style.display = 'none';
     }
 
-    if (totalCents == 0 || amountDue == 0) {
+    if ((Math.round(amountDue * 100) + getDonationCents()) == 0) {
       document.getElementById('btn-charge-on-file').textContent = 'Submit Registration (No Charge)';
       document.getElementById('btn-charge-on-file').style.display = 'block';
       document.getElementById('btn-credit-debit').style.display = 'none';
@@ -3152,13 +3181,26 @@ function updateProgramCardState(cardDiv, prod) {
     return total * 100;
   }
 
-  async function chargeCart(email, amountInCents) {
-    showMessage(`Charging cart: Email=${email}, Amount=${amountInCents} cents`, 'debug');
-    if (amountInCents <= 0) {
+  function getDonationCents() {
+    const input = document.getElementById('donation-amount');
+    if (!input) return 0;
+    const val = parseFloat((input.value || '').toString());
+    if (isNaN(val) || val <= 0) return 0;
+    return Math.round(val * 100);
+  }
+
+  async function chargeCart(email, programDueCents, donationCents) {
+    const totalToChargeCents = (programDueCents || 0) + (donationCents || 0);
+    showMessage(`Charging cart: Email=${email}, ProgramDue=${programDueCents} cents, Donation=${donationCents} cents (Total=${totalToChargeCents})`, 'debug');
+    if (totalToChargeCents <= 0) {
       return true; 
     }
     try {
-      const payload = { email, amount: amountInCents };
+      const payload = { 
+        email, 
+        amount: totalToChargeCents,
+        transferAmounts: [Math.max(0, programDueCents || 0), Math.max(0, donationCents || 0)]
+      };
       const resp = await fetch(CHARGE_CART_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3194,10 +3236,11 @@ function updateProgramCardState(cardDiv, prod) {
     const credit = currentPlayer?.credit || 0;
     let creditUsed = (credit >= programTotal) ? programTotal : credit;
     let amountDue = programTotal - creditUsed;
-    let amountDueCents = Math.round(amountDue * 100);
+    let programDueCents = Math.round(amountDue * 100);
+    const donationCents = getDonationCents();
 
     const email = currentPlayer.email;
-    const success = await chargeCart(email, amountDueCents);
+    const success = await chargeCart(email, programDueCents, donationCents);
     if (!success) {
       showMessage('Payment failed, not registering.', 'error');
       showPaymentSpinner(false);
@@ -3216,6 +3259,22 @@ function updateProgramCardState(cardDiv, prod) {
     const modalEl = new bootstrap.Modal(document.getElementById('oneTimePaymentModal'));
     modalEl.show();
   });
+
+  // Donation controls
+  (function initDonationControls(){
+    const input = document.getElementById('donation-amount');
+    const btn5 = document.getElementById('donate-5');
+    const btn10 = document.getElementById('donate-10');
+    const btn20 = document.getElementById('donate-20');
+    const setAndRefresh = (dollars) => {
+      if (input) input.value = (dollars || 0).toString();
+      updateCartTable();
+    };
+    if (btn5) btn5.addEventListener('click', () => setAndRefresh(5));
+    if (btn10) btn10.addEventListener('click', () => setAndRefresh(10));
+    if (btn20) btn20.addEventListener('click', () => setAndRefresh(20));
+    if (input) input.addEventListener('input', () => updateCartTable());
+  })();
 
   document.getElementById('one-time-payment-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -3250,10 +3309,12 @@ function updateProgramCardState(cardDiv, prod) {
   const credit = currentPlayer?.credit || 0;
   let creditUsed = (credit >= programTotal) ? programTotal : credit;
   let amountDue = programTotal - creditUsed;
-  let amountDueCents = Math.round(amountDue * 100);
+  let programDueCents = Math.round(amountDue * 100);
+  const donationCents = getDonationCents();
+  const grandTotalCents = programDueCents + donationCents;
 
   // If there's nothing to charge, skip Stripe PaymentIntent
-  if (amountDueCents <= 0) {
+  if (grandTotalCents <= 0) {
     // Register user in Sheets, update credit, etc.
     await registerAndCleanup(creditUsed);
 
@@ -3273,8 +3334,9 @@ function updateProgramCardState(cardDiv, prod) {
 
   // Call one-time function to create PaymentIntent
   const payload = {
-    amount: amountDueCents,
-    paymentMethodId: paymentMethod.id
+    amount: grandTotalCents,
+    paymentMethodId: paymentMethod.id,
+    transferAmounts: [Math.max(0, programDueCents), Math.max(0, donationCents)]
   };
   let clientSecret;
   try {
