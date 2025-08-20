@@ -1341,8 +1341,9 @@ header {
 
             <!-- Donation section -->
             <div id="donation-section" class="mt-3">
-              <label class="form-label"><strong>Add a donation to support our charity, <a href="https://www.thepaddleproject.org" target="_blank" rel="noopener">ject</a>.</strong></label>
+              <label class="form-label"><strong>Add a donation to support our charity, <a href="https://www.thepaddleproject.org" target="_blank" rel="noopener">The Paddle Project</a>.</strong></label>
               <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-success btn-sm" id="donate-1">+$1</button>
                 <button type="button" class="btn btn-outline-success btn-sm" id="donate-5">+$5</button>
                 <button type="button" class="btn btn-outline-success btn-sm" id="donate-10">+$10</button>
                 <button type="button" class="btn btn-outline-success btn-sm" id="donate-20">+$20</button>
@@ -1351,7 +1352,7 @@ header {
                   <input type="number" min="0" step="1" class="form-control" id="donation-amount" placeholder="Custom" />
                 </div>
               </div>
-              <div class="form-text">Your donation will be processed with your purchase. 100% of proceeds go to The Paddle Project Inc. Learn more at <a href="https://www.thepaddleproject.org" target="_blank" rel="noopener">www.thepaddleproject.org</a>.</div>
+              <div class="form-text">Your donation will be processed with your purchase. 100% of proceeds go to The Paddle Project. Learn more at <a href="https://www.thepaddleproject.org" target="_blank" rel="noopener">www.thepaddleproject.org</a>.</div>
             </div>
           
             <!-- TWO buttons -->
@@ -3263,6 +3264,7 @@ function updateProgramCardState(cardDiv, prod) {
   // Donation controls
   (function initDonationControls(){
     const input = document.getElementById('donation-amount');
+    const btn1 = document.getElementById('donate-1');
     const btn5 = document.getElementById('donate-5');
     const btn10 = document.getElementById('donate-10');
     const btn20 = document.getElementById('donate-20');
@@ -3270,6 +3272,7 @@ function updateProgramCardState(cardDiv, prod) {
       if (input) input.value = (dollars || 0).toString();
       updateCartTable();
     };
+    if (btn1) btn1.addEventListener('click', () => setAndRefresh(1));
     if (btn5) btn5.addEventListener('click', () => setAndRefresh(5));
     if (btn10) btn10.addEventListener('click', () => setAndRefresh(10));
     if (btn20) btn20.addEventListener('click', () => setAndRefresh(20));
