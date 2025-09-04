@@ -6291,6 +6291,54 @@ function urlB64ToUint8Array (b64) {
 }
 
 
+// Defensive cleanup for credit alert modal overlays/backdrops
+(function () {
+  const creditModal = document.getElementById('creditAlertModal');
+  if (!creditModal) return;
+
+  function cleanupModalBackdrop() {
+    // Remove any lingering Bootstrap backdrops
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+    const anyOpen = document.querySelector('.modal.show');
+    const noSpinners = (typeof activeSpinners !== 'number') || activeSpinners === 0;
+
+    // If no other modals are open and no spinners, clear modal-open and any inline locks
+    if (!anyOpen && noSpinners) {
+      document.body.classList.remove('modal-open');
+      document.body.style.removeProperty('padding-right');
+
+      // Clear any inline scroll locks (defensive for cross-browser quirks)
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.height = '';
+      document.body.style.width = '';
+
+      // Force a reflow to ensure scroll is re-enabled on iOS/Safari
+      // eslint-disable-next-line no-unused-expressions
+      void document.body.offsetHeight;
+    }
+
+    // Hide custom overlay if no spinners are active
+    try {
+      if (noSpinners) {
+        const overlayEl = document.getElementById('overlay');
+        if (overlayEl) overlayEl.style.display = 'none';
+      }
+    } catch (e) {
+      // no-op
+    }
+  }
+
+  // Cleanup after the modal is fully hidden
+  creditModal.addEventListener('hidden.bs.modal', cleanupModalBackdrop);
+  // Also schedule a cleanup right as it begins hiding (covers some browser quirks)
+  creditModal.addEventListener('hide.bs.modal', () => {
+    setTimeout(cleanupModalBackdrop, 0);
+  });
+})();
+
 </script>
 
 </body>
