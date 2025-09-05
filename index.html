@@ -3180,15 +3180,18 @@ function updateProgramCardState(cardDiv, prod) {
     const credit = currentPlayer?.credit || 0;
     let creditUsed = (credit >= programTotal) ? programTotal : credit;
     let amountDue = programTotal - creditUsed;
+    const amountDueCents = Math.max(0, Math.round(amountDue * 100));
+    const serviceFeeCents = amountDueCents > 0 ? Math.max(100, Math.round(amountDueCents * 0.03)) : 0;
 
-    amountDueLine.textContent = `Amount Due (Program): $${amountDue.toFixed(2)}`;
-    breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)}`;
+    const amountDueWithFeeCents = amountDueCents + serviceFeeCents;
+    amountDueLine.textContent = `Amount Due: $${(amountDueWithFeeCents/100).toFixed(2)}`;
+    breakdownLine.textContent = `Program Total: $${programTotal.toFixed(2)} | Credit Balance: $${credit.toFixed(2)} | Service Fee: $${(serviceFeeCents/100).toFixed(2)}`;
 
     // Donation summary and total charge
     const donationCents = getDonationCents();
     const donationDollars = (donationCents / 100).toFixed(2);
     if (donationSummaryLine) donationSummaryLine.textContent = donationCents > 0 ? `Donation: $${donationDollars}` : '';
-    const grandTotalCents = Math.max(0, Math.round(amountDue * 100)) + donationCents;
+    const grandTotalCents = amountDueCents + serviceFeeCents + donationCents;
     const grandTotal = (grandTotalCents / 100).toFixed(2);
     if (totalChargeLine) totalChargeLine.textContent = `Total to be charged: $${grandTotal}`;
 
@@ -3198,7 +3201,7 @@ function updateProgramCardState(cardDiv, prod) {
       document.getElementById('btn-charge-on-file').style.display = 'none';
     }
 
-    if ((Math.round(amountDue * 100) + getDonationCents()) == 0) {
+    if ((amountDueCents + serviceFeeCents + getDonationCents()) == 0) {
       document.getElementById('btn-charge-on-file').textContent = 'Submit Registration (No Charge)';
       document.getElementById('btn-charge-on-file').style.display = 'block';
       document.getElementById('btn-credit-debit').style.display = 'none';
