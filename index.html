@@ -2567,6 +2567,60 @@ sessions.forEach(sessionObj => {
   container.appendChild(colDiv);
 });
 
+// Consolidated external links card before the membership card
+const linksCol = document.createElement('div');
+linksCol.classList.add('col-12', 'col-sm-6', 'col-md-4', 'col-lg-3', 'mb-3');
+
+const linksCard = document.createElement('div');
+linksCard.className = 'card session-card h-100';
+
+const linksBody = document.createElement('div');
+linksBody.className = 'card-body';
+
+const linksTitle = document.createElement('h6');
+linksTitle.classList.add('card-title', 'mb-2');
+linksTitle.textContent = 'Pickleball Mindset & Fitness Classes';
+
+const toggleBtn = document.createElement('button');
+toggleBtn.classList.add('btn', 'btn-sm', 'btn-primary', 'mb-2');
+toggleBtn.textContent = 'Show Options';
+
+const optionsDiv = document.createElement('div');
+optionsDiv.style.display = 'none';
+
+const fitnessBtn = document.createElement('button');
+fitnessBtn.classList.add('btn', 'btn-sm', 'btn-outline-primary', 'me-2', 'mb-1');
+fitnessBtn.textContent = 'Fitness Classes - Fair Lawn';
+fitnessBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.open('https://www.montclairpickleballbc.com/pickleball-fitness-classes#signup', '_blank');
+});
+
+const mindsetBtn = document.createElement('button');
+mindsetBtn.classList.add('btn', 'btn-sm', 'btn-outline-primary', 'mb-1');
+mindsetBtn.textContent = 'Mindset Classes';
+mindsetBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.open('https://www.montclairpickleballbc.com/pickleball-mindset-classes#signup', '_blank');
+});
+
+optionsDiv.appendChild(fitnessBtn);
+optionsDiv.appendChild(mindsetBtn);
+
+toggleBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  const isHidden = optionsDiv.style.display === 'none';
+  optionsDiv.style.display = isHidden ? 'block' : 'none';
+  toggleBtn.textContent = isHidden ? 'Hide Options' : 'Show Options';
+});
+
+linksBody.appendChild(linksTitle);
+linksBody.appendChild(toggleBtn);
+linksBody.appendChild(optionsDiv);
+linksCard.appendChild(linksBody);
+linksCol.appendChild(linksCard);
+container.appendChild(linksCol);
+
 if (!currentPlayer?.membershipType) {
  // Add the "Purchase a Membership!" card
  const purchaseCol = document.createElement('div');
