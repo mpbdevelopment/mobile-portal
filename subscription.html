@@ -504,6 +504,9 @@ If you choose to cancel your membership, your benefits will remain active until 
     const cancelModal = new bootstrap.Modal(cancelModalEl);
     const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 
+    /* Hard cap: memberships may not extend beyond this date */
+    const MAX_END_DATE = new Date("2025-11-16T23:59:59");
+
 
     /* Grab from localStorage */
     const playerEmail = localStorage.getItem("playerEmail");
@@ -539,6 +542,13 @@ If you choose to cancel your membership, your benefits will remain active until 
       const dd   = String(today.getDate()).padStart(2, "0");
       const todayStr = `${yyyy}-${mm}-${dd}`;
       startInput.min = todayStr;
+      // Also enforce a maximum start date so that a minimum 30-day purchase cannot exceed MAX_END_DATE
+      const oneMonthMs = 30 * 86400000;
+      const latestStartForOneMonth = new Date(MAX_END_DATE.getTime() - oneMonthMs);
+      const maxY = latestStartForOneMonth.getFullYear();
+      const maxM = String(latestStartForOneMonth.getMonth() + 1).padStart(2, "0");
+      const maxD = String(latestStartForOneMonth.getDate()).padStart(2, "0");
+      startInput.max = `${maxY}-${maxM}-${maxD}`;
 
       if (today < april7_2025) {
         startInput.value = "2025-04-07";
@@ -713,11 +723,7 @@ If you choose to cancel your membership, your benefits will remain active until 
        ================================================ */
     function updateSubscriptionDisplay() {
       const planValue = getSelectedPlanAmount();
-      const months = parseInt(monthsInput.value, 10) || 1;
-
-      // total days
-      const totalDays = months * 30;
-      durationDaysEl.textContent = totalDays.toString();
+      let months = parseInt(monthsInput.value, 10) || 1;
 
       // user-chosen start
       let userSelectedDate = new Date(startInput.value);
@@ -731,7 +737,31 @@ If you choose to cancel your membership, your benefits will remain active until 
         }
       }
 
-      // future date = userSelectedDate + totalDays
+      // Enforce cap: compute how many months are allowed from the derived start/base date
+      const msRemaining = MAX_END_DATE.getTime() - userSelectedDate.getTime();
+      const allowedMonthsRaw = Math.floor(msRemaining / (30 * 86400000));
+      const allowedMonths = Math.max(0, allowedMonthsRaw);
+      const newMaxMonths = Math.min(8, allowedMonths);
+
+      // If there is no room to extend at all, disable purchases and inform the user
+      if (newMaxMonths < 1) {
+        purchaseBtn.disabled = true;
+        endDateDisplay.textContent = new Date(Math.min(MAX_END_DATE.getTime(), Math.max(userSelectedDate.getTime(), 0))).toLocaleDateString();
+        totalCostEl.textContent = (planValue * Math.max(0, months)).toString();
+        statusMessage.textContent = "Memberships cannot extend beyond Nov 16, 2025. No further extension is available.";
+        return;
+      }
+
+      // Apply the dynamic max to months input and clamp current selection if needed
+      monthsInput.max = String(newMaxMonths);
+      if (months > newMaxMonths) {
+        months = newMaxMonths;
+        monthsInput.value = String(newMaxMonths);
+      }
+
+      // With clamped months, recompute total days and future date
+      const totalDays = months * 30;
+      durationDaysEl.textContent = totalDays.toString();
       const futureDate = new Date(userSelectedDate.getTime() + totalDays * 86400000);
       endDateDisplay.textContent = futureDate.toLocaleDateString();
 
@@ -763,6 +793,23 @@ If you choose to cancel your membership, your benefits will remain active until 
         return;
       }
 
+      // Validate against MAX_END_DATE before charging
+      const now = new Date();
+      let baseDate = new Date(startInput.value);
+      if (currentSubscription && currentSubscription.endDate) {
+        const oldEnd = new Date(currentSubscription.endDate);
+        if (oldEnd > now && oldEnd > baseDate) {
+          baseDate = oldEnd;
+        }
+      }
+      const allowedMonths = Math.max(0, Math.floor((MAX_END_DATE.getTime() - baseDate.getTime()) / (30 * 86400000)));
+      if (months > allowedMonths) {
+        statusMessage.textContent = "Selected duration exceeds the maximum allowed. Memberships cannot extend beyond Nov 16, 2025.";
+        document.getElementById('purchaseBtn').textContent = 'Confirm Purchase';
+        document.getElementById('purchaseBtn').disabled = false;
+        return;
+      }
+
       await chargeSubscription(totalCost, planValue, months, defaultPaymentMethodId, existingCustomerId);
     }
 
@@ -785,6 +832,23 @@ If you choose to cancel your membership, your benefits will remain active until 
         return;
       }
       const userName = nameInput.value || "Unnamed";
+
+      // Validate against MAX_END_DATE before proceeding
+      const now = new Date();
+      let baseDate = new Date(startInput.value);
+      if (currentSubscription && currentSubscription.endDate) {
+        const oldEnd = new Date(currentSubscription.endDate);
+        if (oldEnd > now && oldEnd > baseDate) {
+          baseDate = oldEnd;
+        }
+      }
+      const allowedMonths = Math.max(0, Math.floor((MAX_END_DATE.getTime() - baseDate.getTime()) / (30 * 86400000)));
+      if (months > allowedMonths) {
+        cardErrors.textContent = "Selected duration exceeds the maximum allowed. Memberships cannot extend beyond Nov 16, 2025.";
+        document.getElementById('submitBtn').textContent = 'Add Card on File & Purchase';
+        document.getElementById('submitBtn').disabled = false;
+        return;
+      }
 
       try {
         // (A) Create PaymentMethod
@@ -914,6 +978,11 @@ If you choose to cancel your membership, your benefits will remain active until 
           }
         } else {
           finalEndDate = new Date(finalStartDate.getTime() + totalDays * 86400000);
+        }
+
+        // (C3b) Safety clamp: do not allow beyond MAX_END_DATE
+        if (finalEndDate.getTime() > MAX_END_DATE.getTime()) {
+          finalEndDate = new Date(MAX_END_DATE.getTime());
         }
 
         // (C4) Update Firebase
