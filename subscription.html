@@ -214,7 +214,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               checked
             />
             <label class="form-check-label" for="planSilver">
-              Silver - $99 / 30 days
+              Silver - $125 / 30 days
             </label>
           </div>
           <div class="form-check mb-1">
@@ -226,7 +226,7 @@ a[data-bs-toggle="collapse"][aria-expanded="false"] .arrow {
               value="175"
             />
             <label class="form-check-label" for="planGold">
-              Gold - $175 / 30 days
+              Gold - $220 / 30 days
             </label>
           </div>
           <div class="form-check mb-1">
@@ -505,7 +505,60 @@ If you choose to cancel your membership, your benefits will remain active until 
     const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 
     /* Hard cap: memberships may not extend beyond this date */
-    const MAX_END_DATE = new Date("2025-11-16T23:59:59");
+    const MAX_END_DATE = new Date("2026-04-05T23:59:59");
+
+    /* Seasonal rate periods and prorated pricing */
+    const RATE_PERIODS = [
+      {
+        start: new Date("1970-01-01T00:00:00"),
+        end:   new Date("2025-11-16T23:59:59"),
+        rates: { Silver: 99, Gold: 175, TripleCrown: 499 }
+      },
+      {
+        start: new Date("2025-11-17T00:00:00"),
+        end:   new Date("2026-04-05T23:59:59"),
+        rates: { Silver: 125, Gold: 220, TripleCrown: 499 }
+      }
+    ];
+
+    function getSelectedPlanType() {
+      const planRadios = document.querySelectorAll('input[name="plan"]');
+      for (let r of planRadios) {
+        if (r.checked) {
+          switch (r.id) {
+            case 'planGold': return 'Gold';
+            case 'planTriple': return 'TripleCrown';
+            default: return 'Silver';
+          }
+        }
+      }
+      return 'Silver';
+    }
+
+    function startOfDay(date) {
+      const d = new Date(date);
+      d.setHours(0,0,0,0);
+      return d;
+    }
+
+    function computeTotalCost(planType, startDate, endDate) {
+      const start = startOfDay(startDate);
+      const end = startOfDay(endDate);
+      if (!(start < end)) return 0;
+      const dayMs = 86400000;
+      let total = 0;
+      for (const period of RATE_PERIODS) {
+        const segStart = new Date(Math.max(start.getTime(), period.start.getTime()));
+        const segEnd   = new Date(Math.min(end.getTime(), period.end.getTime()));
+        if (segStart < segEnd) {
+          const days = Math.round((segEnd.getTime() - segStart.getTime()) / dayMs);
+          const monthly = period.rates[planType];
+          const perDay = monthly / 30.0;
+          total += days * perDay;
+        }
+      }
+      return Math.round(total * 100) / 100; // round to cents
+    }
 
 
     /* Grab from localStorage */
@@ -722,7 +775,7 @@ If you choose to cancel your membership, your benefits will remain active until 
        8) updateSubscriptionDisplay
        ================================================ */
     function updateSubscriptionDisplay() {
-      const planValue = getSelectedPlanAmount();
+      const planType = getSelectedPlanType();
       let months = parseInt(monthsInput.value, 10) || 1;
 
       // user-chosen start
@@ -765,9 +818,9 @@ If you choose to cancel your membership, your benefits will remain active until 
       const futureDate = new Date(userSelectedDate.getTime() + totalDays * 86400000);
       endDateDisplay.textContent = futureDate.toLocaleDateString();
 
-      // total cost
-      const totalCost = planValue * months;
-      totalCostEl.textContent = totalCost.toString();
+      // total cost (prorated across pricing periods)
+      const totalCost = computeTotalCost(planType, userSelectedDate, futureDate);
+      totalCostEl.textContent = totalCost.toFixed(2);
     }
 
     /* ================================================
@@ -776,9 +829,20 @@ If you choose to cancel your membership, your benefits will remain active until 
     async function onPurchaseClick() {
       document.getElementById('purchaseBtn').textContent = 'Processing...';
       document.getElementById('purchaseBtn').disabled = true;
-      const planValue = getSelectedPlanAmount();
+      const planType = getSelectedPlanType();
       const months = parseInt(monthsInput.value, 10) || 1;
-      const totalCost = planValue * months;
+      // Compute base and end dates for pricing
+      const nowPurchase = new Date();
+      let baseDatePurchase = new Date(startInput.value);
+      if (currentSubscription && currentSubscription.endDate) {
+        const oldEnd = new Date(currentSubscription.endDate);
+        if (oldEnd > nowPurchase && oldEnd > baseDatePurchase) {
+          baseDatePurchase = oldEnd;
+        }
+      }
+      const totalDaysPurchase = months * 30;
+      const futureDatePurchase = new Date(baseDatePurchase.getTime() + totalDaysPurchase * 86400000);
+      const totalCost = computeTotalCost(planType, baseDatePurchase, futureDatePurchase);
 
       if (!planValue) {
         statusMessage.textContent = "Please select a plan.";
@@ -794,15 +858,15 @@ If you choose to cancel your membership, your benefits will remain active until 
       }
 
       // Validate against MAX_END_DATE before charging
-      const now = new Date();
-      let baseDate = new Date(startInput.value);
+      const nowPurchase2 = new Date();
+      let baseDatePurchase2 = new Date(startInput.value);
       if (currentSubscription && currentSubscription.endDate) {
         const oldEnd = new Date(currentSubscription.endDate);
-        if (oldEnd > now && oldEnd > baseDate) {
-          baseDate = oldEnd;
+        if (oldEnd > nowPurchase2 && oldEnd > baseDatePurchase2) {
+          baseDatePurchase2 = oldEnd;
         }
       }
-      const allowedMonths = Math.max(0, Math.floor((MAX_END_DATE.getTime() - baseDate.getTime()) / (30 * 86400000)));
+      const allowedMonths = Math.max(0, Math.floor((MAX_END_DATE.getTime() - baseDatePurchase2.getTime()) / (30 * 86400000)));
       if (months > allowedMonths) {
         statusMessage.textContent = "Selected duration exceeds the maximum allowed. Memberships cannot extend beyond Nov 16, 2025.";
         document.getElementById('purchaseBtn').textContent = 'Confirm Purchase';
@@ -810,7 +874,7 @@ If you choose to cancel your membership, your benefits will remain active until 
         return;
       }
 
-      await chargeSubscription(totalCost, planValue, months, defaultPaymentMethodId, existingCustomerId);
+      await chargeSubscription(totalCost, planType, months, defaultPaymentMethodId, existingCustomerId);
     }
 
     /* ================================================
@@ -823,9 +887,20 @@ If you choose to cancel your membership, your benefits will remain active until 
       document.getElementById('submitBtn').textContent = 'Processing...';
       document.getElementById('submitBtn').disabled = true;
 
-      const planValue = getSelectedPlanAmount();
+      const planType = getSelectedPlanType();
       const months = parseInt(monthsInput.value, 10) || 1;
-      const totalCost = planValue * months;
+      // Compute base and end dates for pricing
+      const nowSubmit = new Date();
+      let baseDateSubmit = new Date(startInput.value);
+      if (currentSubscription && currentSubscription.endDate) {
+        const oldEnd = new Date(currentSubscription.endDate);
+        if (oldEnd > nowSubmit && oldEnd > baseDateSubmit) {
+          baseDateSubmit = oldEnd;
+        }
+      }
+      const totalDaysSubmit = months * 30;
+      const futureDateSubmit = new Date(baseDateSubmit.getTime() + totalDaysSubmit * 86400000);
+      const totalCost = computeTotalCost(planType, baseDateSubmit, futureDateSubmit);
 
       if (!playerEmail) {
         cardErrors.textContent = "No playerEmail. Cannot proceed.";
@@ -834,16 +909,16 @@ If you choose to cancel your membership, your benefits will remain active until 
       const userName = nameInput.value || "Unnamed";
 
       // Validate against MAX_END_DATE before proceeding
-      const now = new Date();
-      let baseDate = new Date(startInput.value);
+      const nowSubmit2 = new Date();
+      let baseDateSubmit2 = new Date(startInput.value);
       if (currentSubscription && currentSubscription.endDate) {
         const oldEnd = new Date(currentSubscription.endDate);
-        if (oldEnd > now && oldEnd > baseDate) {
-          baseDate = oldEnd;
+        if (oldEnd > nowSubmit2 && oldEnd > baseDateSubmit2) {
+          baseDateSubmit2 = oldEnd;
         }
       }
-      const allowedMonths = Math.max(0, Math.floor((MAX_END_DATE.getTime() - baseDate.getTime()) / (30 * 86400000)));
-      if (months > allowedMonths) {
+      const allowedMonthsSubmit = Math.max(0, Math.floor((MAX_END_DATE.getTime() - baseDateSubmit2.getTime()) / (30 * 86400000)));
+      if (months > allowedMonthsSubmit) {
         cardErrors.textContent = "Selected duration exceeds the maximum allowed. Memberships cannot extend beyond Nov 16, 2025.";
         document.getElementById('submitBtn').textContent = 'Add Card on File & Purchase';
         document.getElementById('submitBtn').disabled = false;
@@ -899,7 +974,7 @@ If you choose to cancel your membership, your benefits will remain active until 
         }
 
         // (D) Charge
-        await chargeSubscription(totalCost, planValue, months, paymentMethod.id, existingCustomerId);
+        await chargeSubscription(totalCost, planType, months, paymentMethod.id, existingCustomerId);
 
         // (E) Close modal
         paymentModal.hide();
@@ -913,7 +988,7 @@ If you choose to cancel your membership, your benefits will remain active until 
        ================================================ */
     async function chargeSubscription(
       amountInDollars,
-      planValue,
+      membershipType,
       months,
       paymentMethodId,
       customerId
@@ -951,9 +1026,7 @@ If you choose to cancel your membership, your benefits will remain active until 
         statusMessage.textContent = `Success! Charged $${amountInDollars}. Your membership is now active!`;
 
         // (C1) membership type
-        let membershipType = "Silver";
-        if (planValue === 175) membershipType = "Gold";
-        else if (planValue === 499) membershipType = "TripleCrown";
+        // membership type passed from selection (Silver/Gold/TripleCrown)
 
         // (C2) finalStartDate
         let finalStartDate = new Date(document.getElementById("startDateInput").value);
@@ -1031,32 +1104,7 @@ If you choose to cancel your membership, your benefits will remain active until 
     }
 
     /* Get selected plan amount */
-    function getSelectedPlanAmount() {
-  // If the user has a current subscription that hasn't ended:
-  if (
-    currentSubscription && 
-    new Date(currentSubscription.endDate) > new Date()
-  ) {
-    // Keep the same plan as their existing membership
-    switch (currentSubscription.membershipType) {
-      case "Gold":
-        return 175;
-      case "TripleCrown":
-        return 499;
-      default:
-        return 99; // default to Silver if none matched
-    }
-  }
-
-  // Otherwise, user is either new or expired: read whichever radio they picked
-  const planRadios = document.querySelectorAll('input[name="plan"]');
-  for (let r of planRadios) {
-    if (r.checked) {
-      return parseInt(r.value, 10);
-    }
-  }
-  return 99; // fallback
-}
+    function getSelectedPlanAmount() { /* deprecated */ return null; }
 
   </script>
 </body>
