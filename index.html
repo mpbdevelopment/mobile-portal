@@ -5174,16 +5174,48 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
     return null;
   }
 
+  // Determine if the session spans more than 6 months based on first parsed dates
+  function computeSessionWrapInfo(products) {
+    const months = [];
+    (products || []).forEach(p => {
+      const d = parseFirstDateFromProgram(p.program || '');
+      if (d) months.push(d.getMonth() + 1); // 1-12
+    });
+    if (months.length < 2) return { active: false, thresholdMonth: null };
+    const minMonth = Math.min(...months);
+    const maxMonth = Math.max(...months);
+    if (maxMonth - minMonth > 6) {
+      // Months less than or equal to thresholdMonth are considered next year
+      const thresholdMonth = Math.max(1, maxMonth - 6);
+      return { active: true, thresholdMonth };
+    }
+    return { active: false, thresholdMonth: null };
+  }
+
+  // If wrap is active and the date month is <= threshold, shift the year forward by 1
+  function adjustDateForSessionWrap(date, wrapInfo) {
+    if (!date || !wrapInfo || !wrapInfo.active) return date;
+    const month = date.getMonth() + 1;
+    if (month <= wrapInfo.thresholdMonth) {
+      const adjusted = new Date(date);
+      adjusted.setFullYear(adjusted.getFullYear() + 1);
+      return adjusted;
+    }
+    return date;
+  }
+
   function groupProgramsByDate(products) {
     const groups = {};
+    const wrapInfo = computeSessionWrapInfo(products);
     
-    products.forEach(product => {
-      const date = parseFirstDateFromProgram(product.program);
+    (products || []).forEach(product => {
+      const date = parseFirstDateFromProgram(product.program || '');
       if (date) {
-        const dateKey = date.toISOString().split('T')[0];
+        const adjustedDate = adjustDateForSessionWrap(date, wrapInfo);
+        const dateKey = adjustedDate.toISOString().split('T')[0];
         if (!groups[dateKey]) {
           groups[dateKey] = {
-            date: date,
+            date: adjustedDate,
             products: []
           };
         }
@@ -5194,7 +5226,7 @@ document.getElementById('btn-back-to-login').addEventListener('click', () => {
     // Sort dates
     return Object.entries(groups)
       .sort(([,a], [,b]) => a.date - b.date)
-      .map(([key, value]) => value);
+      .map(([, value]) => value);
   }
 
   function createFilterCheckboxes() {
@@ -5535,13 +5567,15 @@ function renderFilteredPrograms() {
     if (selectedDate) {
         const dateRange = getDateRange(selectedDate);
         if (dateRange) {
+            const wrapInfo = computeSessionWrapInfo(filtered);
             filtered = filtered.filter(prod => {
                 const programDate = parseFirstDateFromProgram(prod.program);
                 if (!programDate) return false;
+                const adjusted = adjustDateForSessionWrap(programDate, wrapInfo);
                 
                 // Compare using getTime() for precise comparison
-                return programDate.getTime() >= dateRange.start.getTime() && 
-                       programDate.getTime() <= dateRange.end.getTime();
+                return adjusted.getTime() >= dateRange.start.getTime() && 
+                       adjusted.getTime() <= dateRange.end.getTime();
             });
         }
     }
@@ -5792,13 +5826,15 @@ function renderFilteredPrograms() {
     if (selectedDate) {
         const dateRange = getDateRange(selectedDate);
         if (dateRange) {
+            const wrapInfo = computeSessionWrapInfo(filtered);
             filtered = filtered.filter(prod => {
                 const programDate = parseFirstDateFromProgram(prod.program);
                 if (!programDate) return false;
+                const adjusted = adjustDateForSessionWrap(programDate, wrapInfo);
                 
                 // Compare using getTime() for precise comparison
-                return programDate.getTime() >= dateRange.start.getTime() && 
-                       programDate.getTime() <= dateRange.end.getTime();
+                return adjusted.getTime() >= dateRange.start.getTime() && 
+                       adjusted.getTime() <= dateRange.end.getTime();
             });
         }
     }
