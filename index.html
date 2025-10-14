@@ -3297,6 +3297,10 @@ function updateProgramCardState(cardDiv, prod) {
     let programDueCents = Math.round(amountDue * 100);
     const donationCents = getDonationCents();
 
+    // Derive service fee consistent with display logic
+    const serviceFeeCents = programDueCents > 0 ? Math.max(100, Math.round(programDueCents * 0.03)) : 0;
+    const amountPaidCents = programDueCents; // program amount only (excludes fee and donation)
+
     const email = currentPlayer.email;
     const success = await chargeCart(email, programDueCents, donationCents);
     if (!success) {
@@ -3306,7 +3310,11 @@ function updateProgramCardState(cardDiv, prod) {
     }
 
     // Payment succeeded, now register and cleanup
-    await registerAndCleanup(creditUsed);
+    await registerAndCleanup(creditUsed, {
+      amountPaidCents,
+      processingFeeCents: serviceFeeCents,
+      donationCents
+    });
   });
 
   document.getElementById('btn-credit-debit').addEventListener('click', () => {
@@ -3376,7 +3384,12 @@ function updateProgramCardState(cardDiv, prod) {
   // If there's nothing to charge, skip Stripe PaymentIntent
   if (grandTotalCents <= 0) {
     // Register user in Sheets, update credit, etc.
-    await registerAndCleanup(creditUsed);
+    const serviceFeeCents = programDueCents > 0 ? Math.max(100, Math.round(programDueCents * 0.03)) : 0;
+    await registerAndCleanup(creditUsed, {
+      amountPaidCents: programDueCents,
+      processingFeeCents: serviceFeeCents,
+      donationCents
+    });
 
     // If user wants to save card on file
     const saveCardCheckbox = document.getElementById('save-card-checkbox');
@@ -3428,7 +3441,12 @@ function updateProgramCardState(cardDiv, prod) {
     }
     if (confirmResult.paymentIntent && confirmResult.paymentIntent.status === 'succeeded') {
       // Registration flow, minus credit used
-      await registerAndCleanup(creditUsed);
+      const serviceFeeCents = programDueCents > 0 ? Math.max(100, Math.round(programDueCents * 0.03)) : 0;
+      await registerAndCleanup(creditUsed, {
+        amountPaidCents: programDueCents,
+        processingFeeCents: serviceFeeCents,
+        donationCents
+      });
 
       // If user wants to save card on file
       const saveCardCheckbox = document.getElementById('save-card-checkbox');
@@ -3495,9 +3513,9 @@ try {
  * 4) Clears cart and closes spinner/UI.
  * 5) Refreshes free slot data to ensure UI is up-to-date.
  */
-async function registerAndCleanup(creditUsed) {
+async function registerAndCleanup(creditUsed, amountBreakdown = {}) {
   // Step 1: Register the cart items in your Sheets
-  await submitCartToSpreadsheet(creditUsed);
+  await submitCartToSpreadsheet(creditUsed, amountBreakdown);
 
   // Step 2: Record free slot usage in Firebase
   await recordFreeSlotUsage();
@@ -3592,7 +3610,7 @@ async function recordFreeSlotUsage() {
 
 
 
-  async function submitCartToSpreadsheet(creditUsed) {
+async function submitCartToSpreadsheet(creditUsed, amountBreakdown = {}) {
     const partnerNameValue = document.getElementById('partner-name').value;
     const playerMembership = currentPlayer.membershipType;
     const payload = {
@@ -3611,7 +3629,11 @@ async function recordFreeSlotUsage() {
         sessionId: ci.sessionId,
         program: ci.program + (ci.indoorOutdoor ? ' | ' + ci.indoorOutdoor : '')
       })),
-      membership: currentPlayer.membershipType
+    membership: currentPlayer.membershipType,
+    // New amounts (cents) sent separately - program only, fee only, donation only
+    amountPaidCents: Number(amountBreakdown.amountPaidCents || 0),
+    processingFeeCents: Number(amountBreakdown.processingFeeCents || 0),
+    donationCents: Number(amountBreakdown.donationCents || 0)
     };
 
     try {
