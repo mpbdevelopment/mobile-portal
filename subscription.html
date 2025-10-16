@@ -548,6 +548,18 @@ If you choose to cancel your membership, your benefits will remain active until 
       return 'Silver';
     }
 
+    // Use current subscription's plan when active; otherwise fall back to the selected plan
+    function derivePlanType() {
+      const now = new Date();
+      if (currentSubscription && currentSubscription.endDate) {
+        const subEnd = new Date(currentSubscription.endDate);
+        if (subEnd > now) {
+          return currentSubscription.membershipType || 'Silver';
+        }
+      }
+      return getSelectedPlanType();
+    }
+
     function startOfDay(date) {
       const d = new Date(date);
       d.setHours(0,0,0,0);
@@ -788,7 +800,7 @@ If you choose to cancel your membership, your benefits will remain active until 
        8) updateSubscriptionDisplay
        ================================================ */
     function updateSubscriptionDisplay() {
-      const planType = getSelectedPlanType();
+      const planType = derivePlanType();
       let months = parseInt(monthsInput.value, 10) || 1;
 
       // user-chosen start
@@ -844,7 +856,7 @@ If you choose to cancel your membership, your benefits will remain active until 
     async function onPurchaseClick() {
       document.getElementById('purchaseBtn').textContent = 'Processing...';
       document.getElementById('purchaseBtn').disabled = true;
-      const planType = getSelectedPlanType();
+      const planType = derivePlanType();
       const months = parseInt(monthsInput.value, 10) || 1;
       // Compute base and end dates for pricing
       const nowPurchase = new Date();
@@ -904,7 +916,7 @@ If you choose to cancel your membership, your benefits will remain active until 
       document.getElementById('submitBtn').textContent = 'Processing...';
       document.getElementById('submitBtn').disabled = true;
 
-      const planType = getSelectedPlanType();
+      const planType = derivePlanType();
       const months = parseInt(monthsInput.value, 10) || 1;
       // Compute base and end dates for pricing
       const nowSubmit = new Date();
