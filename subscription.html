@@ -521,6 +521,19 @@ If you choose to cancel your membership, your benefits will remain active until 
       }
     ];
 
+    // Helper: get the current monthly rate for a plan type at a given date
+    function getMonthlyRateForDate(planType, atDate) {
+      const d = new Date(atDate);
+      for (const period of RATE_PERIODS) {
+        if (d >= period.start && d <= period.end) {
+          return period.rates[planType] || 0;
+        }
+      }
+      // Fallback: last period's rate
+      const last = RATE_PERIODS[RATE_PERIODS.length - 1];
+      return last?.rates?.[planType] || 0;
+    }
+
     function getSelectedPlanType() {
       const planRadios = document.querySelectorAll('input[name="plan"]');
       for (let r of planRadios) {
@@ -800,7 +813,9 @@ If you choose to cancel your membership, your benefits will remain active until 
       if (newMaxMonths < 1) {
         purchaseBtn.disabled = true;
         endDateDisplay.textContent = new Date(Math.min(MAX_END_DATE.getTime(), Math.max(userSelectedDate.getTime(), 0))).toLocaleDateString();
-        totalCostEl.textContent = (planValue * Math.max(0, months)).toString();
+        const planType = getSelectedPlanType();
+        const fallbackRate = getMonthlyRateForDate(planType, userSelectedDate);
+        totalCostEl.textContent = (fallbackRate * Math.max(0, months)).toFixed(2);
         statusMessage.textContent = "Memberships cannot extend beyond Nov 16, 2025. No further extension is available.";
         return;
       }
@@ -844,8 +859,10 @@ If you choose to cancel your membership, your benefits will remain active until 
       const futureDatePurchase = new Date(baseDatePurchase.getTime() + totalDaysPurchase * 86400000);
       const totalCost = computeTotalCost(planType, baseDatePurchase, futureDatePurchase);
 
-      if (!planValue) {
-        statusMessage.textContent = "Please select a plan.";
+      if (isNaN(totalCost) || totalCost <= 0) {
+        statusMessage.textContent = "Please select a valid plan.";
+        document.getElementById('purchaseBtn').textContent = 'Confirm Purchase';
+        document.getElementById('purchaseBtn').disabled = false;
         return;
       }
       if (!existingCustomerId) {
@@ -1066,7 +1083,7 @@ If you choose to cancel your membership, your benefits will remain active until 
             email: playerEmail,
             customerId,
             membershipType,
-            rate: planValue,
+            rate: getMonthlyRateForDate(membershipType, finalStartDate),
             startDate: finalStartDate.toISOString(),
             endDate: finalEndDate.toISOString(),
             active: true
