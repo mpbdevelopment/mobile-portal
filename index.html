@@ -3856,6 +3856,29 @@ function renderRegistrationsList(sessionsArray) {
 */
 function parseProgramString(programStr, sessionObj) {
 const fallbackYear = new Date().getFullYear();
+// Determine wrap info using the session that matches the location in the string,
+// falling back to any provided sessionObj.products or no wrap if unavailable.
+let wrapInfo = { active: false, thresholdMonth: null };
+try {
+  // Try to infer location from trailing parentheses, e.g. "... (Fair Lawn)"
+  const locMatch = programStr.match(/\(([^)]+)\)\s*$/);
+  let productsForWrap = null;
+  if (locMatch && Array.isArray(allSessions)) {
+    const locationName = locMatch[1].trim();
+    const sess = allSessions.find(s => s.location && s.location.includes(locationName));
+    if (sess && Array.isArray(sess.products)) {
+      productsForWrap = sess.products;
+    }
+  }
+  if (!productsForWrap && sessionObj && Array.isArray(sessionObj.products)) {
+    productsForWrap = sessionObj.products;
+  }
+  if (productsForWrap) {
+    wrapInfo = computeSessionWrapInfo(productsForWrap);
+  }
+} catch (e) {
+  // no-op; keep default wrapInfo
+}
 
 if (programStr.includes(';')) {
   // e.g. (12/2 - 1/6; 1:00pm - 2:00pm)
@@ -3871,8 +3894,19 @@ if (programStr.includes(';')) {
   const inside = parenMatch[1].trim(); 
   const [datesPart, timesPart] = inside.split(';').map(s => s.trim());
   const [startDateStr, endDateStr] = datesPart.split('-').map(s => s.trim());
-  const startDate = parseMMDD(startDateStr, fallbackYear);
-  const endDate   = parseMMDD(endDateStr, fallbackYear);
+  // Parse and adjust for Dec→Jan wraps based on session products
+  let startDate = adjustDateForSessionWrap(parseMMDD(startDateStr, fallbackYear), wrapInfo);
+  let endDate   = adjustDateForSessionWrap(parseMMDD(endDateStr, fallbackYear), wrapInfo);
+  // Fallback: if sessions aren't loaded yet and we're in Nov/Dec viewing Jan/Feb, bump year
+  (function ensureFutureYear() {
+    const now = new Date();
+    const nowMonth = now.getMonth() + 1;
+    const bumpNeeded = (d) => (nowMonth >= 11) && ((d.getMonth() + 1) <= 2) && d.getFullYear() === now.getFullYear();
+    if (!wrapInfo.active) {
+      if (bumpNeeded(startDate)) startDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+      if (bumpNeeded(endDate))   endDate   = new Date(endDate.getFullYear() + 1, endDate.getMonth(), endDate.getDate());
+    }
+  })();
 
   const [startTimeStr, endTimeStr] = timesPart.split('-').map(s => s.trim());
   const startTime = parseTime(startTimeStr);
@@ -3893,7 +3927,16 @@ if (programStr.includes(';')) {
   if (!match) return [];
   const dateStr   = match[1];
   const timesStr  = match[2];
-  const singleDate = parseMMDD(dateStr, fallbackYear);
+  // Parse and adjust for session wrap
+  let singleDate = adjustDateForSessionWrap(parseMMDD(dateStr, fallbackYear), wrapInfo);
+  // Fallback year bump if needed (sessions not loaded yet)
+  (function ensureFutureYearSingle() {
+    const now = new Date();
+    const nowMonth = now.getMonth() + 1;
+    if (!wrapInfo.active && (nowMonth >= 11) && ((singleDate.getMonth() + 1) <= 2) && singleDate.getFullYear() === now.getFullYear()) {
+      singleDate = new Date(singleDate.getFullYear() + 1, singleDate.getMonth(), singleDate.getDate());
+    }
+  })();
   const [startTimeStr, endTimeStr] = timesStr.split('-').map(s => s.trim());
   const startTime = parseTime(startTimeStr);
   const endTime   = parseTime(endTimeStr);
