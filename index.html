@@ -2397,7 +2397,7 @@ try {
 
   // 1) Basic checks
   const basePrice = product.price || 0;
-  const allDates = parseAllDates(product.program);
+  const allDates = parseAllDatesWithWrap(product.program);
   console.log('  Parsed', allDates.length, 'date(s) from program:', product.program);
 
   if (!allDates.length) {
@@ -2899,7 +2899,7 @@ if (!currentPlayer?.membershipType) {
   // 2) If user is a member and this product is a "Package," check for partial coverage
   if (currentPlayer?.membershipType && prod.program.includes('Package')) {
     // 3) Parse all the program's dates
-    const allDates = parseAllDates(prod.program);
+    const allDates = parseAllDatesWithWrap(prod.program);
     if (!allDates.length) return; // Can't parse => do nothing
 
     // 4) Compare each date to membershipEndDate
@@ -3077,7 +3077,7 @@ function updateProgramCardState(cardDiv, prod) {
 
   // Check for package membership coverage
   if (currentPlayer?.membershipType && product.program.includes('Package')) {
-    const allDates = parseAllDates(product.program);
+    const allDates = parseAllDatesWithWrap(product.program);
     if (allDates.length) {
       const membershipEnd = new Date(currentPlayer?.membershipEndDate || '');
       if (!isNaN(membershipEnd.getTime())) {
@@ -4004,6 +4004,23 @@ if (programStr.includes(';')) {
 
   return [singleDate];
 }
+}
+
+/**
+ * parseAllDatesWithWrap(programStr)
+ * Wrap-aware variant of parseAllDates that adjusts dates for sessions
+ * spanning across a new year (e.g., December -> January).
+ * Uses the currently loaded `allProducts` to infer wrap rules.
+ */
+function parseAllDatesWithWrap(programStr) {
+  try {
+    const dates = parseAllDates(programStr) || [];
+    const wrapInfo = computeSessionWrapInfo(allProducts || []);
+    return dates.map(d => adjustDateForSessionWrap(d, wrapInfo));
+  } catch (e) {
+    // Fallback to original behavior if anything goes wrong
+    return parseAllDates(programStr);
+  }
 }
 
 
@@ -5985,7 +6002,7 @@ function renderFilteredPrograms() {
         extendBtn.style.display = 'none';
       }
       if (currentPlayer?.membershipType && prod.program.includes('Package')) {
-        const allDates = parseAllDates(prod.program);
+        const allDates = parseAllDatesWithWrap(prod.program);
         if (allDates.length) {
           const membershipEnd = new Date(currentPlayer?.membershipEndDate || '');
           if (!isNaN(membershipEnd.getTime())) {
