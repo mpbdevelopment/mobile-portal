@@ -2046,6 +2046,7 @@ setInterval(refreshData, 120000);
         const subsData = snapshot.val() || {};
         let membershipType = null;
         let membershipEnd = null;
+        let membershipStart = null;
 
         // We search for a record with .email === currentPlayer.email
         Object.keys(subsData).forEach(key => {
@@ -2412,9 +2413,13 @@ try {
     return { total: basePrice, usedWeeks: [] };
   }
 
-  // Convert membership start/end strings to Date objects
-  const startDate = new Date(membershipStartDate);
-  const endDate   = new Date(membershipEndDate);
+  // Convert membership start/end strings to robust local Date objects
+  const startDate = parseFlexibleDateToLocal(membershipStartDate);
+  const endDate   = parseFlexibleDateToLocal(membershipEndDate);
+  if (!startDate || !endDate) {
+    console.log('  Unable to parse membership start/end => returning full price:', basePrice);
+    return { total: basePrice, usedWeeks: [] };
+  }
 
   // If membershipEndDate is in the past, full price
   if (endDate < new Date()) {
@@ -4003,7 +4008,21 @@ function parseAllDatesWithWrap(programStr) {
   try {
     const dates = parseAllDates(programStr) || [];
     const wrapInfo = computeSessionWrapInfo(allProducts || []);
-    return dates.map(d => adjustDateForSessionWrap(d, wrapInfo));
+    const now = new Date();
+    const nowMonth = now.getMonth() + 1;
+    return dates.map(orig => {
+      // First apply session-based wrap if active
+      let d = adjustDateForSessionWrap(orig, wrapInfo);
+      // Fallback: if no wrap detected, and we're in Nov/Dec viewing Jan/Feb dates,
+      // bump those dates to next year to represent the upcoming season.
+      if (!wrapInfo.active && nowMonth >= 11) {
+        const m = d.getMonth() + 1; // 1-12
+        if (m <= 2 && d.getFullYear() === now.getFullYear()) {
+          d = new Date(d.getFullYear() + 1, d.getMonth(), d.getDate());
+        }
+      }
+      return d;
+    });
   } catch (e) {
     // Fallback to original behavior if anything goes wrong
     return parseAllDates(programStr);
@@ -4085,6 +4104,75 @@ return new Date(
   timeObj.minute,
   0
 );
+}
+
+/**
+* parseFlexibleDateToLocal(input)
+* Safely parses membership start/end dates into a local Date (midnight) without timezone surprises.
+* Accepts:
+*  - Date object
+*  - number (epoch ms)
+*  - 'YYYY-MM-DD'
+*  - 'MM/DD/YYYY'
+*  - 'Mon DD, YYYY' (e.g., 'Sep 14, 2026' or full month names)
+* Returns a Date or null if unparsable.
+*/
+function parseFlexibleDateToLocal(input) {
+  if (!input) return null;
+  if (input instanceof Date) {
+    return isNaN(input) ? null : new Date(input.getFullYear(), input.getMonth(), input.getDate());
+  }
+  if (typeof input === 'number') {
+    const d = new Date(input);
+    return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+  if (typeof input !== 'string') return null;
+  const s = input.trim();
+
+  // ISO YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    return new Date(y, mo - 1, d);
+  }
+
+  // MM/DD/YYYY
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const mo = Number(m[1]), d = Number(m[2]), y = Number(m[3]);
+    return new Date(y, mo - 1, d);
+  }
+
+  // Month DD, YYYY (short or long month names)
+  const MONTHS = {
+    jan: 0, january: 0,
+    feb: 1, february: 1,
+    mar: 2, march: 2,
+    apr: 3, april: 3,
+    may: 4,
+    jun: 5, june: 5,
+    jul: 6, july: 6,
+    aug: 7, august: 7,
+    sep: 8, sept: 8, september: 8,
+    oct: 9, october: 9,
+    nov: 10, november: 10,
+    dec: 11, december: 11
+  };
+  m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+  if (m) {
+    const monKey = m[1].toLowerCase();
+    const mo = MONTHS[monKey];
+    const d = Number(m[2]);
+    const y = Number(m[3]);
+    if (mo !== undefined) return new Date(y, mo, d);
+  }
+
+  // Fallback to Date parsing; if valid, normalize to local midnight
+  const fallback = new Date(s);
+  if (!isNaN(fallback)) {
+    return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+  }
+  return null;
 }
 
 
@@ -4746,8 +4834,8 @@ function updateMembershipMessage() {
 
   // If the user has a membership type and an end date (and start date), show a message
   if (currentPlayer?.membershipType && currentPlayer?.membershipEndDate && currentPlayer?.membershipStartDate) {
-    const startDate = new Date(currentPlayer.membershipStartDate);
-    const endDate   = new Date(currentPlayer.membershipEndDate);
+    const startDate = parseFlexibleDateToLocal(currentPlayer.membershipStartDate);
+    const endDate   = parseFlexibleDateToLocal(currentPlayer.membershipEndDate);
     const now       = new Date();
 
     // Format the dates for display, e.g. "Apr 1, 2025"
@@ -4960,6 +5048,7 @@ try {
     const subsData = snapshot.val() || {};
     let membershipType = null;
     let membershipEnd = null;
+    let membershipStart = null;
 
     Object.keys(subsData).forEach(key => {
       const sub = subsData[key];
